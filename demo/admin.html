@@ -1336,21 +1336,45 @@
 
     @media (max-width: 768px) {
       #sidebar { transform: translateX(-260px); }
-      #main-content { margin-left: 0; padding-bottom: 72px; }
+      #main-content { margin-left: 0; padding-bottom: 90px; }
       #bottom-nav { display: flex; }
       .topbar { padding: 12px 16px; }
       .page-body { padding: 16px; }
       #kitchen-header { padding: 20px 16px; }
+      
+      /* Ajustes de Grid e Cartões */
       .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .metric-card { padding: 16px; }
+      .metric-value { font-size: 28px; }
+      
       .kitchen-metrics { grid-template-columns: repeat(3, 1fr); gap: 10px; }
       .notif-badge-pill { display: none; }
+      
+      /* Kanban Verticalizado no Mobile */
+      #kanban-board { flex-direction: column; gap: 20px; }
+      .kanban-col { min-width: 100%; max-height: none; padding: 16px; }
+      .kanban-col-body { overflow-y: visible; max-height: none; margin-right: 0; padding-right: 0; }
     }
 
     @media (max-width: 480px) {
-      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .metric-value { font-size: 24px; }
+      .metric-label { font-size: 11px; }
+      .metric-icon-wrap { width: 36px; height: 36px; }
+      .metric-icon-wrap svg { width: 20px; height: 20px; }
+      
       .kitchen-metrics { gap: 8px; }
-      .kitchen-metric-value { font-size: 22px; }
+      .kitchen-metric-value { font-size: 20px; }
+      .kitchen-metric-label { font-size: 10px; }
+      
       #topbar-right span { display: none; }
+      
+      /* Ajuste nos botões de pedido */
+      .order-btns { flex-wrap: wrap; }
+      .btn-action { padding: 6px 12px; font-size: 11px; min-height: 36px; }
+      
+      .bottom-nav-item { padding: 8px 2px 10px; font-size: 9px; }
+      .bn-icon { font-size: 18px; }
     }
 
     /* ===== ESTOQUE ===== */
@@ -1384,7 +1408,7 @@
       padding: 0 32px 20px;
     }
     @media (max-width: 768px) {
-      .kanban-wrapper { margin: 0 -16px; padding: 0 16px 20px; }
+      .kanban-wrapper { margin: 0; padding: 0 0 20px 0; overflow-x: visible; }
     }
 
     /* ===== MENU BTN (hamburger) ===== */
