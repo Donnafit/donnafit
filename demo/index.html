@@ -364,16 +364,6 @@
     }
 
     @media (max-width: 768px) {
-      #category-tabs {
-        flex-wrap: nowrap !important;
-        justify-content: flex-start !important;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        padding-bottom: 4px;
-      }
-      #category-tabs::-webkit-scrollbar { display: none; }
-
       #produtos-section > div { padding-left: 16px; padding-right: 16px; }
 
       .form-input { font-size: 16px; }
@@ -389,13 +379,6 @@
     }
 
     @media (max-width: 480px) {
-      .product-grid {
-        grid-template-columns: 1fr;
-        gap: 12px;
-      }
-
-      .product-img { height: 200px; }
-
       .option-grid {
         grid-template-columns: 1fr !important;
       }
@@ -427,11 +410,6 @@
       .footer-nav {
         flex-direction: column !important;
         gap: 12px !important;
-      }
-
-      #header-menu-btn {
-        visibility: hidden;
-        pointer-events: none;
       }
 
       #cart-bar-info { font-size: 13px; }
@@ -476,12 +454,12 @@
       justify-content: space-between;
     ">
       <!-- Hamburguer (decorativo) -->
-      <button id="header-menu-btn" type="button" aria-hidden="true" tabindex="-1" style="
+      <button id="header-menu-btn" type="button" aria-label="Menu" style="
         width: 44px; height: 44px;
         display: flex; align-items: center; justify-content: center;
         border-radius: 12px;
         transition: background 0.2s;
-      ">
+      " onmouseover="this.style.background='#F5F0E8'" onmouseout="this.style.background='transparent'">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5A6B2A" stroke-width="2" stroke-linecap="round">
           <line x1="3" y1="6" x2="21" y2="6"/>
           <line x1="3" y1="12" x2="21" y2="12"/>
