@@ -88,10 +88,6 @@ export default function HeroSection() {
         {/* CTA button */}
         <a
           href="#produtos"
-          onClick={e => {
-            e.preventDefault();
-            document.getElementById('produtos')?.scrollIntoView({ behavior: 'smooth' });
-          }}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 10,
             background: '#C89B3C', color: '#FFFFFF',
