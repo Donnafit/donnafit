@@ -1,13 +1,17 @@
 "use client"
-import { Plus, Minus } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { StockBadge } from "./StockBadge"
+
+import { useState } from "react"
+import Image from "next/image"
 import { useCart } from "@/hooks/useCart"
 import { formatCurrency } from "@/lib/utils"
 import type { Product } from "@/types"
 
+interface ProductWithCategory extends Product {
+  categories?: { name: string; slug: string } | null
+}
+
 interface Props {
-  product: Product
+  product: ProductWithCategory
 }
 
 export function ProductCard({ product }: Props) {
@@ -16,70 +20,274 @@ export function ProductCard({ product }: Props) {
   const qty = cartItem?.quantity ?? 0
   const soldOut = !product.is_active || product.stock_quantity <= 0
 
+  const [addFeedback, setAddFeedback] = useState(false)
+
+  function handleAdd() {
+    addItem(product)
+    setAddFeedback(true)
+    setTimeout(() => setAddFeedback(false), 1000)
+  }
+
+  const categoryName = product.categories?.name ?? null
+
   return (
     <div
-      className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col gap-3 ${
-        soldOut ? "opacity-60" : ""
-      }`}
+      className={`product-card fade-in-up${soldOut ? " opacity-60" : ""}`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-900 leading-tight text-sm">
-            {product.name}
-          </p>
-          {product.description && (
-            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-              {product.description}
-            </p>
-          )}
+      {/* Badge "Mais Pedido" — canto superior direito */}
+      {product.sort_order === 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            zIndex: 5,
+            background: "#C89B3C",
+            color: "white",
+            fontFamily: "'Montserrat', sans-serif",
+            fontSize: 10,
+            fontWeight: 800,
+            padding: "4px 10px",
+            borderRadius: 100,
+            boxShadow: "0 2px 8px rgba(200,155,60,0.5)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          &#11088; Mais Pedido
         </div>
-        <div className="shrink-0">
-          <StockBadge
-            stockQuantity={product.stock_quantity}
-            minAlert={product.min_stock_alert}
-            isActive={product.is_active}
-          />
+      )}
+
+      {/* Badge de categoria — canto superior esquerdo */}
+      {categoryName && (
+        <div
+          style={{
+            position: "absolute",
+            top: 10,
+            left: 10,
+            zIndex: 5,
+          }}
+        >
+          <span
+            style={{
+              background: "rgba(26,26,26,0.65)",
+              color: "white",
+              backdropFilter: "blur(6px)",
+              borderRadius: 100,
+              padding: "3px 10px",
+              fontSize: 11,
+              fontWeight: 600,
+            }}
+          >
+            {categoryName}
+          </span>
         </div>
+      )}
+
+      {/* Imagem */}
+      <div style={{ overflow: "hidden", position: "relative" }}>
+        <Image
+          src={product.image_url ?? "/marmita.jpg"}
+          alt={product.name}
+          width={400}
+          height={160}
+          className="product-img"
+          style={{ width: "100%", height: 160, objectFit: "cover" }}
+          loading="lazy"
+          onError={(e) => {
+            const img = e.currentTarget as HTMLImageElement
+            img.src = "/marmita.jpg"
+          }}
+        />
       </div>
 
-      <div className="flex items-center justify-between mt-auto">
-        <span className="text-base font-bold text-brand-gold">
-          {formatCurrency(product.price)}
-        </span>
+      {/* Conteudo */}
+      <div
+        style={{
+          padding: 14,
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Nome */}
+        <h3
+          style={{
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 700,
+            fontSize: 14,
+            color: "#1A1A1A",
+            lineHeight: 1.3,
+            marginBottom: 6,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {product.name}
+        </h3>
 
-        {soldOut ? (
-          <span className="text-sm text-gray-400">Indisponível</span>
-        ) : qty === 0 ? (
-          <Button
-            size="sm"
-            onClick={() => addItem(product)}
-            className="bg-brand-gold hover:bg-brand-gold-dark text-white rounded-xl min-h-[44px] px-4"
+        {/* Descricao */}
+        {product.description && (
+          <p
+            style={{
+              fontSize: 12,
+              color: "#888",
+              lineHeight: 1.5,
+              flex: 1,
+              marginBottom: 12,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
           >
-            <Plus className="h-4 w-4 mr-1" />
-            Adicionar
-          </Button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => updateQuantity(product.id, qty - 1)}
-              className="h-11 w-11 rounded-xl border-brand-gold text-brand-gold hover:bg-brand-gold/10"
-            >
-              <Minus className="h-4 w-4" />
-            </Button>
-            <span className="w-6 text-center font-bold text-gray-900">
-              {qty}
-            </span>
-            <Button
-              size="icon"
-              onClick={() => addItem(product)}
-              className="h-11 w-11 rounded-xl bg-brand-gold hover:bg-brand-gold-dark text-white"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
+            {product.description}
+          </p>
         )}
+
+        {/* Row preco + controles */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingTop: 10,
+            borderTop: "1px solid #F5F0E8",
+            marginTop: "auto",
+          }}
+        >
+          {/* Preco */}
+          <span
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 900,
+              fontSize: 17,
+              color: "#C89B3C",
+            }}
+          >
+            {formatCurrency(product.price)}
+          </span>
+
+          {/* Controles */}
+          {soldOut ? (
+            <span
+              style={{
+                fontSize: 12,
+                color: "#999",
+                fontWeight: 600,
+              }}
+            >
+              Esgotado
+            </span>
+          ) : qty === 0 ? (
+            <button
+              onClick={handleAdd}
+              disabled={addFeedback}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: "50%",
+                background: addFeedback ? "#C89B3C" : "#5A6B2A",
+                color: "white",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "background 0.2s ease, transform 0.2s ease",
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => {
+                if (!addFeedback) {
+                  const btn = e.currentTarget as HTMLButtonElement
+                  btn.style.background = "#4A5B1A"
+                  btn.style.transform = "scale(1.1)"
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!addFeedback) {
+                  const btn = e.currentTarget as HTMLButtonElement
+                  btn.style.background = "#5A6B2A"
+                  btn.style.transform = "scale(1)"
+                }
+              }}
+              aria-label="Adicionar ao carrinho"
+            >
+              {addFeedback ? (
+                <svg
+                  width="16"
+                  height="16"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  width="16"
+                  height="16"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+              )}
+            </button>
+          ) : (
+            <div
+              style={{
+                display: "inline-flex",
+                border: "1.5px solid #E5E0D8",
+                borderRadius: 10,
+                overflow: "hidden",
+              }}
+            >
+              <button
+                className="qty-btn"
+                style={{ borderRadius: 0 }}
+                onClick={() => updateQuantity(product.id, qty - 1)}
+                aria-label="Remover um"
+              >
+                &minus;
+              </button>
+              <span
+                style={{
+                  minWidth: 36,
+                  textAlign: "center",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  padding: "0 4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {qty}
+              </span>
+              <button
+                className="qty-btn"
+                style={{ borderRadius: 0 }}
+                onClick={() => addItem(product)}
+                aria-label="Adicionar mais um"
+              >
+                +
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
