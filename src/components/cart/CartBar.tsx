@@ -1,33 +1,71 @@
 "use client"
-import { useState } from "react"
-import { ShoppingBag } from "lucide-react"
-import { CartDrawer } from "./CartDrawer"
-import { useCart } from "@/hooks/useCart"
-import { formatCurrency } from "@/lib/utils"
+import { useCart } from '@/hooks/useCart'
+import { usePathname, useRouter } from 'next/navigation'
+import { formatCurrency } from '@/lib/utils'
 
 export function CartBar() {
-  const [open, setOpen] = useState(false)
   const { count, total } = useCart()
+  const pathname = usePathname()
+  const router = useRouter()
 
-  if (count() === 0) return null
+  const qty = count()
+  const hideRoutes = ['/checkout', '/confirmacao', '/carrinho']
+
+  const shouldHide = hideRoutes.some(r => pathname.startsWith(r)) || qty === 0
 
   return (
-    <>
-      <div className="fixed bottom-0 left-0 right-0 p-4 z-20 pointer-events-none">
-        <div className="max-w-2xl mx-auto pointer-events-auto">
-          <button
-            onClick={() => setOpen(true)}
-            className="w-full flex items-center justify-between h-14 rounded-2xl bg-brand-gold hover:bg-brand-gold-dark text-white px-5 shadow-lg transition-colors"
-          >
-            <span className="flex items-center gap-2 font-bold">
-              <ShoppingBag className="h-5 w-5" />
-              {count()} {count() === 1 ? "item" : "itens"}
-            </span>
-            <span className="font-bold text-base">{formatCurrency(total())}</span>
-          </button>
+    <div
+      id="cart-bar-float"
+      className={shouldHide ? 'hidden-bar' : ''}
+      style={{
+        position: 'fixed',
+        bottom: 0, left: 0, right: 0,
+        zIndex: 50,
+        padding: '0 16px 12px',
+        maxWidth: 540,
+        margin: '0 auto',
+      }}
+    >
+      <button
+        onClick={() => router.push('/carrinho')}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '16px 20px',
+          background: '#1A1A1A',
+          borderRadius: '20px 20px 0 0',
+          color: 'white',
+          border: 'none',
+          cursor: 'pointer',
+          boxShadow: '0 -4px 24px rgba(0,0,0,0.18)',
+          fontFamily: 'inherit',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            background: '#C89B3C', borderRadius: 10,
+            width: 32, height: 32,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+            </svg>
+          </div>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>
+            {qty} {qty === 1 ? 'item' : 'itens'} — {formatCurrency(total())}
+          </span>
         </div>
-      </div>
-      <CartDrawer open={open} onClose={() => setOpen(false)} />
-    </>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, color: '#C89B3C' }}>
+          Ver carrinho
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+        </span>
+      </button>
+    </div>
   )
 }
+
+export default CartBar
