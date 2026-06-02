@@ -1,6 +1,7 @@
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/server"
 import { CatalogClient } from "@/components/catalog/CatalogClient"
+import { CartBar } from "@/components/cart/CartBar"
 
 export const revalidate = 60
 
@@ -45,6 +46,7 @@ export default async function HomePage() {
           products={(products ?? []) as any[]}
         />
       </main>
+      <CartBar />
     </div>
   )
 }
