@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Donna FIT — Cadastro de Produtos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --gold: #C89B3C;
+      --gold-light: #F5E8C4;
+      --green: #5A6B2A;
+      --dark: #1A1A1A;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(160deg, #FFFDF8 0%, #FBF6EE 50%, #F5EDD8 100%);
+      min-height: 100vh;
+      color: var(--dark);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header {
+      background: white;
+      padding: 0 20px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 900;
+      font-size: 18px;
+      color: var(--gold);
+      text-align: center;
+    }
+
+    .logo span {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--green);
+      letter-spacing: 0.5px;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 20px 16px 120px;
+    }
+
+    /* Notice */
+    .notice {
+      background: #FFF8E7;
+      border: 1.5px solid var(--gold);
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #8B6914;
+      line-height: 1.5;
+    }
+
+    .notice strong {
+      font-family: 'Montserrat', sans-serif;
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    /* Edit mode banner */
+    .edit-banner {
+      display: none;
+      background: #EFF6FF;
+      border: 1.5px solid #93C5FD;
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: #1D4ED8;
+      line-height: 1.5;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .edit-banner.show {
+      display: flex;
+    }
+
+    .edit-banner strong {
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    .edit-banner .btn-cancel-edit {
+      margin-left: auto;
+      background: none;
+      border: 1.5px solid #93C5FD;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1D4ED8;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+    }
+
+    .edit-banner .btn-cancel-edit:active {
+      background: #DBEAFE;
+    }
+
+    /* Card */
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+      margin-bottom: 20px;
+      transition: box-shadow 0.2s;
+    }
+
+    .card.editing {
+      box-shadow: 0 0 0 2px #93C5FD, 0 2px 16px rgba(0, 0, 0, 0.06);
+    }
+
+    .card-title {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 800;
+      font-size: 16px;
+      color: var(--dark);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    label .req {
+      color: var(--gold);
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1.5px solid #E5E0D8;
+      border-radius: 12px;
+      font-size: 16px;
+      font-family: 'Inter', sans-serif;
+      color: var(--dark);
+      background: #FAFAF8;
+      transition: border-color 0.2s;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      min-height: 52px;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--gold);
+      background: white;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 96px;
+      line-height: 1.5;
+    }
+
+    .preco-wrap {
+      position: relative;
+    }
+
+    .preco-prefix {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-weight: 700;
+      color: #999;
+      font-size: 16px;
+      pointer-events: none;
+    }
+
+    .preco-wrap input {
+      padding-left: 40px;
+    }
+
+    #outra-wrap {
+      display: none;
+      margin-top: 8px;
+    }
+
+    /* File upload */
+    .upload-area {
+      border: 2px dashed #E5E0D8;
+      border-radius: 12px;
+      padding: 24px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #FAFAF8;
+      position: relative;
+      overflow: hidden;
+      min-height: 88px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .upload-area:active,
+    .upload-area.drag {
+      border-color: var(--gold);
+      background: var(--gold-light);
+    }
+
+    .upload-area input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .upload-icon {
+      font-size: 26px;
+      margin-bottom: 6px;
+      line-height: 1;
+    }
+
+    .upload-hint {
+      font-size: 14px;
+      color: #999;
+      line-height: 1.4;
+    }
+
+    .upload-hint strong {
+      color: var(--gold);
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .preview-item {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #eee;
+    }
+
+    .preview-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .preview-remove {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 28px;
+      height: 28px;
+      background: rgba(0, 0, 0, 0.65);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .foto-note {
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+
+    /* Submit button */
+    .btn-submit {
+      width: 100%;
+      min-height: 56px;
+      background: var(--green);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s;
+      margin-top: 8px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .btn-submit:active {
+      background: #4A5B1A;
+      transform: scale(0.98);
+    }
+
+    @media (hover: hover) {
+      .btn-submit:hover {
+        background: #4A5B1A;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(90, 107, 42, 0.35);
+      }
+    }
+
+    .btn-submit:disabled {
+      background: #bbb;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-submit.edit-mode {
+      background: #1D4ED8;
+    }
+
+    .btn-submit.edit-mode:active {
+      background: #1E40AF;
+    }
+
+    @media (hover: hover) {
+      .btn-submit.edit-mode:hover {
+        background: #1E40AF;
+        box-shadow: 0 8px 20px rgba(29, 78, 216, 0.35);
+      }
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2.5px solid rgba(255, 255, 255, 0.35);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* List */
+    .list-header {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 800;
+      font-size: 15px;
+      color: var(--dark);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .count-badge {
+      background: var(--gold);
+      color: white;
+      border-radius: 100px;
+      padding: 3px 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .product-item {
+      background: white;
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      animation: slideIn 0.25s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .prod-thumb {
+      width: 60px;
+      height: 60px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: var(--gold-light);
+      flex-shrink: 0;
+    }
+
+    .prod-thumb-empty {
+      width: 60px;
+      height: 60px;
+      border-radius: 10px;
+      background: var(--gold-light);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #C89B3C;
+      letter-spacing: -0.5px;
+    }
+
+    .prod-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .prod-name {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--dark);
+    }
+
+    .prod-price {
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--gold);
+      margin: 3px 0 7px;
+    }
+
+    .prod-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 100px;
+      background: #F5EDD8;
+      color: #8B6914;
+    }
+
+    .tag.g {
+      background: #EEF2E6;
+      color: var(--green);
+    }
+
+    .tag.gray {
+      background: #F0F0F0;
+      color: #888;
+    }
+
+    /* Action buttons — 44px touch targets */
+    .prod-actions {
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      align-self: center;
+    }
+
+    .btn-action {
+      border: none;
+      border-radius: 10px;
+      width: 44px;
+      height: 44px;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .btn-edit {
+      background: #EFF6FF;
+    }
+
+    .btn-edit:active {
+      background: #DBEAFE;
+    }
+
+    @media (hover: hover) {
+      .btn-edit:hover {
+        background: #DBEAFE;
+      }
+    }
+
+    .empty {
+      text-align: center;
+      padding: 48px 20px;
+      color: #bbb;
+    }
+
+    .empty .ei {
+      font-size: 36px;
+      margin-bottom: 12px;
+      line-height: 1;
+    }
+
+    .empty p {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+      left: 16px;
+      right: 16px;
+      transform: translateY(120px);
+      background: var(--green);
+      color: white;
+      padding: 14px 20px;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 15px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+      transition: transform 0.3s ease;
+      z-index: 999;
+      text-align: center;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+    }
+
+    .toast.err {
+      background: #DC2626;
+    }
+
+    .toast.info {
+      background: #1D4ED8;
+    }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">
+      Donna FIT
+      <span>Cadastro de Produtos</span>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <div class="notice" id="config-notice" style="display:none">
+      <strong> Configuração pendente</strong>
+      Cole a URL do webhook do Make na variável <code>WEBHOOK_URL</code> no início do script.
+    </div>
+
+    <!-- Banner de edição -->
+    <div class="edit-banner" id="edit-banner">
+      <strong>Modo edição</strong> — Altere os campos e salve.
+      <button class="btn-cancel-edit" onclick="cancelEdit()">Cancelar</button>
+    </div>
+
+    <!-- Formulário -->
+    <div class="card" id="form-card">
+      <div class="card-title" id="card-title">Novo Produto</div>
+      <form id="form" autocomplete="off" novalidate>
+
+        <div class="form-group">
+          <label for="sku">ID / SKU <span class="req">*</span></label>
+          <input type="text" id="sku" placeholder="Ex: MARM-001" required>
+        </div>
+
+        <div class="form-group">
+          <label for="nome">Nome do produto <span class="req">*</span></label>
+          <input type="text" id="nome" placeholder="Ex: Marmita Frango Grelhado com Legumes" required>
+        </div>
+
+        <div class="form-group">
+          <label for="categoria">Categoria <span class="req">*</span></label>
+          <select id="categoria" required>
+            <option value="" disabled selected>Selecione uma categoria</option>
+            <option value="Frango">Frango</option>
+            <option value="Carne Vermelha">Carne Vermelha</option>
+            <option value="Peixe">Peixe</option>
+            <option value="Vegano">Vegano</option>
+            <option value="Vegetariano">Vegetariano</option>
+            <option value="Fitness">Fitness</option>
+            <option value="Salada">Salada</option>
+            <option value="Outra">Outra categoria</option>
+          </select>
+          <div id="outra-wrap">
+            <input type="text" id="outra-cat" placeholder="Digite o nome da categoria">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="descricao">Descrição</label>
+          <textarea id="descricao"
+            placeholder="Ex: Frango grelhado, brócolis no alho, arroz integral e feijão preto. Sem glúten."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="preparo">Modo de preparo</label>
+          <textarea id="preparo"
+            placeholder="Ex: Retire a tampa. Leve ao micro-ondas por 3 minutos em potência alta. Mexa na metade do tempo. Deixe descansar 1 minuto antes de consumir."
+            style="min-height: 130px;"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="preco">Preço <span class="req">*</span></label>
+          <div class="preco-wrap">
+            <span class="preco-prefix">R$</span>
+            <input type="number" id="preco" placeholder="0,00" min="0" step="0.01" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Fotos do produto</label>
+          <div class="upload-area" id="upload-area">
+            <input type="file" id="fotos" accept="image/*" multiple>
+            <div class="upload-icon"></div>
+            <div class="upload-hint"><strong>Toque para adicionar fotos</strong><br>JPG, PNG — máx. 5 fotos</div>
+          </div>
+          <div class="preview-grid" id="preview-grid"></div>
+
+        </div>
+
+        <button type="submit" class="btn-submit" id="submit-btn">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Salvar Produto
+        </button>
+      </form>
+    </div>
+
+    <!-- Lista -->
+    <div class="list-header">
+      Produtos cadastrados
+      <span class="count-badge" id="count">0</span>
+    </div>
+    <div id="list"></div>
+
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzDCEVJDVVxU9sZCKKEEYMi17Cv7i_l2Q3U63ZWoL83evOg0l7NYrFlcnUi_Xx2KQ2d2g/exec';
+    const STORE_KEY = 'donna_produtos_v2';
+    let products = [];
+    let files = [];
+    let editingId = null;
+
+    if (!SCRIPT_URL) document.getElementById('config-notice').style.display = 'block';
+
+    const catSel = document.getElementById('categoria');
+    const outraWrap = document.getElementById('outra-wrap');
+    catSel.addEventListener('change', () => {
+      const show = catSel.value === 'Outra';
+      outraWrap.style.display = show ? 'block' : 'none';
+      document.getElementById('outra-cat').required = show;
+    });
+
+    const fileInput = document.getElementById('fotos');
+    const uploadArea = document.getElementById('upload-area');
+    const previewGrid = document.getElementById('preview-grid');
+    fileInput.addEventListener('change', e => { addFiles([...e.target.files]); fileInput.value = ''; });
+    uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag'); });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag'));
+    uploadArea.addEventListener('drop', e => {
+      e.preventDefault(); uploadArea.classList.remove('drag');
+      addFiles([...e.dataTransfer.files].filter(f => f.type.startsWith('image/')));
+    });
+
+    function addFiles(newFiles) {
+      for (const f of newFiles) {
+        if (files.length >= 5) { showToast('Maximo de 5 fotos', true); break; }
+        files.push(f);
+      }
+      renderPreviews();
+    }
+
+    function renderPreviews() {
+      previewGrid.innerHTML = '';
+      files.forEach((f, i) => {
+        const url = URL.createObjectURL(f);
+        const el = document.createElement('div');
+        el.className = 'preview-item';
+        el.innerHTML = '<img src="' + url + '"><button class="preview-remove" data-i="' + i + '">\u00d7</button>';
+        previewGrid.appendChild(el);
+      });
+      previewGrid.querySelectorAll('.preview-remove').forEach(btn => {
+        btn.addEventListener('click', e => { e.stopPropagation(); files.splice(+btn.dataset.i, 1); renderPreviews(); });
+      });
+    }
+
+    const form = document.getElementById('form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const sku = document.getElementById('sku').value.trim();
+      const nome = document.getElementById('nome').value.trim();
+      const catRaw = catSel.value;
+      const categoria = catRaw === 'Outra' ? document.getElementById('outra-cat').value.trim() : catRaw;
+      const descricao = document.getElementById('descricao').value.trim();
+      const preparo = document.getElementById('preparo').value.trim();
+      const precoVal = parseFloat(document.getElementById('preco').value);
+
+      if (!sku) { showToast('Informe o ID/SKU', true); return; }
+      if (!nome) { showToast('Informe o nome', true); return; }
+      if (!categoria) { showToast('Selecione uma categoria', true); return; }
+      if (isNaN(precoVal) || precoVal <= 0) { showToast('Informe o preco', true); return; }
+
+      submitBtn.disabled = true;
+      const isEditing = editingId !== null;
+      const existingProd = isEditing ? products.find(p => p.sku === editingId) : null;
+
+      var fotosBase64 = [];
+      if (files.length > 0) {
+        submitBtn.innerHTML = '<div class="spinner"></div> Comprimindo fotos...';
+        fotosBase64 = await Promise.all(files.map(f => new Promise(resolve => {
+          const img = new Image();
+          const url = URL.createObjectURL(f);
+          img.onload = () => {
+            const MAX = 600;
+            let w = img.width, h = img.height;
+            if (w > MAX || h > MAX) {
+              if (w > h) { h = Math.round(h * MAX / w); w = MAX; } else { w = Math.round(w * MAX / h); h = MAX; }
+            }
+            const c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            URL.revokeObjectURL(url);
+            resolve({ data: c.toDataURL('image/jpeg', 0.5).split(',')[1], tipo: 'image/jpeg' });
+          };
+          img.src = url;
+        })));
+      }
+
+      submitBtn.innerHTML = '<div class="spinner"></div> Salvando...';
+
+      var preview = existingProd ? existingProd._preview : null;
+      if (files.length > 0) {
+        preview = await new Promise(resolve => {
+          const r = new FileReader();
+          r.onloadend = () => resolve(r.result);
+          r.readAsDataURL(files[0]);
+        });
+      }
+
+      const produto = {
+        sku: sku, nome: nome, categoria: categoria, descricao: descricao, preparo: preparo,
+        preco: precoVal.toFixed(2),
+        timestamp: isEditing ? (existingProd.timestamp || '') : new Date().toLocaleString('pt-BR'),
+        _preview: preview
+      };
+
+      try {
+        const payload = {
+          sku: sku, skuOriginal: isEditing ? editingId : sku,
+          nome: nome, categoria: categoria, descricao: descricao, preparo: preparo,
+          preco: produto.preco, timestamp: produto.timestamp,
+          acao: isEditing ? 'editar' : 'criar', fotos: fotosBase64
+        };
+        const res = await fetch(SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        if (isEditing) {
+          const idx = products.findIndex(p => p.sku === editingId);
+          if (idx !== -1) products[idx] = produto;
+        } else { products.unshift(produto); }
+
+        try { localStorage.setItem(STORE_KEY, JSON.stringify(products)); } catch (e) { }
+        cancelEdit(); form.reset(); files = []; renderPreviews();
+        catSel.value = ''; outraWrap.style.display = 'none';
+        renderList();
+        showToast(isEditing ? 'Produto atualizado!' : 'Produto salvo!');
+      } catch (err) {
+        console.error(err);
+        showToast('Erro ao enviar. Tente novamente.', true);
+      } finally { submitBtn.disabled = false; updateSubmitBtn(); }
+    });
+
+    window.editProd = function (sku) {
+      var p = products.find(function (pr) { return pr.sku === sku; });
+      if (!p) return;
+      editingId = sku;
+      document.getElementById('sku').value = p.sku;
+      document.getElementById('nome').value = p.nome;
+      document.getElementById('descricao').value = p.descricao || '';
+      document.getElementById('preparo').value = p.preparo || '';
+      document.getElementById('preco').value = p.preco;
+      var cats = ['Frango', 'Carne Vermelha', 'Peixe', 'Vegano', 'Vegetariano', 'Fitness', 'Salada'];
+      if (cats.indexOf(p.categoria) !== -1) { catSel.value = p.categoria; outraWrap.style.display = 'none'; }
+      else { catSel.value = 'Outra'; outraWrap.style.display = 'block'; document.getElementById('outra-cat').value = p.categoria; }
+      files = []; renderPreviews();
+      document.getElementById('edit-banner').classList.add('show');
+      document.getElementById('form-card').classList.add('editing');
+      document.getElementById('card-title').textContent = 'Editando Produto';
+      updateSubmitBtn();
+      document.getElementById('form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    function cancelEdit() {
+      editingId = null;
+      document.getElementById('edit-banner').classList.remove('show');
+      document.getElementById('form-card').classList.remove('editing');
+      document.getElementById('card-title').textContent = 'Novo Produto';
+      updateSubmitBtn();
+    }
+
+    function updateSubmitBtn() {
+      var isEditing = editingId !== null;
+      submitBtn.className = 'btn-submit' + (isEditing ? ' edit-mode' : '');
+      submitBtn.innerHTML = isEditing
+        ? '<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Salvar Alteracoes'
+        : '<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg> Salvar Produto';
+    }
+
+
+
+    function renderList() {
+      var list = document.getElementById('list');
+      document.getElementById('count').textContent = products.length;
+      if (!products.length) { list.innerHTML = '<div class="empty"><p>Nenhum produto cadastrado ainda.<br>Preencha o formulario acima.</p></div>'; return; }
+      var fmt = function (v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v); };
+      var fmtDate = function (ts) { if (!ts) return ''; if (/^\d{2}\/\d{2}\/\d{4}/.test(ts)) return ts; try { return new Date(ts).toLocaleString('pt-BR'); } catch (e) { return ts; } };
+
+      list.innerHTML = products.map(function (p) {
+        var thumbSrc = p._preview || null;
+        var fotos = p.fotos ? String(p.fotos).split('\n').filter(Boolean) : [];
+        var qtdFotos = fotos.length;
+        return '<div class="product-item">'
+          + (thumbSrc ? '<img class="prod-thumb" src="' + thumbSrc + '" alt="' + p.nome + '">' : '<div class="prod-thumb-empty"></div>')
+          + '<div class="prod-info">'
+          + '<div class="prod-name">' + p.sku + ' - ' + p.nome + '</div>'
+          + '<div class="prod-price">' + fmt(p.preco) + '</div>'
+          + '<div class="prod-tags">'
+          + '<span class="tag">' + p.categoria + '</span>'
+          + (qtdFotos > 0 ? '<span class="tag g">' + qtdFotos + ' foto' + (qtdFotos > 1 ? 's' : '') + '</span>' : '')
+          + (fmtDate(p.timestamp) ? '<span class="tag gray">' + fmtDate(p.timestamp) + '</span>' : '')
+          + '</div></div>'
+          + '<div class="prod-actions">'
+          + '<button class="btn-action btn-edit" onclick="editProd(\'' + p.sku + '\')" title="Editar"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#1D4ED8" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>' + '</div></div>';
+      }).join('');
+    }
+
+    function showToast(msg, err) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast' + (err ? ' err' : '');
+      t.classList.add('show');
+      setTimeout(function () { t.classList.remove('show'); }, 3000);
+    }
+
+    async function init() {
+      var list = document.getElementById('list');
+      list.innerHTML = '<div class="empty"><p>Carregando produtos...</p></div>';
+      try {
+        var res = await fetch(SCRIPT_URL + '?acao=listar');
+        var data = await res.json();
+        if (data.ok && data.produtos) {
+          var local = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+          var prevMap = {};
+          local.forEach(function (p) { if (p._preview) prevMap[p.sku] = p._preview; });
+          products = data.produtos.map(function (p) { return Object.assign({}, p, { _preview: prevMap[p.sku] || null }); });
+          try { localStorage.setItem(STORE_KEY, JSON.stringify(products)); } catch (e) { }
+        } else {
+          try { products = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch (e) { }
+        }
+      } catch (err) {
+        try { products = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch (e) { }
+      }
+      renderList();
+    }
+
+    init();
+  </script>
+</body>
+
+</html>
