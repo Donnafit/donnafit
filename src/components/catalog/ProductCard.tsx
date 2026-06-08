@@ -5,6 +5,8 @@ import Image from "next/image"
 import { useCart } from "@/hooks/useCart"
 import { formatCurrency } from "@/lib/utils"
 import type { Product } from "@/types"
+import { Star } from "lucide-react"
+import { StockBadge } from "./StockBadge"
 
 interface ProductWithCategory extends Product {
   categories?: { name: string; slug: string } | null
@@ -12,9 +14,10 @@ interface ProductWithCategory extends Product {
 
 interface Props {
   product: ProductWithCategory
+  index?: number
 }
 
-export function ProductCard({ product }: Props) {
+export function ProductCard({ product, index }: Props) {
   const { items, addItem, updateQuantity } = useCart()
   const cartItem = items.find((i) => i.product.id === product.id)
   const qty = cartItem?.quantity ?? 0
@@ -33,6 +36,9 @@ export function ProductCard({ product }: Props) {
   return (
     <div
       className={`product-card fade-in-up${soldOut ? " opacity-60" : ""}`}
+      style={{
+        animationDelay: index !== undefined ? `${index * 0.05}s` : undefined,
+      }}
     >
       {/* Badge "Mais Pedido" — canto superior direito */}
       {product.sort_order === 0 && (
@@ -51,9 +57,12 @@ export function ProductCard({ product }: Props) {
             borderRadius: 100,
             boxShadow: "0 2px 8px rgba(200,155,60,0.5)",
             whiteSpace: "nowrap",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
           }}
         >
-          &#11088; Mais Pedido
+          <Star size={10} style={{ fill: "currentColor" }} /> Mais Pedido
         </div>
       )}
 
@@ -91,19 +100,29 @@ export function ProductCard({ product }: Props) {
           width={400}
           height={160}
           className="product-img"
-          style={{ width: "100%", height: 160, objectFit: "cover" }}
+          style={{ width: "100%", height: 190, objectFit: "cover" }}
           loading="lazy"
           onError={(e) => {
             const img = e.currentTarget as HTMLImageElement
             img.src = "/marmita.jpg"
           }}
         />
+        {/* Badge de estoque — inferior direito da imagem */}
+        {(soldOut || product.stock_quantity <= product.min_stock_alert) && (
+          <div style={{ position: "absolute", bottom: 8, right: 8, zIndex: 5 }}>
+            <StockBadge
+              stockQuantity={product.stock_quantity}
+              minAlert={product.min_stock_alert}
+              isActive={product.is_active}
+            />
+          </div>
+        )}
       </div>
 
       {/* Conteudo */}
       <div
         style={{
-          padding: 14,
+          padding: 16,
           flex: 1,
           display: "flex",
           flexDirection: "column",
@@ -114,7 +133,7 @@ export function ProductCard({ product }: Props) {
           style={{
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 700,
-            fontSize: 14,
+            fontSize: 15,
             color: "#1A1A1A",
             lineHeight: 1.3,
             marginBottom: 6,
@@ -162,7 +181,7 @@ export function ProductCard({ product }: Props) {
             style={{
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 900,
-              fontSize: 17,
+              fontSize: 18,
               color: "#C89B3C",
             }}
           >
@@ -171,15 +190,21 @@ export function ProductCard({ product }: Props) {
 
           {/* Controles */}
           {soldOut ? (
-            <span
+            <button
+              disabled
               style={{
-                fontSize: 12,
-                color: "#999",
-                fontWeight: 600,
+                width: 44, height: 44, borderRadius: "50%",
+                background: "#E5E0D8", color: "#999",
+                border: "none", cursor: "not-allowed",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
               }}
+              aria-label="Produto esgotado"
             >
-              Esgotado
-            </span>
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+              </svg>
+            </button>
           ) : qty === 0 ? (
             <button
               onClick={handleAdd}
