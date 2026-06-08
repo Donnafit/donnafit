@@ -24,6 +24,36 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 39 55% 51%;
     --radius: 0.5rem;
+
+    /* ── Donna FIT Design Tokens ── */
+    --gold:          #C89B3C;
+    --gold-light:    #FFF3D4;
+    --gold-dark:     #B8892C;
+    --green:         #5A6B2A;
+    --green-light:   #E8EDD6;
+    --dark:          #1A1A1A;
+    --muted-fg:      #888888;
+    --muted-lighter: #B0A898;
+    --border-color:  #E5E0D8;
+    --surface:       #FFFFFF;
+
+    --ease:   cubic-bezier(0.4, 0, 0.2, 1);
+    --t-fast: 0.15s;
+    --t-base: 0.25s;
+    --t-slow: 0.4s;
+
+    --r-sm:   8px;
+    --r-md:   12px;
+    --r-lg:   16px;
+    --r-xl:   20px;
+    --r-pill: 9999px;
+
+    --h-control: 52px;
+
+    --shadow-sm:   0 2px 8px  rgba(0,0,0,0.06);
+    --shadow-md:   0 4px 16px rgba(0,0,0,0.08);
+    --shadow-lg:   0 8px 28px rgba(0,0,0,0.12);
+    --shadow-gold: 0 6px 20px rgba(200,155,60,0.35);
   }
 
   .dark {
@@ -50,22 +80,17 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+  html { scroll-behavior: smooth; }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+  .text-balance { text-wrap: balance; }
 }
 
 /* =============================================
-   BODY: gradiente de fundo do demo
+   BODY
    ============================================= */
 body {
   background: linear-gradient(160deg, #FFFDF8 0%, #FBF6EE 50%, #F5EDD8 100%);
@@ -75,7 +100,7 @@ body {
 }
 
 /* =============================================
-   KEYFRAMES (do demo)
+   KEYFRAMES
    ============================================= */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(16px); }
@@ -115,17 +140,15 @@ body {
 }
 
 /* =============================================
-   CLASSES UTILITÁRIAS DO DEMO
+   ANIMATION UTILITIES
    ============================================= */
 .fade-in-up {
-  animation: fadeInUp 0.4s ease forwards;
+  animation: fadeInUp 0.4s var(--ease) forwards;
   opacity: 0;
 }
-.badge-pulse  { animation: badgePulse 0.35s ease; }
-.cart-shake   { animation: cartShake 0.4s ease; }
-.success-pulse {
-  animation: successPulse 1.5s ease infinite;
-}
+.badge-pulse   { animation: badgePulse 0.35s ease; }
+.cart-shake    { animation: cartShake 0.4s ease; }
+.success-pulse { animation: successPulse 1.5s ease infinite; }
 .check-draw {
   stroke-dasharray: 100;
   animation: checkDraw 0.6s ease 0.3s forwards;
@@ -135,11 +158,15 @@ body {
   animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-/* No scrollbar */
+/* =============================================
+   SCROLLBAR
+   ============================================= */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Confetti */
+/* =============================================
+   CONFETTI
+   ============================================= */
 .confetti-piece {
   position: fixed;
   top: -20px;
@@ -149,60 +176,101 @@ body {
   pointer-events: none;
 }
 
-/* Form validation states */
+/* =============================================
+   SECTION HEADER
+   ============================================= */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.section-title {
+  font-family: var(--font-montserrat, 'Montserrat', sans-serif);
+  font-weight: 800;
+  font-size: 18px;
+  color: #1A1A1A;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  background: #F5F0E8;
+  border-radius: var(--r-pill);
+  padding: 3px 10px;
+}
+
+/* =============================================
+   FORM VALIDATION
+   ============================================= */
 .input-valid   { border-color: #5A6B2A !important; background-color: #F0F4E8 !important; }
 .input-invalid { border-color: #DC2626 !important; background-color: #FEF2F2 !important; }
 .error-msg { color: #DC2626; font-size: 0.75rem; margin-top: 4px; display: none; }
 .error-msg.show { display: block; }
 
-/* Product card */
+/* =============================================
+   PRODUCT CARD
+   ============================================= */
 .product-card {
   background: #FFFFFF;
-  border-radius: 20px;
+  border-radius: var(--r-xl);
   overflow: hidden;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease);
   display: flex;
   flex-direction: column;
   position: relative;
 }
 .product-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
 }
 .product-card:hover .product-img {
   transform: scale(1.07);
 }
 .product-img {
-  transition: transform 0.5s ease;
+  transition: transform 0.5s var(--ease);
   width: 100%;
-  height: 160px;
+  height: 190px;
   object-fit: cover;
 }
 
-/* Product grid */
+/* =============================================
+   PRODUCT GRID
+   ============================================= */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
 }
-@media (min-width: 768px)  { .product-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 1280px) { .product-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 768px)  { .product-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; } }
+@media (min-width: 1280px) { .product-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
 
-/* Option cards (checkout) */
+/* =============================================
+   OPTION CARDS (checkout)
+   ============================================= */
 .option-card {
   border: 2px solid #E5E0D8;
   border-radius: 14px;
   padding: 16px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--t-base) var(--ease);
   text-align: center;
   background: #fff;
+}
+.option-card:hover {
+  border-color: rgba(200,155,60,0.45);
+  box-shadow: 0 2px 12px rgba(200,155,60,0.1);
+  transform: translateY(-1px);
 }
 .option-card.selected {
   border-color: #C89B3C;
   background: #FFFDF5;
-  box-shadow: 0 4px 16px rgba(200,155,60,0.15);
+  box-shadow: 0 4px 16px rgba(200,155,60,0.18);
 }
 .option-card.selected .option-check { display: flex !important; }
 .option-check {
@@ -217,14 +285,18 @@ body {
   margin: 8px auto 0;
 }
 
-/* Stepper */
+/* =============================================
+   STEPPER
+   ============================================= */
 .step-active   { background: #C89B3C !important; color: #fff !important; box-shadow: 0 0 0 4px rgba(200,155,60,0.2); }
 .step-done     { background: #5A6B2A !important; color: #fff !important; }
 .step-inactive { background: #E5E0D8 !important; color: #9CA3AF !important; }
 
-/* Floating cart bar */
+/* =============================================
+   FLOATING CART BAR
+   ============================================= */
 #cart-bar-float {
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
+  transition: transform var(--t-slow) var(--ease), opacity var(--t-slow) var(--ease);
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
 }
 #cart-bar-float.hidden-bar {
@@ -233,28 +305,46 @@ body {
   pointer-events: none;
 }
 
-/* Buttons */
+/* Desktop: pill shape floating above bottom */
+@media (min-width: 640px) {
+  #cart-bar-float {
+    padding-bottom: 20px;
+  }
+  #cart-bar-float .cart-bar-btn {
+    border-radius: 20px !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 12px rgba(200,155,60,0.18) !important;
+  }
+}
+
+/* =============================================
+   BUTTONS
+   ============================================= */
 .btn-primary {
   background: #C89B3C;
   color: white;
   border-radius: 14px;
   font-weight: 700;
-  padding: 16px;
+  padding: 0 24px;
   width: 100%;
   font-size: 16px;
   font-family: var(--font-montserrat), 'Montserrat', sans-serif;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--t-base) var(--ease);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: var(--h-control);
 }
 .btn-primary:hover {
   background: #B8892C;
-  box-shadow: 0 6px 20px rgba(200,155,60,0.35);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-gold);
+  transform: translateY(-2px);
+}
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: none;
 }
 .btn-outline {
   border: 2px solid #C89B3C;
@@ -262,75 +352,102 @@ body {
   background: transparent;
   border-radius: 14px;
   font-weight: 700;
-  padding: 14px 16px;
+  padding: 0 24px;
   width: 100%;
   font-size: 15px;
   font-family: var(--font-montserrat), 'Montserrat', sans-serif;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--t-base) var(--ease);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: var(--h-control);
 }
-.btn-outline:hover { background: #FFF8EE; }
+.btn-outline:hover {
+  background: #FFF8EE;
+  transform: translateY(-1px);
+}
 
 .whatsapp-btn {
   background: #25D366;
-  transition: all 0.2s ease;
   color: #fff;
+  transition: all var(--t-base) var(--ease);
 }
 .whatsapp-btn:hover {
   background: #1EB855;
   box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
-/* Card white */
+/* =============================================
+   CARD WHITE
+   ============================================= */
 .card-white {
   background: #FFFFFF;
-  border-radius: 20px;
-  box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-md);
   padding: 20px;
 }
 
-/* Form input */
+/* =============================================
+   FORM INPUT
+   ============================================= */
 .form-input {
   width: 100%;
+  height: var(--h-control);
   border: 1.5px solid #E5E0D8;
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: var(--r-md);
+  padding: 0 16px;
   font-size: 15px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
   background: #fff;
   color: #1A1A1A;
+  font-family: var(--font-dm-sans, 'DM Sans', sans-serif);
 }
-.form-input:focus { border-color: #C89B3C; }
+.form-input:focus {
+  border-color: #C89B3C;
+  box-shadow: 0 0 0 3px rgba(200,155,60,0.14);
+}
 .form-input::placeholder { color: #B0A898; }
 
-/* Badges */
-.badge-gold  { background: #FFF3D4; color: #C89B3C; border-radius: 100px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
-.badge-green { background: #E8EDD6; color: #5A6B2A; border-radius: 100px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
+/* =============================================
+   BADGES
+   ============================================= */
+.badge-gold  { background: #FFF3D4; color: #C89B3C; border-radius: var(--r-pill); padding: 4px 12px; font-size: 12px; font-weight: 600; }
+.badge-green { background: #E8EDD6; color: #5A6B2A; border-radius: var(--r-pill); padding: 4px 12px; font-size: 12px; font-weight: 600; }
 
-/* Qty buttons */
+/* =============================================
+   QTY BUTTONS
+   ============================================= */
 .qty-btn {
   min-width: 44px;
   width: 44px;
   height: 44px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 18px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--t-fast) var(--ease);
   background: #F0EDE8;
   color: #1A1A1A;
   border: none;
+  user-select: none;
 }
-.qty-btn:hover { opacity: 0.75; }
+.qty-btn:hover {
+  background: #E5E0D8;
+  transform: scale(1.08);
+}
+.qty-btn:active {
+  transform: scale(0.95);
+}
 
+/* =============================================
+   REDUCED MOTION
+   ============================================= */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
