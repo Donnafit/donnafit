@@ -11,69 +11,84 @@ interface Props {
 export function CategoryFilter({ categories, activeCategory, onSelect }: Props) {
   const isAll = activeCategory === null
 
-  const pillStyle = (active: boolean): React.CSSProperties => ({
-    whiteSpace: "nowrap",
-    flexShrink: 0,
-    padding: "9px 20px",
-    borderRadius: 9999,
-    fontSize: 13,
-    fontWeight: active ? 700 : 600,
-    fontFamily: "'Montserrat', sans-serif",
-    cursor: "pointer",
-    transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
-    minHeight: 40,
-    border: active ? "1.5px solid #C89B3C" : "1.5px solid #E5E0D8",
-    background: active ? "#C89B3C" : "white",
-    color: active ? "white" : "#666",
-    boxShadow: active ? "0 4px 12px rgba(200,155,60,0.35)" : "none",
-  })
-
   return (
     <section
       style={{
-        background: "rgba(255,253,248,0.9)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
+        background: "#FFFFFF",
         position: "sticky",
-        top: 68,
+        top: 64,
         zIndex: 40,
-        borderBottom: "1px solid rgba(229,224,216,0.6)",
-        boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+        borderBottom: "1px solid #F0EDE8",
       }}
     >
       <div
         style={{
-          maxWidth: 1280,
+          maxWidth: 1200,
           margin: "0 auto",
-          padding: "14px 0",
+          padding: "16px 20px",
         }}
       >
-        {/* Scrollable row — no wrap on mobile */}
         <div
-          className="no-scrollbar"
           style={{
             display: "flex",
             gap: 8,
-            overflowX: "auto",
-            scrollSnapType: "x mandatory",
-            WebkitOverflowScrolling: "touch",
-            padding: "2px 20px 2px",
+            flexWrap: "wrap",
+            justifyContent: "center",
           }}
         >
+          {/* Botao Todos */}
           <button
             onClick={() => onSelect(null)}
-            style={{ ...pillStyle(isAll), scrollSnapAlign: "start" }}
+            style={{
+              whiteSpace: "nowrap",
+              padding: "8px 20px",
+              borderRadius: 100,
+              fontSize: 13,
+              fontWeight: 700,
+              fontFamily: "'Montserrat', sans-serif",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              minHeight: 38,
+              border: isAll
+                ? "1.5px solid #C89B3C"
+                : "1.5px solid #E5E0D8",
+              background: isAll ? "#C89B3C" : "white",
+              color: isAll ? "white" : "#666",
+              boxShadow: isAll
+                ? "0 4px 12px rgba(200,155,60,0.4)"
+                : "none",
+            }}
           >
             Todos
           </button>
 
+          {/* Botoes de categoria */}
           {categories.map((cat) => {
-            const active = activeCategory === cat.id
+            const isActive = activeCategory === cat.id
             return (
               <button
                 key={cat.id}
                 onClick={() => onSelect(cat.id)}
-                style={{ ...pillStyle(active), scrollSnapAlign: "start" }}
+                style={{
+                  whiteSpace: "nowrap",
+                  padding: "8px 20px",
+                  borderRadius: 100,
+                  fontSize: 13,
+                  fontWeight: isActive ? 700 : 600,
+                  fontFamily: "'Montserrat', sans-serif",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  minHeight: 38,
+                  border: isActive
+                    ? "1.5px solid #C89B3C"
+                    : "1.5px solid #E5E0D8",
+                  background: isActive ? "#C89B3C" : "white",
+                  color: isActive ? "white" : "#666",
+                  boxShadow: isActive
+                    ? "0 4px 12px rgba(200,155,60,0.4)"
+                    : "none",
+                }}
               >
                 {cat.name}
               </button>
