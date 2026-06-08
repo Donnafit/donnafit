@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/hooks/useCart'
 import { formatCurrency } from '@/lib/utils'
+import { ShoppingBag } from 'lucide-react'
 
 export default function CarrinhoPage() {
   const { items, total, count, updateQuantity, removeItem } = useCart()
@@ -51,7 +52,9 @@ export default function CarrinhoPage() {
         {/* Carrinho vazio */}
         {qty === 0 && (
           <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>🛒</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+              <ShoppingBag size={56} style={{ color: '#C89B3C' }} />
+            </div>
             <h2 style={{ fontFamily: 'var(--font-montserrat, Montserrat)', fontWeight: 800, fontSize: 20, color: '#1A1A1A', marginBottom: 10 }}>
               Carrinho vazio
             </h2>

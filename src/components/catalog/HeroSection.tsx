@@ -1,3 +1,5 @@
+import { Leaf, Utensils, Truck, Check } from "lucide-react"
+
 export default function HeroSection() {
   return (
     <section
@@ -39,7 +41,7 @@ export default function HeroSection() {
           marginBottom: 20,
           backdropFilter: 'blur(8px)',
         }}>
-          🌿 Alimentação Saudável
+          <Leaf className="h-4 w-4 text-[#C89B3C]" /> Alimentação Saudável
         </div>
 
         <h1 style={{
@@ -70,9 +72,9 @@ export default function HeroSection() {
           flexWrap: 'wrap', marginBottom: 28,
         }}>
           {[
-            { icon: '🥗', label: 'Comida Fresca' },
-            { icon: '🛵', label: 'Entrega Rápida' },
-            { icon: '✅', label: 'Pedido Fácil' },
+            { icon: <Utensils className="h-4 w-4 text-[#C89B3C]" />, label: 'Comida Fresca' },
+            { icon: <Truck className="h-4 w-4 text-[#C89B3C]" />, label: 'Entrega Rápida' },
+            { icon: <Check className="h-4 w-4 text-[#C89B3C]" />, label: 'Pedido Fácil' },
           ].map(f => (
             <div key={f.label} style={{
               background: 'rgba(255,255,255,0.1)', borderRadius: 100,
