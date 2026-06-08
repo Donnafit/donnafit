@@ -2,22 +2,16 @@
 import { useCart } from '@/hooks/useCart'
 import { usePathname, useRouter } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
-import { useEffect, useState } from 'react'
 
 export function CartBar() {
-  const [mounted, setMounted] = useState(false)
   const { count, total } = useCart()
   const pathname = usePathname()
   const router = useRouter()
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
   const qty = count()
   const hideRoutes = ['/checkout', '/confirmacao', '/carrinho']
 
-  const shouldHide = !mounted || hideRoutes.some(r => pathname.startsWith(r)) || qty === 0
+  const shouldHide = hideRoutes.some(r => pathname.startsWith(r)) || qty === 0
 
   return (
     <div
@@ -27,15 +21,13 @@ export function CartBar() {
         position: 'fixed',
         bottom: 0, left: 0, right: 0,
         zIndex: 50,
-        paddingLeft: 16,
-        paddingRight: 16,
+        padding: '0 16px 12px',
         maxWidth: 540,
         margin: '0 auto',
       }}
     >
       <button
         onClick={() => router.push('/carrinho')}
-        className="cart-bar-btn"
         style={{
           width: '100%',
           display: 'flex',
