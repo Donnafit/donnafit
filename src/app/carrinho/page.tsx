@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/hooks/useCart'
 import { formatCurrency } from '@/lib/utils'
-import { ShoppingBag } from 'lucide-react'
 
 export default function CarrinhoPage() {
   const { items, total, count, updateQuantity, removeItem } = useCart()
@@ -52,9 +51,7 @@ export default function CarrinhoPage() {
         {/* Carrinho vazio */}
         {qty === 0 && (
           <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-              <ShoppingBag size={56} style={{ color: '#C89B3C' }} />
-            </div>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>🛒</div>
             <h2 style={{ fontFamily: 'var(--font-montserrat, Montserrat)', fontWeight: 800, fontSize: 20, color: '#1A1A1A', marginBottom: 10 }}>
               Carrinho vazio
             </h2>
@@ -74,25 +71,17 @@ export default function CarrinhoPage() {
         {/* Lista de itens */}
         {qty > 0 && (
           <>
-            {/* Section header */}
-            <div className="section-header" style={{ padding: '0 20px', marginBottom: 16 }}>
-              <h2 className="section-title">
-                Meu Pedido
-                <span className="section-count">{qty} {qty === 1 ? 'item' : 'itens'}</span>
-              </h2>
-            </div>
-
             <div style={{ padding: '0 20px', marginBottom: 20 }}>
               {items.map(item => (
                 <div key={item.product.id} style={{
-                  background: 'white', borderRadius: 16, padding: 16, marginBottom: 10,
+                  background: 'white', borderRadius: 16, padding: 14, marginBottom: 12,
                   boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
                   display: 'flex', alignItems: 'center', gap: 12,
                 }}>
                   <img
                     src={item.product.image_url || '/marmita.jpg'}
                     alt={item.product.name}
-                    style={{ width: 80, height: 80, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
+                    style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
                     onError={(e) => { (e.target as HTMLImageElement).src = '/marmita.jpg' }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -132,13 +121,10 @@ export default function CarrinhoPage() {
                   </div>
                   <button
                     onClick={() => removeItem(item.product.id)}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#FEE2E2')}
-                    onMouseLeave={e => (e.currentTarget.style.background = '#FEF2F2')}
                     style={{
                       width: 44, height: 44,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       borderRadius: 10, background: '#FEF2F2', border: 'none', cursor: 'pointer', flexShrink: 0,
-                      transition: 'background 0.2s ease',
                     }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#DC2626" strokeWidth="2">
