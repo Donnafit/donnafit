@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
-import { Inter, Montserrat } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { DM_Sans, Montserrat } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-dm-sans",
   display: "swap",
 });
 
@@ -13,6 +13,12 @@ const montserrat = Montserrat({
   variable: "--font-montserrat",
   display: "swap",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+}
 
 export const metadata: Metadata = {
   title: "Donna FIT | Marmitas Fitness",
@@ -25,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${montserrat.variable}`}>
+    <html lang="pt-BR" className={`${dmSans.variable} ${montserrat.variable}`}>
       <body className="font-body antialiased">{children}</body>
     </html>
   );

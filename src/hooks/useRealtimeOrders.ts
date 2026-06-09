@@ -1,7 +1,10 @@
 "use client"
 import { useEffect, useState, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
+import type { Database } from "@/lib/supabase/database.types"
 import type { OrderWithItems } from "@/types"
+
+type OrderStatus = Database["public"]["Tables"]["orders"]["Update"]["status"]
 
 export function useRealtimeOrders() {
   const [orders, setOrders] = useState<OrderWithItems[]>([])
@@ -22,12 +25,30 @@ export function useRealtimeOrders() {
 
   const updateStatus = useCallback(
     async (orderId: string, status: string) => {
+      const validStatus = status as NonNullable<OrderStatus>
+
+      // Save previous state for rollback
+      const previousOrders = orders
+
+      // Optimistic update: apply locally before hitting Supabase
+      setOrders((current) =>
+        current.map((o) =>
+          o.id === orderId ? { ...o, status: validStatus } : o
+        )
+      )
+
       const supabase = createClient()
-      const validStatus = status as "pending" | "production" | "ready" | "delivered" | "cancelled"
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from("orders") as any).update({ status: validStatus }).eq("id", orderId)
+      const { error } = await (supabase.from("orders") as any).update({ status }).eq("id", orderId)
+
+      if (error) {
+        // Revert to previous state and surface the error
+        setOrders(previousOrders)
+        console.error("Erro ao atualizar status do pedido:", error)
+        throw error
+      }
     },
-    []
+    [orders]
   )
 
   useEffect(() => {

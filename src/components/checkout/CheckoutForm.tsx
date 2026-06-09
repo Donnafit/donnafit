@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { useCart } from "@/hooks/useCart"
 import { buildWhatsAppMessage, buildWhatsAppURL } from "@/lib/whatsapp"
 import { formatCurrency } from "@/lib/utils"
+import { Store, Truck, QrCode, CreditCard, Check } from "lucide-react"
 
 const DELIVERY_FEE = 5
 const PIX_DISCOUNT_RATE = 0.05
@@ -34,6 +35,8 @@ export function CheckoutForm() {
   const [nameState, setNameState] = useState<"idle" | "valid" | "invalid">("idle")
   const [phoneState, setPhoneState] = useState<"idle" | "valid" | "invalid">("idle")
   const [delivery, setDelivery] = useState<"pickup" | "delivery">("pickup")
+  const [address, setAddress] = useState("")
+  const [addressState, setAddressState] = useState<"idle" | "valid" | "invalid">("idle")
   const [payment, setPayment] = useState<"pix" | "card">("pix")
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState("")
@@ -64,14 +67,23 @@ export function CheckoutForm() {
     }
   }
 
+  function isFormValid(): boolean {
+    const nameOk = validateName(name)
+    const phoneOk = validatePhone(phone)
+    const addressOk = delivery === "pickup" || address.trim().length >= 10
+    return nameOk && phoneOk && addressOk
+  }
+
   async function handleSubmit() {
     const nameOk = validateName(name)
     const phoneOk = validatePhone(phone)
+    const addressOk = delivery === "pickup" || address.trim().length >= 10
 
     setNameState(nameOk ? "valid" : "invalid")
     setPhoneState(phoneOk ? "valid" : "invalid")
+    if (delivery === "delivery") setAddressState(addressOk ? "valid" : "invalid")
 
-    if (!nameOk || !phoneOk || items.length === 0) return
+    if (!nameOk || !phoneOk || !addressOk || items.length === 0) return
 
     setLoading(true)
     setSubmitError("")
@@ -84,6 +96,7 @@ export function CheckoutForm() {
           customerName: name.trim(),
           customerPhone: phone.trim(),
           deliveryType: delivery,
+          deliveryAddress: delivery === "delivery" ? address.trim() : undefined,
           paymentMethod: payment,
           items,
           total: finalTotal,
@@ -97,14 +110,16 @@ export function CheckoutForm() {
         customerName: name.trim(),
         customerPhone: phone.trim(),
         deliveryType: delivery,
+        deliveryAddress: delivery === "delivery" ? address.trim() : undefined,
         paymentMethod: payment,
         items,
         total: finalTotal,
       })
 
-      window.open(buildWhatsAppURL(msg), "_blank")
+      const waUrl = buildWhatsAppURL(msg)
+      const encodedWa = encodeURIComponent(waUrl)
       clearCart()
-      router.push(`/confirmacao?order=${data.orderNumber}`)
+      router.push(`/confirmacao?order=${data.orderNumber}&wa=${encodedWa}`)
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Erro ao enviar pedido. Tente novamente.")
     } finally {
@@ -195,10 +210,12 @@ export function CheckoutForm() {
           {/* Retirada */}
           <button
             type="button"
-            onClick={() => setDelivery("pickup")}
+            onClick={() => { setDelivery("pickup"); setAddressState("idle") }}
             className={`option-card ${delivery === "pickup" ? "selected" : ""}`}
           >
-            <div style={{ fontSize: 28, marginBottom: 8 }}>🏪</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+              <Store size={28} style={{ color: "#C89B3C" }} />
+            </div>
             <div style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 700, fontSize: 14, color: "#1A1A1A", marginBottom: 4 }}>Retirada</div>
             <div style={{ fontSize: 12, color: "#5A6B2A", fontWeight: 600 }}>Gratis</div>
             <div className="option-check">
@@ -214,7 +231,10 @@ export function CheckoutForm() {
             onClick={() => setDelivery("delivery")}
             className={`option-card ${delivery === "delivery" ? "selected" : ""}`}
           >
-            <div style={{ fontSize: 28, marginBottom: 8 }}>🛵</div>
+
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+              <Truck size={28} style={{ color: "#C89B3C" }} />
+            </div>
             <div style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 700, fontSize: 14, color: "#1A1A1A", marginBottom: 4 }}>Entrega</div>
             <div style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>+ {formatCurrency(DELIVERY_FEE)}</div>
             <div className="option-check">
@@ -224,6 +244,35 @@ export function CheckoutForm() {
             </div>
           </button>
         </div>
+
+        {/* Campo de endereço — aparece somente quando Entrega está selecionada */}
+        {delivery === "delivery" && (
+          <div style={{ marginTop: 16 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              Endereço de entrega
+            </label>
+            <input
+              type="text"
+              className={`form-input ${addressState === "valid" ? "input-valid" : addressState === "invalid" ? "input-invalid" : ""}`}
+              value={address}
+              onChange={e => {
+                const val = e.target.value
+                setAddress(val)
+                if (val.length > 0) setAddressState(val.trim().length >= 10 ? "valid" : "invalid")
+                else setAddressState("idle")
+              }}
+              placeholder="Rua, número, bairro, complemento"
+              autoComplete="street-address"
+            />
+            <p className={`error-msg ${addressState === "invalid" ? "show" : ""}`}>
+              Informe o endereço completo para entrega
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Secao: Pagamento */}
@@ -249,7 +298,9 @@ export function CheckoutForm() {
             onClick={() => setPayment("pix")}
             className={`option-card ${payment === "pix" ? "selected" : ""}`}
           >
-            <div style={{ fontSize: 28, marginBottom: 8 }}>💸</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+              <QrCode size={28} style={{ color: "#C89B3C" }} />
+            </div>
             <div style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 700, fontSize: 14, color: "#1A1A1A", marginBottom: 4 }}>PIX</div>
             <div style={{ fontSize: 11, color: "#5A6B2A", fontWeight: 700, marginBottom: 2 }}>5% de desconto</div>
             <div style={{ fontSize: 11, color: "#888", fontWeight: 500 }}>Chave: 41999154720</div>
@@ -266,7 +317,9 @@ export function CheckoutForm() {
             onClick={() => setPayment("card")}
             className={`option-card ${payment === "card" ? "selected" : ""}`}
           >
-            <div style={{ fontSize: 28, marginBottom: 8 }}>💳</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+              <CreditCard size={28} style={{ color: "#C89B3C" }} />
+            </div>
             <div style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 700, fontSize: 14, color: "#1A1A1A", marginBottom: 4 }}>Maquininha</div>
             <div style={{ fontSize: 11, color: "#888", fontWeight: 500 }}>Na entrega/retirada</div>
             <div className="option-check">
@@ -301,7 +354,7 @@ export function CheckoutForm() {
             background: "#F0F4E8", borderRadius: 10, padding: "10px 14px",
             marginBottom: 16,
           }}>
-            <span style={{ fontSize: 16 }}>✅</span>
+            <Check size={16} style={{ color: "#5A6B2A" }} />
             <span style={{ fontSize: 13, fontWeight: 700, color: "#5A6B2A" }}>Desconto de 5% aplicado!</span>
           </div>
         )}
@@ -363,13 +416,13 @@ export function CheckoutForm() {
       {/* Botao WhatsApp */}
       <button
         type="button"
-        disabled={loading || items.length === 0}
+        disabled={loading || items.length === 0 || !isFormValid()}
         onClick={handleSubmit}
         className="btn-primary whatsapp-btn"
         style={{
           height: 60, fontSize: 16,
-          opacity: loading || items.length === 0 ? 0.65 : 1,
-          cursor: loading || items.length === 0 ? "not-allowed" : "pointer",
+          opacity: loading || items.length === 0 || !isFormValid() ? 0.65 : 1,
+          cursor: loading || items.length === 0 || !isFormValid() ? "not-allowed" : "pointer",
         }}
       >
         {loading ? (

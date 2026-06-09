@@ -6,15 +6,16 @@ interface OrderPayload {
   customerPhone: string
   deliveryType: "delivery" | "pickup"
   paymentMethod: "pix" | "card"
+  deliveryAddress?: string
   items: CartItem[]
   total: number
 }
 
 export function buildWhatsAppMessage(order: OrderPayload): string {
   const deliveryLabel =
-    order.deliveryType === "delivery" ? "🚚 Entrega" : "🏪 Retirada"
+    order.deliveryType === "delivery" ? "Entrega" : "Retirada"
   const paymentLabel =
-    order.paymentMethod === "pix" ? "💰 PIX" : "💳 Maquininha na entrega"
+    order.paymentMethod === "pix" ? "PIX" : "Maquininha na entrega"
 
   const itemLines = order.items
     .map(
@@ -25,15 +26,21 @@ export function buildWhatsAppMessage(order: OrderPayload): string {
     )
     .join("\n")
 
+  const addressLine =
+    order.deliveryType === "delivery" && order.deliveryAddress
+      ? `*Endereço:* ${order.deliveryAddress}\n`
+      : ""
+
   return (
-    `🍱 *Pedido Donna FIT*\n` +
+    `*Pedido Donna FIT*\n` +
     `*ID:* #${order.orderNumber}\n\n` +
-    `👤 *Cliente:* ${order.customerName}\n` +
-    `📱 *Telefone:* ${order.customerPhone}\n\n` +
-    `📦 *Itens:*\n${itemLines}\n\n` +
-    `💰 *Total:* R$ ${order.total.toFixed(2).replace(".", ",")}\n` +
-    `${deliveryLabel}\n` +
-    `${paymentLabel}`
+    `*Cliente:* ${order.customerName}\n` +
+    `*Telefone:* ${order.customerPhone}\n\n` +
+    `*Itens:*\n${itemLines}\n\n` +
+    `*Total:* R$ ${order.total.toFixed(2).replace(".", ",")}\n` +
+    `*Forma de recebimento:* ${deliveryLabel}\n` +
+    addressLine +
+    `*Forma de pagamento:* ${paymentLabel}`
   )
 }
 

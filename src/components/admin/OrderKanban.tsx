@@ -46,6 +46,7 @@ export function OrderKanban({ orders, onUpdateStatus }: Props) {
                     key={order.id}
                     order={order}
                     onClick={() => setSelected(order)}
+                    onUpdateStatus={onUpdateStatus}
                   />
                 ))}
               </div>

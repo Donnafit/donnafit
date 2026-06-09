@@ -3,7 +3,7 @@ import { Leaf, Utensils, Truck, Check } from "lucide-react"
 export default function HeroSection() {
   return (
     <section
-      style={{ position: 'relative', overflow: 'hidden', minHeight: 380, display: 'flex', alignItems: 'center' }}
+      style={{ position: 'relative', overflow: 'hidden', minHeight: 480, display: 'flex', alignItems: 'center' }}
       className="hero-section"
     >
       {/* Imagem de fundo */}
@@ -28,7 +28,7 @@ export default function HeroSection() {
       <div style={{
         position: 'relative', zIndex: 10,
         width: '100%', maxWidth: 700, margin: '0 auto',
-        padding: '56px 24px',
+        padding: '72px 24px',
         textAlign: 'center', color: 'white',
       }}>
         {/* Badge pill */}
@@ -90,6 +90,7 @@ export default function HeroSection() {
         {/* CTA button */}
         <a
           href="#produtos"
+          className="hero-cta"
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 10,
             background: '#C89B3C', color: '#FFFFFF',

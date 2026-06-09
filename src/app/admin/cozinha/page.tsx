@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { ProductionList } from "@/components/kitchen/ProductionList"
 import type { OrderWithItems } from "@/types"
 
-export const revalidate = 30
+export const revalidate = 0
 
 export default async function CozinhaPage() {
   const supabase = await createClient()

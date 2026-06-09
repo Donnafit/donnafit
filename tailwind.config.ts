@@ -58,7 +58,7 @@ const config: Config = {
       },
       fontFamily: {
         display: ["var(--font-montserrat)", "sans-serif"],
-        body: ["var(--font-inter)", "sans-serif"],
+        body: ["var(--font-dm-sans)", "DM Sans", "sans-serif"],
       },
     },
   },

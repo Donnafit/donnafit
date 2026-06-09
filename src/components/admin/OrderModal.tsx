@@ -26,7 +26,7 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
 interface Props {
   order: OrderWithItems | null
   onClose: () => void
-  onUpdateStatus: (orderId: string, status: string) => void
+  onUpdateStatus: (orderId: string, status: string) => Promise<void> | void
 }
 
 export function OrderModal({ order, onClose, onUpdateStatus }: Props) {
@@ -34,6 +34,15 @@ export function OrderModal({ order, onClose, onUpdateStatus }: Props) {
 
   const nextStatus = NEXT_STATUS[order.status as OrderStatus]
   const nextLabel  = NEXT_LABEL[order.status as OrderStatus]
+
+  const handleStatusChange = async (next: string) => {
+    try {
+      await onUpdateStatus(order.id, next)
+      onClose()
+    } catch (err) {
+      console.error("Erro ao atualizar status:", err)
+    }
+  }
 
   return (
     <Dialog open={!!order} onOpenChange={(v) => !v && onClose()}>
@@ -52,6 +61,12 @@ export function OrderModal({ order, onClose, onUpdateStatus }: Props) {
             <p className="text-sm text-gray-600">
               {order.delivery_type === "delivery" ? "Entrega" : "Retirada"}
             </p>
+            {order.delivery_type === "delivery" && order.delivery_address && (
+              <p className="text-sm text-gray-600">
+                <span className="font-medium">Endereco: </span>
+                {order.delivery_address}
+              </p>
+            )}
             <p className="text-sm text-gray-600">
               {order.payment_method === "pix" ? "PIX" : "Maquininha na entrega"}
             </p>
@@ -86,6 +101,14 @@ export function OrderModal({ order, onClose, onUpdateStatus }: Props) {
 
           <Separator />
 
+          {/* Notes */}
+          {order.notes && order.notes.trim() !== "" && (
+            <div className="bg-gray-50 rounded-2xl p-4">
+              <p className="text-xs font-medium text-gray-500 mb-1">Observacoes:</p>
+              <p className="text-sm text-gray-800">{order.notes}</p>
+            </div>
+          )}
+
           {/* Fiscal copy — Phase 1 bridge */}
           <div className="bg-amber-50 rounded-xl p-3">
             <p className="text-xs text-amber-700 mb-2 font-medium">
@@ -98,10 +121,7 @@ export function OrderModal({ order, onClose, onUpdateStatus }: Props) {
           {nextStatus && nextLabel && (
             <Button
               className="w-full h-12 rounded-2xl bg-brand-gold hover:bg-brand-gold-dark text-white font-bold"
-              onClick={() => {
-                onUpdateStatus(order.id, nextStatus)
-                onClose()
-              }}
+              onClick={() => handleStatusChange(nextStatus)}
             >
               {nextLabel}
             </Button>

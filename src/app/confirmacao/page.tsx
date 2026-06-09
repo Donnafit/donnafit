@@ -6,6 +6,7 @@ import Link from "next/link"
 function ConfirmacaoContent() {
   const searchParams = useSearchParams()
   const [orderNumber, setOrderNumber] = useState<string>("—")
+  const [whatsappUrl, setWhatsappUrl] = useState<string>("https://wa.me/5541999154720")
 
   useEffect(() => {
     const fromUrl = searchParams.get("order") || searchParams.get("id")
@@ -17,6 +18,10 @@ function ConfirmacaoContent() {
         const stored = localStorage.getItem("donna-fit-last-order")
         if (stored) setOrderNumber(stored)
       } catch {}
+    }
+    const waParam = searchParams.get("wa")
+    if (waParam) {
+      setWhatsappUrl(decodeURIComponent(waParam))
     }
   }, [searchParams])
 
@@ -79,7 +84,7 @@ function ConfirmacaoContent() {
           Pedido enviado!
         </h1>
         <p style={{ color: "#666", fontSize: 15, marginBottom: 28, lineHeight: 1.5 }}>
-          Seu pedido foi registrado com sucesso e o WhatsApp da Donna FIT foi aberto com todos os detalhes.
+          Seu pedido foi registrado com sucesso. Toque no botao abaixo para enviar os detalhes pelo WhatsApp.
         </p>
 
         {/* Card numero do pedido */}
@@ -117,20 +122,20 @@ function ConfirmacaoContent() {
           gap: 12,
         }}>
           <p style={{ fontSize: 14, color: "#444", lineHeight: 1.5 }}>
-            ✅ Mensagem enviada para o WhatsApp da Donna FIT com todos os detalhes.
+            Toque no botao abaixo para abrir o WhatsApp da Donna FIT com todos os detalhes do pedido preenchidos.
           </p>
           <p style={{ fontSize: 14, color: "#444", lineHeight: 1.5 }}>
-            📱 Se o WhatsApp nao abriu, guarde o numero <strong style={{ color: "#C89B3C" }}>#{orderNumber}</strong> e entre em contato: (41) 99915-4720.
+            Se o WhatsApp nao abriu, guarde o numero <strong style={{ color: "#C89B3C" }}>#{orderNumber}</strong> e entre em contato: (41) 99915-4720.
           </p>
           <p style={{ fontSize: 14, color: "#444", lineHeight: 1.5 }}>
-            🍱 Producao D+1 — seu pedido ficara pronto para entrega no dia seguinte.
+            Producao D+1 — seu pedido ficara pronto para entrega no dia seguinte.
           </p>
         </div>
 
         {/* Botoes */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <a
-            href="https://wa.me/5541999154720"
+            href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-primary whatsapp-btn"

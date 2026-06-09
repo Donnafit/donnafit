@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { Check } from "lucide-react"
+import { Check, ChefHat } from "lucide-react"
 import type { OrderWithItems } from "@/types"
 
 interface ProductionItem {
@@ -50,8 +50,8 @@ export function ProductionList({ orders }: Props) {
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-20 text-gray-500">
-        <p className="text-5xl mb-4">🍱</p>
+      <div className="text-center py-20 text-gray-500 flex flex-col items-center justify-center">
+        <ChefHat size={48} className="mb-4 text-brand-gold" />
         <p className="font-medium">Nenhum pedido para amanha ainda.</p>
       </div>
     )

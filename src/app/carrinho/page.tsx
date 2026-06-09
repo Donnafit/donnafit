@@ -1,4 +1,5 @@
 "use client"
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/hooks/useCart'
@@ -8,6 +9,12 @@ import { ShoppingBag } from 'lucide-react'
 export default function CarrinhoPage() {
   const { items, total, count, updateQuantity, removeItem } = useCart()
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
+
+  if (!mounted) return null
+
   const qty = count()
 
   return (

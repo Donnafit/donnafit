@@ -21,7 +21,8 @@ export function CartBar() {
         position: 'fixed',
         bottom: 0, left: 0, right: 0,
         zIndex: 50,
-        padding: '0 16px 12px',
+        paddingLeft: 16,
+        paddingRight: 16,
         maxWidth: 540,
         margin: '0 auto',
       }}

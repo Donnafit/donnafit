@@ -65,11 +65,16 @@
 }
 
 /* =============================================
-   BODY: gradiente de fundo do demo
+   HTML: scroll suave + sem scroll horizontal
    ============================================= */
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  background: #1A1A1A; /* fallback escuro — elimina espaço vazio abaixo do footer */
+}
+
 body {
-  background: linear-gradient(160deg, #FFFDF8 0%, #FBF6EE 50%, #F5EDD8 100%);
-  min-height: 100vh;
+  background: #1A1A1A;
   overflow-x: hidden;
   color: #1A1A1A;
 }
@@ -155,6 +160,12 @@ body {
 .error-msg { color: #DC2626; font-size: 0.75rem; margin-top: 4px; display: none; }
 .error-msg.show { display: block; }
 
+/* Hero CTA hover */
+.hero-cta:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 12px 32px rgba(200, 155, 60, 0.55) !important;
+}
+
 /* Product card */
 .product-card {
   background: #FFFFFF;
@@ -179,6 +190,9 @@ body {
   height: 160px;
   object-fit: cover;
 }
+
+/* Category filter scroll — hide native scrollbar */
+.cat-filter-scroll::-webkit-scrollbar { display: none; }
 
 /* Product grid */
 .product-grid {
@@ -331,10 +345,108 @@ body {
 }
 .qty-btn:hover { opacity: 0.75; }
 
+/* ── Animations ────────────────────────────────── */
+@keyframes drawerSlideIn {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideDownIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-16px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes slideUpIn {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Profile modal — bottom sheet on mobile, centered on desktop */
+.profile-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-radius: 24px 24px 0 0;
+  max-height: 92vh;
+  overflow: hidden;
+  animation: slideUpIn 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 181;
+}
+@media (min-width: 768px) {
+  .profile-modal {
+    bottom: auto;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    width: 440px;
+    border-radius: 24px;
+    animation: scaleIn 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+    transform: translate(-50%, -50%);
+    max-height: 88vh;
+  }
+}
+
+/* Cart shake */
+@keyframes cartShake {
+  0%, 100% { transform: rotate(0deg); }
+  20%       { transform: rotate(-12deg); }
+  40%       { transform: rotate(10deg); }
+  60%       { transform: rotate(-8deg); }
+  80%       { transform: rotate(6deg); }
+}
+.cart-shake { animation: cartShake 0.45s ease; }
+
+/* Badge pulse */
+@keyframes badgePulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.badge-pulse { animation: badgePulse 0.35s ease; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Product detail hero — desktop: 2 colunas */
+@media (min-width: 768px) {
+  .product-detail-hero {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ── Footer layout ── */
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  gap: 48px;
+}
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+@media (max-width: 900px) {
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 36px; }
+}
+@media (max-width: 540px) {
+  .footer-grid { grid-template-columns: 1fr; gap: 28px; }
+  .footer-bottom { flex-direction: column; align-items: flex-start; }
+  .footer-bottom > div:last-child { align-items: flex-start !important; }
 }

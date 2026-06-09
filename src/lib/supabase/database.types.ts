@@ -9,6 +9,29 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          id: string
+          text: string
+          is_active: boolean
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          text: string
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          text?: string
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+      }
       categories: {
         Row: {
           id: string
@@ -30,6 +53,50 @@ export type Database = {
           slug?: string
           sort_order?: number
           created_at?: string
+        }
+      }
+      customer_profiles: {
+        Row: {
+          phone: string
+          name: string
+          email: string | null
+          preferred_delivery: string
+          preferred_payment: string
+          preferred_categories: Json
+          preferred_products: Json
+          total_orders: number
+          total_spent: number
+          last_order_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          phone: string
+          name: string
+          email?: string | null
+          preferred_delivery?: string
+          preferred_payment?: string
+          preferred_categories?: Json
+          preferred_products?: Json
+          total_orders?: number
+          total_spent?: number
+          last_order_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          phone?: string
+          name?: string
+          email?: string | null
+          preferred_delivery?: string
+          preferred_payment?: string
+          preferred_categories?: Json
+          preferred_products?: Json
+          total_orders?: number
+          total_spent?: number
+          last_order_at?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
       products: {
@@ -94,6 +161,7 @@ export type Database = {
           subtotal: number
           total: number
           notes: string | null
+          delivery_address: string | null
           delivery_date: string | null
           created_at: string
           updated_at: string
@@ -109,6 +177,7 @@ export type Database = {
           subtotal: number
           total: number
           notes?: string | null
+          delivery_address?: string | null
           delivery_date?: string | null
           created_at?: string
           updated_at?: string
@@ -124,6 +193,7 @@ export type Database = {
           subtotal?: number
           total?: number
           notes?: string | null
+          delivery_address?: string | null
           delivery_date?: string | null
           created_at?: string
           updated_at?: string
