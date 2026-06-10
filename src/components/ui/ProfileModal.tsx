@@ -353,6 +353,7 @@ export function ProfileModal({ open, onClose }: Props) {
 
   const [editName, setEditName] = useState("")
   const [editPhone, setEditPhone] = useState("")
+  const [editAddress, setEditAddress] = useState("")
   const [editLoading, setEditLoading] = useState(false)
   const [editSuccess, setEditSuccess] = useState<string | null>(null)
   const [editError, setEditError] = useState<string | null>(null)
@@ -376,6 +377,7 @@ export function ProfileModal({ open, onClose }: Props) {
     if (view === "editProfile" && user) {
       setEditName(user.user_metadata?.name ?? "")
       setEditPhone(formatPhone(user.user_metadata?.phone ?? ""))
+      setEditAddress(user.user_metadata?.delivery_address ?? "")
       setEditError(null)
       setEditSuccess(null)
       setEditAvatarUrl(user.user_metadata?.avatar_url ?? null)
@@ -510,7 +512,7 @@ export function ProfileModal({ open, onClose }: Props) {
     }
 
     const { error: err } = await supabase.auth.updateUser({
-      data: { name: editName.trim(), phone: cleanPhone, avatar_url: newAvatarUrl },
+      data: { name: editName.trim(), phone: cleanPhone, avatar_url: newAvatarUrl, delivery_address: editAddress.trim() || undefined },
     })
     setEditLoading(false)
     if (err) { setEditError("Erro ao salvar. Tente novamente."); return }
@@ -719,7 +721,7 @@ export function ProfileModal({ open, onClose }: Props) {
               <MenuRow
                 icon={<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
                 label="Editar Perfil"
-                sublabel="Nome e telefone"
+                sublabel="Nome, telefone e endereço"
                 onClick={() => setView("editProfile")}
               />
 
@@ -864,6 +866,19 @@ export function ProfileModal({ open, onClose }: Props) {
                   placeholder="(11) 99999-9999"
                   autoComplete="tel"
                   icon={<IconPhone />}
+                />
+                <Field
+                  label="Endereço de entrega"
+                  value={editAddress}
+                  onChange={setEditAddress}
+                  placeholder="Rua, número, bairro, cidade"
+                  autoComplete="street-address"
+                  icon={
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  }
                 />
                 <div style={{ marginTop: 8 }}>
                   <PrimaryBtn label="Salvar alterações" loading={editLoading} />

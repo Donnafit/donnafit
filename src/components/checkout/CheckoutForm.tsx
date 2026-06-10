@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useCart } from "@/hooks/useCart"
+import { useAuth } from "@/hooks/useAuth"
+import { createClient } from "@/lib/supabase/client"
 import { buildWhatsAppMessage, buildWhatsAppURL } from "@/lib/whatsapp"
 import { formatCurrency } from "@/lib/utils"
 import { Store, Truck, QrCode, CreditCard, Check } from "lucide-react"
@@ -29,9 +31,30 @@ function validatePhone(value: string): boolean {
 export function CheckoutForm() {
   const router = useRouter()
   const { items, total, clearCart } = useCart()
+  const { user } = useAuth()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
+
+  useEffect(() => {
+    if (!user) return
+    const meta = user.user_metadata ?? {}
+    if (meta.name && !name) {
+      const n = meta.name as string
+      setName(n)
+      setNameState(validateName(n) ? "valid" : "idle")
+    }
+    if (meta.phone && !phone) {
+      const p = maskPhone(meta.phone as string)
+      setPhone(p)
+      setPhoneState(validatePhone(p) ? "valid" : "idle")
+    }
+    if (meta.delivery_address && !address) {
+      setAddress(meta.delivery_address as string)
+      setAddressState("valid")
+      setDelivery("delivery")
+    }
+  }, [user])
 
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
@@ -132,6 +155,20 @@ export function CheckoutForm() {
           total: finalTotal,
         }))
       } catch {}
+
+      // Save delivery address and profile to user metadata for future pre-fill
+      if (user) {
+        try {
+          const supabase = createClient()
+          const updateData: Record<string, string> = {}
+          if (delivery === "delivery" && address.trim()) {
+            updateData.delivery_address = address.trim()
+          }
+          if (Object.keys(updateData).length > 0) {
+            await supabase.auth.updateUser({ data: updateData })
+          }
+        } catch {}
+      }
 
       clearCart()
       window.open(waUrl, "_blank")
