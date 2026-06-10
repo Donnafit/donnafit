@@ -59,6 +59,7 @@ export function Header({ activeCategory }: Props) {
   const cartCount = mounted ? count() : 0
   const userName = user?.user_metadata?.name ?? user?.email?.split("@")[0] ?? ""
   const userInitial = userName.charAt(0).toUpperCase()
+  const avatarUrl = user?.user_metadata?.avatar_url ?? null
 
   function handleNav(slug: string) {
     router.push(`/?cat=${slug}`, { scroll: false })
@@ -245,11 +246,11 @@ export function Header({ activeCategory }: Props) {
                 style={{
                   width: 40, height: 40, borderRadius: "50%",
                   border: user ? "2px solid #C89B3C" : "2px solid #E5E0D8",
-                  background: user ? avatarColor(userName) : "#F5F0E8",
+                  background: avatarUrl ? "transparent" : user ? avatarColor(userName) : "#F5F0E8",
                   cursor: "pointer", display: "flex",
                   alignItems: "center", justifyContent: "center",
                   flexShrink: 0, transition: "all 0.2s ease",
-                  padding: 0,
+                  padding: 0, overflow: "hidden",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = "#5A6B2A"
@@ -260,7 +261,10 @@ export function Header({ activeCategory }: Props) {
                   e.currentTarget.style.transform = "scale(1)"
                 }}
               >
-                {user && userInitial ? (
+                {user && avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarUrl} alt={userName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : user && userInitial ? (
                   <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontWeight: 900, fontSize: 15, color: "#fff", lineHeight: 1 }}>
                     {userInitial}
                   </span>
@@ -370,7 +374,10 @@ export function Header({ activeCategory }: Props) {
                 onTouchStart={(e) => { e.currentTarget.style.background = "#F5F8F0" }}
                 onTouchEnd={(e) => { e.currentTarget.style.background = "transparent" }}
               >
-                {user && userInitial ? (
+                {user && avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarUrl} alt={userName} style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                ) : user && userInitial ? (
                   <span style={{
                     width: 26, height: 26, borderRadius: "50%",
                     background: avatarColor(userName),
