@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { Montserrat } from "next/font/google";
 import "./globals.css";
 
 const switzer = localFont({
@@ -8,6 +9,13 @@ const switzer = localFont({
     { path: "../../public/fonts/Switzer-VariableItalic.woff2", style: "italic" },
   ],
   variable: "--font-switzer",
+  display: "swap",
+});
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  weight: ["700", "800", "900"],
+  variable: "--font-montserrat",
   display: "swap",
 });
 
@@ -32,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={switzer.variable}>
+    <html lang="pt-BR" className={`${switzer.variable} ${montserrat.variable}`}>
       <body className="font-body antialiased">{children}</body>
     </html>
   );
