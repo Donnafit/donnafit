@@ -106,6 +106,7 @@ export type Database = {
           sku: string | null
           name: string
           description: string | null
+          prep_instructions: string | null
           price: number
           image_url: string | null
           stock_type: "combo" | "avulso"
@@ -122,6 +123,7 @@ export type Database = {
           sku?: string | null
           name: string
           description?: string | null
+          prep_instructions?: string | null
           price: number
           image_url?: string | null
           stock_type?: "combo" | "avulso"
@@ -138,6 +140,7 @@ export type Database = {
           sku?: string | null
           name?: string
           description?: string | null
+          prep_instructions?: string | null
           price?: number
           image_url?: string | null
           stock_type?: "combo" | "avulso"

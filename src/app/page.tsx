@@ -30,7 +30,7 @@ export default async function HomePage({
   const announcements = (announcementsRaw ?? []) as Array<{ text: string }>
 
   return (
-    <div style={{ overflow: 'clip', display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'linear-gradient(160deg, #FFFDF8 0%, #FBF6EE 50%, #F5EDD8 100%)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'linear-gradient(160deg, #FFFDF8 0%, #FBF6EE 50%, #F5EDD8 100%)' }}>
       {/* Announcement bar — frases do banco */}
       <AnnouncementBar phrases={announcements?.map((a) => a.text) ?? []} />
 

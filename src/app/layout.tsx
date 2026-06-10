@@ -1,16 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Montserrat } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-dm-sans",
-  display: "swap",
-});
-
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-montserrat",
+const switzer = localFont({
+  src: [
+    { path: "../../public/fonts/Switzer-Variable.woff2",       style: "normal" },
+    { path: "../../public/fonts/Switzer-VariableItalic.woff2", style: "italic" },
+  ],
+  variable: "--font-switzer",
   display: "swap",
 });
 
@@ -31,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${dmSans.variable} ${montserrat.variable}`}>
+    <html lang="pt-BR" className={switzer.variable}>
       <body className="font-body antialiased">{children}</body>
     </html>
   );

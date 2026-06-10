@@ -7,12 +7,13 @@ import type { OrderWithItems, OrderStatus } from "@/types"
 const COLUMNS: {
   status: OrderStatus
   label: string
-  borderColor: string
+  dotColor: string
+  badgeBg: string
 }[] = [
-  { status: "pending",    label: "Pendente",  borderColor: "border-t-yellow-400" },
-  { status: "production", label: "Producao",  borderColor: "border-t-blue-400" },
-  { status: "ready",      label: "Pronto",    borderColor: "border-t-green-400" },
-  { status: "delivered",  label: "Entregue",  borderColor: "border-t-gray-500" },
+  { status: "pending",    label: "Pendente", dotColor: "#F59E0B", badgeBg: "#FEF3C7" },
+  { status: "production", label: "Produção", dotColor: "#3B82F6", badgeBg: "#DBEAFE" },
+  { status: "ready",      label: "Pronto",   dotColor: "#10B981", badgeBg: "#D1FAE5" },
+  { status: "delivered",  label: "Entregue", dotColor: "#9CA3AF", badgeBg: "#F3F4F6" },
 ]
 
 interface Props {
@@ -25,22 +26,39 @@ export function OrderKanban({ orders, onUpdateStatus }: Props) {
 
   return (
     <>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 p-4">
-        {COLUMNS.map(({ status, label, borderColor }) => {
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {COLUMNS.map(({ status, label, dotColor, badgeBg }) => {
           const colOrders = orders.filter((o) => o.status === status)
           return (
             <div
               key={status}
-              className={`bg-gray-900 rounded-2xl border-t-4 ${borderColor} min-h-[180px]`}
+              className="rounded-2xl"
+              style={{ background: "#F9FAFB", border: "1px solid #E5E7EB" }}
             >
-              <div className="p-3 border-b border-gray-800">
-                <p className="text-sm font-bold text-white">{label}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {colOrders.length}{" "}
-                  {colOrders.length === 1 ? "pedido" : "pedidos"}
-                </p>
+              <div
+                className="flex items-center justify-between p-4"
+                style={{ borderBottom: "1px solid #E5E7EB" }}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ background: dotColor }}
+                  />
+                  <span
+                    className="text-sm font-bold text-gray-800"
+                    style={{ fontFamily: "var(--font-montserrat)" }}
+                  >
+                    {label}
+                  </span>
+                </div>
+                <span
+                  className="text-xs font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: badgeBg, color: dotColor }}
+                >
+                  {colOrders.length}
+                </span>
               </div>
-              <div className="p-3 space-y-3">
+              <div className="p-3 flex flex-col gap-3 min-h-[120px]">
                 {colOrders.map((order) => (
                   <OrderCard
                     key={order.id}

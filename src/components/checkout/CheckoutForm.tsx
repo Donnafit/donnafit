@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useCart } from "@/hooks/useCart"
 import { buildWhatsAppMessage, buildWhatsAppURL } from "@/lib/whatsapp"
@@ -29,6 +29,9 @@ function validatePhone(value: string): boolean {
 export function CheckoutForm() {
   const router = useRouter()
   const { items, total, clearCart } = useCart()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
 
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
@@ -41,9 +44,10 @@ export function CheckoutForm() {
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState("")
 
-  const subtotal = total()
+  const cartItems = mounted ? items : []
+  const subtotal = mounted ? total() : 0
   const deliveryFee = delivery === "delivery" ? DELIVERY_FEE : 0
-  const pixDiscount = payment === "pix" ? (subtotal + deliveryFee) * PIX_DISCOUNT_RATE : 0
+  const pixDiscount = payment === "pix" ? subtotal * PIX_DISCOUNT_RATE : 0
   const finalTotal = subtotal + deliveryFee - pixDiscount
 
   function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -83,7 +87,7 @@ export function CheckoutForm() {
     setPhoneState(phoneOk ? "valid" : "invalid")
     if (delivery === "delivery") setAddressState(addressOk ? "valid" : "invalid")
 
-    if (!nameOk || !phoneOk || !addressOk || items.length === 0) return
+    if (!nameOk || !phoneOk || !addressOk || cartItems.length === 0) return
 
     setLoading(true)
     setSubmitError("")
@@ -98,12 +102,12 @@ export function CheckoutForm() {
           deliveryType: delivery,
           deliveryAddress: delivery === "delivery" ? address.trim() : undefined,
           paymentMethod: payment,
-          items,
+          items: cartItems,
           total: finalTotal,
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Erro ao criar pedido")
+      if (!res.ok) throw new Error(data.detail || data.error || "Erro ao criar pedido")
 
       const msg = buildWhatsAppMessage({
         orderNumber: data.orderNumber,
@@ -112,13 +116,25 @@ export function CheckoutForm() {
         deliveryType: delivery,
         deliveryAddress: delivery === "delivery" ? address.trim() : undefined,
         paymentMethod: payment,
-        items,
+        items: cartItems,
         total: finalTotal,
       })
 
       const waUrl = buildWhatsAppURL(msg)
       const encodedWa = encodeURIComponent(waUrl)
+
+      // Save order summary for confirmation page
+      try {
+        localStorage.setItem("donna-fit-order-summary", JSON.stringify({
+          items: cartItems.map(i => ({ name: i.product.name, qty: i.quantity, price: i.product.price * i.quantity })),
+          deliveryType: delivery,
+          paymentMethod: payment,
+          total: finalTotal,
+        }))
+      } catch {}
+
       clearCart()
+      window.open(waUrl, "_blank")
       router.push(`/confirmacao?order=${data.orderNumber}&wa=${encodedWa}`)
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Erro ao enviar pedido. Tente novamente.")
@@ -361,7 +377,7 @@ export function CheckoutForm() {
 
         {/* Lista de itens */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-          {items.map(item => (
+          {cartItems.map(item => (
             <div key={item.product.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#444" }}>
               <span style={{ fontWeight: 500 }}>
                 {item.quantity}x {item.product.name}
@@ -416,13 +432,13 @@ export function CheckoutForm() {
       {/* Botao WhatsApp */}
       <button
         type="button"
-        disabled={loading || items.length === 0 || !isFormValid()}
+        disabled={loading || cartItems.length === 0 || !isFormValid()}
         onClick={handleSubmit}
         className="btn-primary whatsapp-btn"
         style={{
           height: 60, fontSize: 16,
-          opacity: loading || items.length === 0 || !isFormValid() ? 0.65 : 1,
-          cursor: loading || items.length === 0 || !isFormValid() ? "not-allowed" : "pointer",
+          opacity: loading || cartItems.length === 0 || !isFormValid() ? 0.65 : 1,
+          cursor: loading || cartItems.length === 0 || !isFormValid() ? "not-allowed" : "pointer",
         }}
       >
         {loading ? (

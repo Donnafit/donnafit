@@ -63,7 +63,7 @@ export default function CheckoutPage() {
           {/* Conector 1→2 */}
           <div style={{ width: 48, height: 2, background: "linear-gradient(to right, #5A6B2A, #C89B3C)", margin: "0 2px", marginBottom: 14 }} />
 
-          {/* Step 2: Dados (active) */}
+          {/* Step 2: Seu pedido (active) */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <div
               className="step-active"
@@ -76,13 +76,13 @@ export default function CheckoutPage() {
             >
               2
             </div>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#C89B3C", whiteSpace: "nowrap" }}>Dados</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#C89B3C", whiteSpace: "nowrap" }}>Seu pedido</span>
           </div>
 
           {/* Conector 2→3 */}
           <div style={{ width: 48, height: 2, background: "linear-gradient(to right, #C89B3C, #E5E0D8)", margin: "0 2px", marginBottom: 14 }} />
 
-          {/* Step 3: Pagamento (inactive) */}
+          {/* Step 3: Confirmacao (inactive) */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <div
               className="step-inactive"
@@ -94,25 +94,6 @@ export default function CheckoutPage() {
               }}
             >
               3
-            </div>
-            <span style={{ fontSize: 10, fontWeight: 600, color: "#9CA3AF", whiteSpace: "nowrap" }}>Pagamento</span>
-          </div>
-
-          {/* Conector 3→4 */}
-          <div style={{ width: 48, height: 2, background: "#E5E0D8", margin: "0 2px", marginBottom: 14 }} />
-
-          {/* Step 4: Confirmacao (inactive) */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            <div
-              className="step-inactive"
-              style={{
-                width: 32, height: 32, borderRadius: "50%",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 700, fontSize: 13,
-                transition: "all 0.3s",
-              }}
-            >
-              4
             </div>
             <span style={{ fontSize: 10, fontWeight: 600, color: "#9CA3AF", whiteSpace: "nowrap" }}>Confirmacao</span>
           </div>

@@ -22,6 +22,7 @@ export function CatalogClient({ categories, products, initialCategory }: Props) 
   const [activeCategory, setActiveCategory] = useState<string | null>(() =>
     resolveId(initialCategory)
   )
+  const [searchQuery, setSearchQuery] = useState("")
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
@@ -32,16 +33,28 @@ export function CatalogClient({ categories, products, initialCategory }: Props) 
   function handleSelect(id: string | null) {
     startTransition(() => {
       setActiveCategory(id)
+      setSearchQuery("")
     })
   }
 
-  const filtered = useMemo(
-    () =>
-      activeCategory === null
-        ? products
-        : products.filter((p) => p.category_id === activeCategory),
-    [activeCategory, products]
-  )
+  function handleSearch(q: string) {
+    setSearchQuery(q)
+    if (q) setActiveCategory(null)
+  }
+
+  const filtered = useMemo(() => {
+    let list = activeCategory === null
+      ? products
+      : products.filter((p) => p.category_id === activeCategory)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      list = list.filter((p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.description ?? "").toLowerCase().includes(q)
+      )
+    }
+    return list
+  }, [activeCategory, products, searchQuery])
 
   const activeCategoryName = activeCategory
     ? (categories.find((c) => c.id === activeCategory)?.name ?? null)
@@ -53,6 +66,7 @@ export function CatalogClient({ categories, products, initialCategory }: Props) 
         categories={categories}
         activeCategory={activeCategory}
         onSelect={handleSelect}
+        onSearch={handleSearch}
       />
 
       <div style={{ padding: "32px 20px 96px", maxWidth: 1200, margin: "0 auto" }}>

@@ -176,7 +176,7 @@ export function Footer() {
             <div style={{ fontSize: 10, color: "#555", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10, fontFamily: "var(--font-montserrat, Montserrat)" }}>
               Formas de pagamento
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <div className="payment-chips" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               {/* PIX */}
               <span style={{ background: "#00BDAE", color: "#fff", borderRadius: 7, padding: "5px 12px", fontSize: 12, fontWeight: 800, fontFamily: "var(--font-montserrat, Montserrat)", letterSpacing: "0.5px" }}>
                 PIX

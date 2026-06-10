@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import type { Database } from "@/lib/supabase/database.types"
 import type { CartItem } from "@/types"
 
@@ -21,7 +21,7 @@ interface OrderBody {
 export async function POST(req: Request) {
   const body: OrderBody = await req.json()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = (await createClient()) as any
+  const supabase = createAdminClient() as any
 
   if (!body.customerName?.trim() || !body.customerPhone?.trim() || !body.items?.length) {
     return NextResponse.json({ error: "Dados incompletos" }, { status: 400 })
@@ -75,15 +75,34 @@ export async function POST(req: Request) {
     delivery_date: deliveryDate,
   }
 
-  const { data: order, error: orderErr } = (await supabase
+  // First attempt: full payload including delivery_address
+  let { data: order, error: orderErr } = (await supabase
     .from("orders")
     .insert(insertPayload)
     .select()
-    .single()) as { data: OrderRow | null; error: Error | null }
+    .single()) as { data: OrderRow | null; error: unknown }
+
+  // If the column does not exist yet, retry without delivery_address
+  const orderErrMsg = (orderErr as any)?.message ?? ""
+  if (orderErr && (orderErrMsg.includes("column") || orderErrMsg.includes("delivery_address"))) {
+    console.warn("delivery_address column missing — retrying without it:", orderErrMsg)
+    const { delivery_address: _omit, ...payloadWithoutAddress } = insertPayload as any
+    const retryResult = (await supabase
+      .from("orders")
+      .insert(payloadWithoutAddress)
+      .select()
+      .single()) as { data: OrderRow | null; error: unknown }
+    order = retryResult.data
+    orderErr = retryResult.error
+  }
 
   if (orderErr || !order) {
+    const detail = (orderErr as any)?.message ?? "unknown error"
     console.error("Order insert error:", orderErr)
-    return NextResponse.json({ error: "Erro ao criar pedido" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Erro ao criar pedido", detail },
+      { status: 500 }
+    )
   }
 
   const itemsPayload: OrderItemInsert[] = body.items.map((item) => ({

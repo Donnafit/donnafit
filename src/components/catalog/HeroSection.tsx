@@ -2,8 +2,9 @@ import { Leaf, Utensils, Truck, Check } from "lucide-react"
 
 export default function HeroSection() {
   return (
+    <div style={{ background: 'linear-gradient(to bottom, #ffffff 0%, #FAF8F5 100%)', padding: '1em' }}>
     <section
-      style={{ position: 'relative', overflow: 'hidden', minHeight: 480, display: 'flex', alignItems: 'center' }}
+      style={{ position: 'relative', overflow: 'hidden', minHeight: 580, display: 'flex', alignItems: 'center', borderRadius: 25 }}
       className="hero-section"
     >
       {/* Imagem de fundo */}
@@ -47,7 +48,7 @@ export default function HeroSection() {
         <h1 style={{
           fontFamily: 'var(--font-montserrat), Montserrat, sans-serif',
           fontWeight: 900,
-          fontSize: 'clamp(28px, 6vw, 42px)',
+          fontSize: 'clamp(46px, 10vw, 58px)',
           lineHeight: 1.15,
           marginBottom: 14,
           color: '#fff',
@@ -109,5 +110,6 @@ export default function HeroSection() {
         </a>
       </div>
     </section>
+    </div>
   );
 }

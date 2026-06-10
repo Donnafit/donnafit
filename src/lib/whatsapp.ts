@@ -12,35 +12,44 @@ interface OrderPayload {
 }
 
 export function buildWhatsAppMessage(order: OrderPayload): string {
-  const deliveryLabel =
-    order.deliveryType === "delivery" ? "Entrega" : "Retirada"
-  const paymentLabel =
-    order.paymentMethod === "pix" ? "PIX" : "Maquininha na entrega"
+  const agora = new Date()
+  const dataHora =
+    agora.toLocaleDateString("pt-BR") +
+    " às " +
+    agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
 
   const itemLines = order.items
     .map(
       ({ product, quantity }) =>
-        `  • ${quantity}x ${product.name} — R$ ${(product.price * quantity)
+        `• ${quantity}x ${product.name} — R$ ${(product.price * quantity)
           .toFixed(2)
           .replace(".", ",")}`
     )
     .join("\n")
 
+  const entregaTexto =
+    order.deliveryType === "delivery" ? "🛵 *Entrega*" : "📦 *Retirada na loja*"
+
   const addressLine =
     order.deliveryType === "delivery" && order.deliveryAddress
-      ? `*Endereço:* ${order.deliveryAddress}\n`
+      ? `\n📍 *Endereço:* ${order.deliveryAddress}`
       : ""
 
+  const paymentLabel =
+    order.paymentMethod === "pix" ? "PIX (5% desconto)" : "Maquininha"
+
+  const totalFormatted = `R$ ${order.total.toFixed(2).replace(".", ",")}`
+
   return (
-    `*Pedido Donna FIT*\n` +
-    `*ID:* #${order.orderNumber}\n\n` +
-    `*Cliente:* ${order.customerName}\n` +
-    `*Telefone:* ${order.customerPhone}\n\n` +
+    `🛒 *NOVO PEDIDO — Donna FIT*\n\n` +
+    `📋 *Pedido:* #${order.orderNumber}\n` +
+    `👤 *Cliente:* ${order.customerName}\n` +
+    `📱 *Telefone:* ${order.customerPhone}\n\n` +
     `*Itens:*\n${itemLines}\n\n` +
-    `*Total:* R$ ${order.total.toFixed(2).replace(".", ",")}\n` +
-    `*Forma de recebimento:* ${deliveryLabel}\n` +
-    addressLine +
-    `*Forma de pagamento:* ${paymentLabel}`
+    `${entregaTexto}${addressLine}\n` +
+    `💳 *Pagamento:* ${paymentLabel}\n\n` +
+    `💰 *Total: ${totalFormatted}*\n\n` +
+    `_Pedido realizado em ${dataHora}_`
   )
 }
 

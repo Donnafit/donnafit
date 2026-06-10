@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
@@ -158,23 +158,30 @@ export function SearchModal({ open, onClose }: Props) {
             onChange={(e) => setQuery(e.target.value)}
             style={{
               flex: 1, border: "none", outline: "none",
-              fontSize: 16, fontFamily: "'Montserrat', sans-serif",
+              fontSize: 16, fontFamily: "var(--font-switzer), sans-serif",
               color: "#1A1A1A", background: "transparent",
             }}
           />
           {query ? (
             <button
               onClick={() => setQuery("")}
-              style={{ background: "#F5F0E8", border: "none", cursor: "pointer", color: "#999", width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+              style={{ background: "#F5F0E8", border: "none", cursor: "pointer", color: "#999", width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+              aria-label="Limpar busca"
             >
               <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           ) : (
-            <kbd style={{ border: "1px solid #E5E0D8", borderRadius: 6, padding: "2px 7px", fontSize: 11, color: "#BBB", fontFamily: "monospace", flexShrink: 0 }}>
-              ESC
-            </kbd>
+            <button
+              onClick={onClose}
+              style={{ background: "#F5F0E8", border: "none", cursor: "pointer", color: "#999", width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+              aria-label="Fechar busca"
+            >
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           )}
         </div>
 
@@ -215,22 +222,22 @@ export function SearchModal({ open, onClose }: Props) {
 
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14, color: "#1A1A1A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontFamily: "var(--font-switzer), sans-serif", fontWeight: 600, fontSize: 14, color: "#1A1A1A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {p.name}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
                       {(p as any).categories?.name && (
-                        <span style={{ fontSize: 10, color: "#5A6B2A", fontWeight: 600, fontFamily: "'Montserrat', sans-serif" }}>
+                        <span style={{ fontSize: 10, color: "#5A6B2A", fontWeight: 600, fontFamily: "var(--font-switzer), sans-serif" }}>
                           {(p as any).categories.name}
                         </span>
                       )}
                       {soldOut && (
-                        <span style={{ fontSize: 10, color: "#E05252", fontWeight: 600, fontFamily: "'Montserrat', sans-serif" }}>
+                        <span style={{ fontSize: 10, color: "#E05252", fontWeight: 600, fontFamily: "var(--font-switzer), sans-serif" }}>
                           Esgotado
                         </span>
                       )}
                     </div>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 13, color: "#C89B3C", marginTop: 2 }}>
+                    <div style={{ fontFamily: "var(--font-switzer), sans-serif", fontWeight: 800, fontSize: 13, color: "#C89B3C", marginTop: 2 }}>
                       {formatCurrency(p.price)}
                     </div>
                   </div>
@@ -263,10 +270,10 @@ export function SearchModal({ open, onClose }: Props) {
         {!loading && query.length >= 2 && results.length === 0 && (
           <div style={{ padding: "36px 20px", textAlign: "center" }}>
             <div style={{ fontSize: 36, marginBottom: 10 }}>🔍</div>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 14, color: "#999", margin: 0 }}>
+            <p style={{ fontFamily: "var(--font-switzer), sans-serif", fontSize: 14, color: "#999", margin: 0 }}>
               Nenhum resultado para <strong style={{ color: "#1A1A1A" }}>"{query}"</strong>
             </p>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: "#BBB", margin: "6px 0 0" }}>
+            <p style={{ fontFamily: "var(--font-switzer), sans-serif", fontSize: 12, color: "#BBB", margin: "6px 0 0" }}>
               Tente outra palavra-chave
             </p>
           </div>
@@ -275,7 +282,7 @@ export function SearchModal({ open, onClose }: Props) {
         {/* Empty state — suggestions */}
         {!query && (
           <div style={{ padding: "20px 20px 24px" }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "#C0B8B0", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 12, fontFamily: "'Montserrat', sans-serif" }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "#C0B8B0", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 12, fontFamily: "var(--font-switzer), sans-serif" }}>
               Sugestões de busca
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -287,7 +294,7 @@ export function SearchModal({ open, onClose }: Props) {
                     background: "#F5F8F0", border: "1.5px solid #E4ECCC",
                     borderRadius: 20, padding: "7px 16px",
                     fontSize: 13, color: "#5A6B2A", fontWeight: 500,
-                    cursor: "pointer", fontFamily: "'Montserrat', sans-serif",
+                    cursor: "pointer", fontFamily: "var(--font-switzer), sans-serif",
                     transition: "all 0.15s",
                   }}
                 >

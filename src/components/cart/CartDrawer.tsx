@@ -42,20 +42,36 @@ export function CartDrawer({ open, onClose }: Props) {
           ))}
         </div>
 
-        <div className="mt-4 space-y-3 pt-2">
-          <Separator />
-          <div className="flex justify-between items-center">
-            <span className="font-bold text-gray-900">Total</span>
-            <span className="text-xl font-black text-brand-gold">
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #F0EDE8" }}>
+          {/* Subtotal */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontSize: 13, color: "#888" }}>Subtotal</span>
+            <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontWeight: 900, fontSize: 20, color: "#1A1A1A" }}>
               {formatCurrency(total())}
             </span>
           </div>
-          <Button
+          {/* Entrega */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontSize: 13, color: "#888" }}>Entrega</span>
+            <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontSize: 13, fontWeight: 600, color: "#C89B3C" }}>a calcular</span>
+          </div>
+          <button
             onClick={handleCheckout}
-            className="w-full h-14 text-base font-bold rounded-2xl bg-brand-gold hover:bg-brand-gold-dark text-white"
+            style={{
+              width: "100%", height: 52,
+              background: "linear-gradient(135deg, #5A6B2A 0%, #7B9238 100%)",
+              color: "#fff", border: "none", borderRadius: 14,
+              fontFamily: "var(--font-switzer), sans-serif",
+              fontWeight: 700, fontSize: 15, cursor: "pointer",
+              boxShadow: "0 6px 20px rgba(90,107,42,0.3)",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}
           >
-            Finalizar Pedido →
-          </Button>
+            Finalizar Pedido
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+          </button>
         </div>
       </SheetContent>
     </Sheet>

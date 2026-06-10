@@ -1,17 +1,20 @@
 "use client"
 import { useCart } from '@/hooks/useCart'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
 
 export function CartBar() {
   const { count, total } = useCart()
   const pathname = usePathname()
-  const router = useRouter()
 
   const qty = count()
   const hideRoutes = ['/checkout', '/confirmacao', '/carrinho']
 
   const shouldHide = hideRoutes.some(r => pathname.startsWith(r)) || qty === 0
+
+  function openCartDrawer() {
+    window.dispatchEvent(new CustomEvent('openCartDrawer'))
+  }
 
   return (
     <div
@@ -19,16 +22,16 @@ export function CartBar() {
       className={shouldHide ? 'hidden-bar' : ''}
       style={{
         position: 'fixed',
-        bottom: 0, left: 0, right: 0,
+        bottom: 14,
+        left: 16,
+        right: 16,
         zIndex: 50,
-        paddingLeft: 16,
-        paddingRight: 16,
         maxWidth: 540,
         margin: '0 auto',
       }}
     >
       <button
-        onClick={() => router.push('/carrinho')}
+        onClick={openCartDrawer}
         style={{
           width: '100%',
           display: 'flex',
@@ -36,11 +39,11 @@ export function CartBar() {
           justifyContent: 'space-between',
           padding: '16px 20px',
           background: '#1A1A1A',
-          borderRadius: '20px 20px 0 0',
+          borderRadius: 20,
           color: 'white',
           border: 'none',
           cursor: 'pointer',
-          boxShadow: '0 -4px 24px rgba(0,0,0,0.18)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.28)',
           fontFamily: 'inherit',
         }}
       >

@@ -2,11 +2,20 @@
 import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { formatCurrency } from "@/lib/utils"
+
+type OrderSummary = {
+  items: { name: string; qty: number; price: number }[]
+  deliveryType: "pickup" | "delivery"
+  paymentMethod: "pix" | "card"
+  total: number
+}
 
 function ConfirmacaoContent() {
   const searchParams = useSearchParams()
-  const [orderNumber, setOrderNumber] = useState<string>("—")
+  const [orderNumber, setOrderNumber] = useState<string>("")
   const [whatsappUrl, setWhatsappUrl] = useState<string>("https://wa.me/5541999154720")
+  const [summary, setSummary] = useState<OrderSummary | null>(null)
 
   useEffect(() => {
     const fromUrl = searchParams.get("order") || searchParams.get("id")
@@ -23,6 +32,10 @@ function ConfirmacaoContent() {
     if (waParam) {
       setWhatsappUrl(decodeURIComponent(waParam))
     }
+    try {
+      const raw = localStorage.getItem("donna-fit-order-summary")
+      if (raw) setSummary(JSON.parse(raw))
+    } catch {}
   }, [searchParams])
 
   useEffect(() => {
@@ -55,12 +68,12 @@ function ConfirmacaoContent() {
       justifyContent: "center",
       padding: "40px 20px",
     }}>
-      {/* Container de confetti */}
+      {/* Confetti container */}
       <div id="confetti-container" style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 9999 }} />
 
       <div style={{ maxWidth: 480, width: "100%", textAlign: "center" }}>
 
-        {/* Icone de sucesso */}
+        {/* Success icon */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
           <div
             className="success-pulse scale-in"
@@ -76,18 +89,23 @@ function ConfirmacaoContent() {
           </div>
         </div>
 
-        {/* Titulo */}
+        {/* Title */}
         <h1 style={{
           fontFamily: "var(--font-montserrat, Montserrat)",
           fontWeight: 900, fontSize: 28, color: "#1A1A1A", marginBottom: 10,
         }}>
-          Pedido enviado!
+          Pedido Confirmado!
         </h1>
-        <p style={{ color: "#666", fontSize: 15, marginBottom: 28, lineHeight: 1.5 }}>
-          Seu pedido foi registrado com sucesso. Toque no botao abaixo para enviar os detalhes pelo WhatsApp.
+
+        {/* Subtitles */}
+        <p style={{ color: "#444", fontSize: 15, marginBottom: 4, lineHeight: 1.5 }}>
+          Recebemos seu pedido e ja estamos preparando tudo.
+        </p>
+        <p style={{ color: "#999", fontSize: 13, marginBottom: 28, lineHeight: 1.5 }}>
+          Em breve nossa equipe entrara em contato.
         </p>
 
-        {/* Card numero do pedido */}
+        {/* Order number card */}
         <div style={{
           background: "#fff",
           border: "2px dashed #C89B3C",
@@ -105,34 +123,76 @@ function ConfirmacaoContent() {
             fontFamily: "var(--font-montserrat, Montserrat)",
             fontWeight: 900, fontSize: 32, color: "#C89B3C",
           }}>
-            #{orderNumber}
+            {orderNumber ? `#${orderNumber}` : "—"}
           </div>
+          {orderNumber && (
+            <span style={{
+              display: "inline-block", marginTop: 8,
+              background: "#FFF3D4", color: "#C89B3C",
+              borderRadius: 100, padding: "4px 14px",
+              fontSize: 12, fontWeight: 700,
+            }}>
+              #{orderNumber}
+            </span>
+          )}
         </div>
 
-        {/* Info box */}
-        <div style={{
-          background: "white",
-          borderRadius: 16,
-          padding: "20px 24px",
-          marginBottom: 28,
-          boxShadow: "0 2px 16px rgba(0,0,0,0.07)",
-          textAlign: "left",
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-        }}>
-          <p style={{ fontSize: 14, color: "#444", lineHeight: 1.5 }}>
-            Toque no botao abaixo para abrir o WhatsApp da Donna FIT com todos os detalhes do pedido preenchidos.
-          </p>
-          <p style={{ fontSize: 14, color: "#444", lineHeight: 1.5 }}>
-            Se o WhatsApp nao abriu, guarde o numero <strong style={{ color: "#C89B3C" }}>#{orderNumber}</strong> e entre em contato: (41) 99915-4720.
-          </p>
-          <p style={{ fontSize: 14, color: "#444", lineHeight: 1.5 }}>
-            Producao D+1 — seu pedido ficara pronto para entrega no dia seguinte.
-          </p>
-        </div>
+        {/* Resumo do Pedido card */}
+        {summary && (
+          <div style={{
+            background: "#fff",
+            borderRadius: 20,
+            boxShadow: "0 2px 20px rgba(0,0,0,0.08)",
+            padding: 20,
+            marginBottom: 20,
+            textAlign: "left",
+          }}>
+            <h2 style={{
+              fontFamily: "var(--font-montserrat, Montserrat)",
+              fontWeight: 800, fontSize: 16, color: "#1A1A1A", marginBottom: 16,
+            }}>
+              Resumo do Pedido
+            </h2>
 
-        {/* Botoes */}
+            {/* Items list */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+              {summary.items.map((item, idx) => (
+                <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#444" }}>
+                  <span style={{ fontWeight: 500 }}>{item.qty}x {item.name}</span>
+                  <span style={{ fontWeight: 600, color: "#1A1A1A" }}>{formatCurrency(item.price)}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Dashed divider + delivery / payment rows */}
+            <div style={{ borderTop: "1.5px dashed #E5E0D8", paddingTop: 12, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#666" }}>
+                <span>Entrega</span>
+                <span style={{ fontWeight: 600, color: "#1A1A1A" }}>
+                  {summary.deliveryType === "pickup" ? "Retirada na loja" : "Entrega (R$ 5,00)"}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#666" }}>
+                <span>Pagamento</span>
+                <span style={{ fontWeight: 600, color: "#1A1A1A" }}>
+                  {summary.paymentMethod === "pix" ? "PIX (5% desconto)" : "Maquininha"}
+                </span>
+              </div>
+            </div>
+
+            {/* Total */}
+            <div style={{ borderTop: "1.5px dashed #E5E0D8", paddingTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 800, fontSize: 15, color: "#1A1A1A" }}>
+                Total
+              </span>
+              <span style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 900, fontSize: 22, color: "#C89B3C" }}>
+                {formatCurrency(summary.total)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Buttons */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <a
             href={whatsappUrl}

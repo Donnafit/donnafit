@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 
@@ -37,8 +37,7 @@ export function AnnouncementBar({ phrases }: Props) {
         color: "#fff",
         textAlign: "center",
         padding: "8px 16px",
-        fontSize: 12,
-        fontFamily: "var(--font-montserrat, 'Montserrat', sans-serif)",
+        fontFamily: "var(--font-montserrat, var(--font-switzer), sans-serif)",
         fontWeight: 500,
         letterSpacing: "0.01em",
         lineHeight: 1.4,
@@ -49,15 +48,26 @@ export function AnnouncementBar({ phrases }: Props) {
       }}
     >
       <span
+        className="announcement-text"
         style={{
           opacity: visible ? 1 : 0,
           transform: visible ? "translateY(0)" : "translateY(-6px)",
           transition: "opacity 0.4s ease, transform 0.4s ease",
           display: "inline-block",
+          fontSize: 12,
         }}
       >
         {items[current]}
       </span>
+      <style>{`
+        @media (max-width: 640px) {
+          .announcement-text {
+            font-size: 14px !important;
+            text-wrap: balance;
+            max-width: 300px;
+          }
+        }
+      `}</style>
     </div>
   )
 }

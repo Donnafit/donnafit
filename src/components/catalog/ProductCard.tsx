@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import Image from "next/image"
@@ -90,12 +90,14 @@ export function ProductCard({ product, index }: Props) {
           }}
         />
 
-        {/* Badge categoria — esquerda */}
-        {categoryName && (
-          <span
-            style={{
-              position: "absolute",
-              top: 10, left: 10,
+        {/* Badges empilhados no canto superior esquerdo */}
+        <div style={{
+          position: "absolute", top: 10, left: 10,
+          display: "flex", flexDirection: "column", gap: 5,
+          alignItems: "flex-start",
+        }}>
+          {categoryName && (
+            <span style={{
               background: "rgba(20,20,20,0.55)",
               backdropFilter: "blur(10px)",
               WebkitBackdropFilter: "blur(10px)",
@@ -106,18 +108,13 @@ export function ProductCard({ product, index }: Props) {
               fontWeight: 700,
               letterSpacing: "0.2px",
               border: "1px solid rgba(255,255,255,0.14)",
-            }}
-          >
-            {categoryName}
-          </span>
-        )}
-
-        {/* Badge "Mais Pedido" — direita */}
-        {isMostOrdered && (
-          <span
-            style={{
-              position: "absolute",
-              top: 10, right: 10,
+              whiteSpace: "nowrap",
+            }}>
+              {categoryName}
+            </span>
+          )}
+          {isMostOrdered && (
+            <span style={{
               background: "linear-gradient(135deg, #C89B3C 0%, #E8B84D 100%)",
               color: "#fff",
               borderRadius: 100,
@@ -129,11 +126,12 @@ export function ProductCard({ product, index }: Props) {
               gap: 4,
               boxShadow: "0 3px 12px rgba(200,155,60,0.5)",
               letterSpacing: "0.2px",
-            }}
-          >
-            ★ Mais Pedido
-          </span>
-        )}
+              whiteSpace: "nowrap",
+            }}>
+              ★ Mais Pedido
+            </span>
+          )}
+        </div>
 
         {/* Porção — canto inferior direito da imagem */}
         {(product as any).portion_size && (
@@ -159,7 +157,7 @@ export function ProductCard({ product, index }: Props) {
       {/* ── Conteúdo ── */}
       <div
         style={{
-          padding: "14px 16px 16px",
+          padding: "12px 12px 14px",
           flex: 1,
           display: "flex",
           flexDirection: "column",
@@ -169,7 +167,7 @@ export function ProductCard({ product, index }: Props) {
         <Link href={"/produto/" + product.id} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
           <h3
             style={{
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--font-switzer), sans-serif",
               fontWeight: 800,
               fontSize: 13.5,
               color: "#1A1A1A",
@@ -218,11 +216,16 @@ export function ProductCard({ product, index }: Props) {
           {/* Preço */}
           <span
             style={{
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--font-switzer), sans-serif",
               fontWeight: 900,
-              fontSize: 17,
+              fontSize: 15,
               color: "#C89B3C",
               lineHeight: 1,
+              minWidth: 0,
+              flexShrink: 1,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
             {formatCurrency(product.price)}
@@ -279,15 +282,16 @@ export function ProductCard({ product, index }: Props) {
                 alignItems: "center",
                 background: "#F5F2EE",
                 borderRadius: 100,
-                padding: "3px",
+                padding: "2px",
                 gap: 0,
+                flexShrink: 0,
               }}
             >
               <button
                 onClick={() => updateQuantity(product.id, qty - 1)}
                 aria-label="Remover um"
                 style={{
-                  width: 30, height: 30,
+                  width: 24, height: 24,
                   borderRadius: "50%",
                   border: "none",
                   background: "white",
@@ -296,7 +300,7 @@ export function ProductCard({ product, index }: Props) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: 700,
                   lineHeight: 1,
                   boxShadow: "0 1px 4px rgba(0,0,0,0.10)",
@@ -307,11 +311,11 @@ export function ProductCard({ product, index }: Props) {
               </button>
               <span
                 style={{
-                  minWidth: 30,
+                  minWidth: 20,
                   textAlign: "center",
-                  fontFamily: "'Montserrat', sans-serif",
+                  fontFamily: "var(--font-switzer), sans-serif",
                   fontWeight: 800,
-                  fontSize: 13,
+                  fontSize: 12,
                   color: "#1A1A1A",
                 }}
               >
@@ -321,7 +325,7 @@ export function ProductCard({ product, index }: Props) {
                 onClick={() => addItem(product)}
                 aria-label="Adicionar mais um"
                 style={{
-                  width: 30, height: 30,
+                  width: 24, height: 24,
                   borderRadius: "50%",
                   border: "none",
                   background: "linear-gradient(135deg, #5A6B2A, #7B9238)",
@@ -330,7 +334,7 @@ export function ProductCard({ product, index }: Props) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: 700,
                   lineHeight: 1,
                   boxShadow: "0 2px 8px rgba(90,107,42,0.35)",
