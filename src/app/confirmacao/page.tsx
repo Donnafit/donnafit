@@ -67,7 +67,25 @@ function ConfirmacaoContent() {
         style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 9999, overflow: "hidden" }}
       />
 
-      <div style={{ maxWidth: 540, margin: "0 auto", padding: "48px 20px 80px", textAlign: "center" }}>
+      {/* Header mínimo */}
+      <header style={{
+        position: "sticky", top: 0, zIndex: 50,
+        background: "white",
+        borderBottom: "1px solid #F0EDE8",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+      }}>
+        <div style={{
+          maxWidth: 640, margin: "0 auto", width: "100%",
+          padding: "0 20px", height: 64,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <span style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 900, fontSize: 18, color: "#1A1A1A" }}>
+            Donna FIT
+          </span>
+        </div>
+      </header>
+
+      <div style={{ maxWidth: 540, margin: "0 auto", width: "100%", padding: "48px 20px 80px", textAlign: "center" }}>
 
         {/* Ícone sucesso */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
@@ -165,7 +183,7 @@ function ConfirmacaoContent() {
               <div style={{ display: "flex", justifyContent: "space-between", color: "#666" }}>
                 <span>Entrega</span>
                 <span style={{ fontWeight: 600, color: "#1A1A1A" }}>
-                  {summary.deliveryType === "pickup" ? "Retirada na loja" : "Entrega (R$ 5,00)"}
+                  {summary.deliveryType === "pickup" ? "Retirada na loja" : "Entrega (R$ 15,00)"}
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", color: "#666" }}>

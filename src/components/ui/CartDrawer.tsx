@@ -254,7 +254,7 @@ export function CartDrawer({ open, onClose }: Props) {
             <div style={{
               background: "#F0F4E8", borderRadius: 10,
               padding: "9px 14px", marginBottom: 14,
-              display: "flex", alignItems: "center", gap: 8,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             }}>
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#5A6B2A" strokeWidth={2} style={{ flexShrink: 0 }}>
                 <path strokeLinecap="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

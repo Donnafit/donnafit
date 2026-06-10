@@ -685,7 +685,7 @@ export function ProfileModal({ open, onClose }: Props) {
         {view === "profile" && user && (
           <>
             <ModalHeader title="Minha Conta" onClose={onClose} />
-            <div style={{ padding: "0 24px 24px", overflowY: "auto" }}>
+            <div style={{ padding: "16px 24px 24px", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, padding: "16px", background: "linear-gradient(135deg, #F5F8F0, #EEF4E4)", borderRadius: 16, border: "1px solid #E0EAD0" }}>
                 <div style={{
                   width: 56, height: 56, borderRadius: "50%",
@@ -731,7 +731,7 @@ export function ProfileModal({ open, onClose }: Props) {
                   style={{
                     width: "100%", padding: "12px 14px",
                     background: "none", border: "1.5px solid #FECACA", borderRadius: 12, cursor: "pointer",
-                    display: "flex", alignItems: "center", gap: 10,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
                     color: "#B91C1C", fontFamily: "var(--font-switzer), sans-serif", fontWeight: 600, fontSize: 14,
                     transition: "all 0.15s", marginTop: 4,
                   }}

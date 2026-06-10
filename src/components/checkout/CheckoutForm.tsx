@@ -8,7 +8,7 @@ import { buildWhatsAppMessage, buildWhatsAppURL } from "@/lib/whatsapp"
 import { formatCurrency } from "@/lib/utils"
 import { Store, Truck, QrCode, CreditCard, Check } from "lucide-react"
 
-const DELIVERY_FEE = 5
+const DELIVERY_FEE = 15
 const PIX_DISCOUNT_RATE = 0.05
 
 function maskPhone(value: string): string {
