@@ -1,11 +1,21 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/hooks/useAuth"
+import { useCart } from "@/hooks/useCart"
 import { formatCurrency } from "@/lib/utils"
+import type { Product } from "@/types"
 
 type View = "login" | "register" | "forgot" | "profile" | "orders" | "editProfile"
+
+interface OrderItem {
+  product_id: string | null
+  product_name: string
+  quantity: number
+  unit_price: number
+}
 
 interface OrderSummary {
   id: string
@@ -14,6 +24,7 @@ interface OrderSummary {
   total: number
   created_at: string
   delivery_type: string
+  order_items?: OrderItem[]
 }
 
 interface Props {
@@ -332,9 +343,12 @@ function MenuRow({ icon, label, sublabel, onClick, disabled = false }: {
 
 export function ProfileModal({ open, onClose }: Props) {
   const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
+  const { addItem } = useCart()
   const [view, setView] = useState<View>("login")
   const [orders, setOrders] = useState<OrderSummary[]>([])
   const [ordersLoading, setOrdersLoading] = useState(false)
+  const [reorderLoading, setReorderLoading] = useState<string | null>(null)
 
   const [loginEmail, setLoginEmail] = useState("")
   const [loginPass, setLoginPass] = useState("")
@@ -392,12 +406,36 @@ export function ProfileModal({ open, onClose }: Props) {
     const supabase = createClient()
     const phone = user.user_metadata?.phone ?? ""
     const { data } = await (supabase.from("orders") as any)
-      .select("id, order_number, status, total, created_at, delivery_type")
+      .select("id, order_number, status, total, created_at, delivery_type, order_items(product_id, product_name, quantity, unit_price)")
       .eq("customer_phone", phone.replace(/\D/g, ""))
       .order("created_at", { ascending: false })
       .limit(12)
     setOrders((data as OrderSummary[]) ?? [])
     setOrdersLoading(false)
+  }
+
+  async function handleReorder(order: OrderSummary) {
+    const items = order.order_items ?? []
+    if (!items.length) return
+    setReorderLoading(order.id)
+    const supabase = createClient()
+    const ids = items.filter(i => i.product_id).map(i => i.product_id!)
+    const { data: products } = ids.length
+      ? await (supabase.from("products") as any).select("*").in("id", ids)
+      : { data: [] }
+    for (const item of items) {
+      const product = (products ?? []).find((p: Product) => p.id === item.product_id)
+      if (product) {
+        for (let q = 0; q < item.quantity; q++) addItem(product)
+      }
+    }
+    setReorderLoading(null)
+    onClose()
+    router.push("/carrinho")
+  }
+
+  function handleDeleteOrder(id: string) {
+    setOrders(prev => prev.filter(o => o.id !== id))
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -752,7 +790,7 @@ export function ProfileModal({ open, onClose }: Props) {
         {view === "orders" && (
           <>
             <ModalHeader title="Meus Pedidos" onClose={onClose} onBack={() => setView("profile")} />
-            <div style={{ padding: "0 24px 24px", overflowY: "auto", flex: 1 }}>
+            <div style={{ padding: "16px 24px 24px", overflowY: "auto", flex: 1 }}>
               {ordersLoading && (
                 <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
                   <div style={{ width: 28, height: 28, borderRadius: "50%", border: "3px solid #E5E0D8", borderTopColor: "#5A6B2A", animation: "spin 0.6s linear infinite" }} />
@@ -784,9 +822,53 @@ export function ProfileModal({ open, onClose }: Props) {
                         {st.label}
                       </span>
                     </div>
-                    <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontWeight: 900, fontSize: 15, color: "#C89B3C" }}>
-                      {formatCurrency(order.total)}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontWeight: 900, fontSize: 15, color: "#C89B3C" }}>
+                        {formatCurrency(order.total)}
+                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {/* Pedir novamente */}
+                        <button
+                          onClick={() => handleReorder(order)}
+                          disabled={reorderLoading === order.id}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 5,
+                            background: "none", border: "1.5px solid #C89B3C", borderRadius: 8,
+                            padding: "5px 10px", cursor: "pointer",
+                            fontFamily: "var(--font-switzer), sans-serif", fontWeight: 700, fontSize: 11, color: "#C89B3C",
+                            opacity: reorderLoading === order.id ? 0.6 : 1, transition: "all 0.15s",
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "#FFFDF5" }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "none" }}
+                        >
+                          {reorderLoading === order.id ? (
+                            <div style={{ width: 12, height: 12, borderRadius: "50%", border: "2px solid #C89B3C", borderTopColor: "transparent", animation: "spin 0.6s linear infinite" }} />
+                          ) : (
+                            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                          )}
+                          Pedir novamente
+                        </button>
+                        {/* Excluir do histórico */}
+                        <button
+                          onClick={() => handleDeleteOrder(order.id)}
+                          title="Remover do histórico"
+                          style={{
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            width: 30, height: 30, borderRadius: 8,
+                            background: "none", border: "1.5px solid #FECACA", cursor: "pointer",
+                            color: "#B91C1C", transition: "all 0.15s",
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "#FEE2E2" }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "none" }}
+                        >
+                          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )
               })}
