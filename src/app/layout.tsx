@@ -20,6 +20,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Donna FIT | Marmitas Fitness",
   description: "Marmitas fitness saudáveis e saborosas entregues na sua porta.",
+  icons: {
+    icon: "/logo.svg",
+    apple: "/logo.svg",
+  },
 };
 
 export default function RootLayout({

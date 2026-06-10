@@ -36,9 +36,14 @@ export function buildWhatsAppMessage(order: OrderPayload): string {
       : ""
 
   const paymentLabel =
-    order.paymentMethod === "pix" ? "PIX (5% desconto)" : "Maquininha"
+    order.paymentMethod === "pix" ? "PIX _(desconto de 5% já incluído no total)_" : "Maquininha"
 
   const totalFormatted = `R$ ${order.total.toFixed(2).replace(".", ",")}`
+
+  const pixPendingLine =
+    order.paymentMethod === "pix"
+      ? `\n⏳ *Pagamento pendente* — aguardando comprovante PIX`
+      : ""
 
   return (
     `🛒 *NOVO PEDIDO — Donna FIT*\n\n` +
@@ -47,9 +52,9 @@ export function buildWhatsAppMessage(order: OrderPayload): string {
     `📱 *Telefone:* ${order.customerPhone}\n\n` +
     `*Itens:*\n${itemLines}\n\n` +
     `${entregaTexto}${addressLine}\n` +
-    `💳 *Pagamento:* ${paymentLabel}\n\n` +
-    `💰 *Total: ${totalFormatted}*\n\n` +
-    `_Pedido realizado em ${dataHora}_`
+    `💳 *Forma de pagamento:* ${paymentLabel}\n\n` +
+    `💰 *Total a pagar: ${totalFormatted}*${pixPendingLine}\n\n` +
+    `_Pedido registrado em ${dataHora}_`
   )
 }
 

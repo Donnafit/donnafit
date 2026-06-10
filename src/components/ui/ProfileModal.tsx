@@ -356,6 +356,9 @@ export function ProfileModal({ open, onClose }: Props) {
   const [editLoading, setEditLoading] = useState(false)
   const [editSuccess, setEditSuccess] = useState<string | null>(null)
   const [editError, setEditError] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [editAvatarUrl, setEditAvatarUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -375,6 +378,9 @@ export function ProfileModal({ open, onClose }: Props) {
       setEditPhone(formatPhone(user.user_metadata?.phone ?? ""))
       setEditError(null)
       setEditSuccess(null)
+      setEditAvatarUrl(user.user_metadata?.avatar_url ?? null)
+      setAvatarFile(null)
+      setAvatarPreview(null)
     }
   }, [view, user])
 
@@ -465,14 +471,46 @@ export function ProfileModal({ open, onClose }: Props) {
     setLoginEmail(""); setLoginPass("")
   }
 
+  function handleAvatarSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      setEditError("Imagem muito grande. Máximo 2MB.")
+      return
+    }
+    setAvatarFile(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setAvatarPreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
   async function handleEditProfile(e: React.FormEvent) {
     e.preventDefault()
     if (!editName.trim()) { setEditError("Informe seu nome."); return }
     setEditLoading(true); setEditError(null)
     const supabase = createClient()
     const cleanPhone = editPhone.replace(/\D/g, "")
+
+    let newAvatarUrl = editAvatarUrl
+
+    if (avatarFile && user) {
+      const ext = avatarFile.name.split(".").pop() ?? "jpg"
+      const path = `${user.id}/avatar.${ext}`
+      const supabaseClient = createClient()
+      const { error: uploadErr } = await supabaseClient.storage
+        .from("avatars")
+        .upload(path, avatarFile, { upsert: true, contentType: avatarFile.type })
+      if (uploadErr) {
+        setEditError("Erro ao enviar imagem. Tente novamente.")
+        setEditLoading(false)
+        return
+      }
+      const { data: urlData } = supabaseClient.storage.from("avatars").getPublicUrl(path)
+      newAvatarUrl = urlData.publicUrl + "?t=" + Date.now()
+    }
+
     const { error: err } = await supabase.auth.updateUser({
-      data: { name: editName.trim(), phone: cleanPhone },
+      data: { name: editName.trim(), phone: cleanPhone, avatar_url: newAvatarUrl },
     })
     setEditLoading(false)
     if (err) { setEditError("Erro ao salvar. Tente novamente."); return }
@@ -489,6 +527,7 @@ export function ProfileModal({ open, onClose }: Props) {
   const userName = user?.user_metadata?.name ?? user?.email?.split("@")[0] ?? "Usuário"
   const userInitial = userName.charAt(0).toUpperCase()
   const userPhone = user?.user_metadata?.phone ?? ""
+  const avatarUrl = user?.user_metadata?.avatar_url ?? null
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 180 }}>
@@ -648,11 +687,17 @@ export function ProfileModal({ open, onClose }: Props) {
               <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, padding: "16px", background: "linear-gradient(135deg, #F5F8F0, #EEF4E4)", borderRadius: 16, border: "1px solid #E0EAD0" }}>
                 <div style={{
                   width: 56, height: 56, borderRadius: "50%",
-                  background: avatarColor(userName),
+                  background: avatarUrl ? "transparent" : avatarColor(userName),
                   display: "flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0, boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                  overflow: "hidden",
                 }}>
-                  <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontWeight: 900, fontSize: 22, color: "#fff" }}>{userInitial}</span>
+                  {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatarUrl} alt={userName} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                  ) : (
+                    <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontWeight: 900, fontSize: 22, color: "#fff" }}>{userInitial}</span>
+                  )}
                 </div>
                 <div>
                   <p style={{ fontFamily: "var(--font-switzer), sans-serif", fontWeight: 700, fontSize: 16, color: "#1A1A1A", margin: "0 0 3px" }}>{userName}</p>
@@ -755,6 +800,55 @@ export function ProfileModal({ open, onClose }: Props) {
               <ErrorMsg error={editError} />
               <SuccessMsg success={editSuccess} />
               <form onSubmit={handleEditProfile}>
+                {/* Avatar upload */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 20 }}>
+                  <div
+                    onClick={() => document.getElementById("avatar-upload-input")?.click()}
+                    style={{
+                      width: 80, height: 80, borderRadius: "50%",
+                      background: avatarPreview || editAvatarUrl ? "transparent" : avatarColor(editName || userName),
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: "pointer", position: "relative", overflow: "hidden",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                      border: "3px solid #E8E3DA",
+                    }}
+                  >
+                    {(avatarPreview || editAvatarUrl) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={avatarPreview || editAvatarUrl || ""} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontWeight: 900, fontSize: 28, color: "#fff" }}>
+                        {(editName || userName).charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    {/* Camera overlay */}
+                    <div
+                      style={{
+                        position: "absolute", inset: 0,
+                        background: "rgba(0,0,0,0.35)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        opacity: 0, transition: "opacity 0.2s",
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1" }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0" }}
+                    >
+                      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                  <input
+                    id="avatar-upload-input"
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    style={{ display: "none" }}
+                    onChange={handleAvatarSelect}
+                  />
+                  <p style={{ fontSize: 11, color: "#AAA", marginTop: 8, fontFamily: "var(--font-switzer), sans-serif" }}>
+                    Toque para alterar foto · max. 2MB
+                  </p>
+                </div>
                 <Field
                   label="Nome completo"
                   value={editName}

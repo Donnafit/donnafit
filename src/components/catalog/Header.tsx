@@ -10,9 +10,9 @@ import { ProfileModal } from "@/components/ui/ProfileModal"
 
 const NAV_ITEMS = [
   { label: "Combos",   slug: "combos" },
-  { label: "Marmitas", slug: "marmitas" },
+  { label: "Marmitas", slug: "frango" },
   { label: "Massas",   slug: "massas" },
-  { label: "Sopas",    slug: "sopas" },
+  { label: "Sopas",    slug: "sopas-e-caldos" },
 ]
 
 const AVATAR_COLORS = ["#5A6B2A", "#C89B3C", "#7B8E3D", "#8B6914", "#4A5B1A"]
