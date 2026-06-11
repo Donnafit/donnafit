@@ -29,7 +29,7 @@ function ConfirmacaoContent() {
       } catch {}
     }
     const waParam = searchParams.get("wa")
-    if (waParam) setWhatsappUrl(decodeURIComponent(waParam))
+    if (waParam) setWhatsappUrl(waParam)
     try {
       const raw = localStorage.getItem("donna-fit-order-summary")
       if (raw) setSummary(JSON.parse(raw))

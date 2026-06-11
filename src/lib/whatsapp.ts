@@ -9,6 +9,7 @@ interface OrderPayload {
   deliveryAddress?: string
   items: CartItem[]
   total: number
+  riceChoices?: Record<string, "integral" | "branco">
 }
 
 export function buildWhatsAppMessage(order: OrderPayload): string {
@@ -26,6 +27,16 @@ export function buildWhatsAppMessage(order: OrderPayload): string {
           .replace(".", ",")}`
     )
     .join("\n")
+
+  const riceLines = order.items
+    .filter(({ product }) => order.riceChoices?.[product.id])
+    .map(({ product }) => {
+      const choice = order.riceChoices![product.id]
+      return `• ${product.name} → ${choice === "integral" ? "Integral" : "Branco"}`
+    })
+  const riceSection = riceLines.length > 0
+    ? `\n🍚 *Tipo de Arroz:*\n${riceLines.join("\n")}`
+    : ""
 
   const entregaTexto =
     order.deliveryType === "delivery" ? "🛵 *Entrega*" : "📦 *Retirada na loja*"
@@ -50,7 +61,7 @@ export function buildWhatsAppMessage(order: OrderPayload): string {
     `📋 *Pedido:* #${order.orderNumber}\n` +
     `👤 *Cliente:* ${order.customerName}\n` +
     `📱 *Telefone:* ${order.customerPhone}\n\n` +
-    `*Itens:*\n${itemLines}\n\n` +
+    `*Itens:*\n${itemLines}${riceSection}\n\n` +
     `${entregaTexto}${addressLine}\n` +
     `💳 *Forma de pagamento:* ${paymentLabel}\n\n` +
     `💰 *Total a pagar: ${totalFormatted}*${pixPendingLine}\n\n` +

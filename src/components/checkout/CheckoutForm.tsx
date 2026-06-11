@@ -66,8 +66,14 @@ export function CheckoutForm() {
   const [payment, setPayment] = useState<"pix" | "card">("pix")
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState("")
+  const [riceChoices, setRiceChoices] = useState<Record<string, "integral" | "branco">>({})
+  const [showRiceModal, setShowRiceModal] = useState(false)
 
   const cartItems = mounted ? items : []
+  const riceItems = cartItems.filter(item =>
+    item.product.description?.toLowerCase().includes("arroz")
+  )
+  const allRiceChosen = riceItems.every(item => !!riceChoices[item.product.id])
   const subtotal = mounted ? total() : 0
   const deliveryFee = delivery === "delivery" ? DELIVERY_FEE : 0
   const pixDiscount = payment === "pix" ? subtotal * PIX_DISCOUNT_RATE : 0
@@ -101,21 +107,11 @@ export function CheckoutForm() {
     return nameOk && phoneOk && addressOk
   }
 
-  async function handleSubmit() {
-    const nameOk = validateName(name)
-    const phoneOk = validatePhone(phone)
-    const addressOk = delivery === "pickup" || address.trim().length >= 10
-
-    setNameState(nameOk ? "valid" : "invalid")
-    setPhoneState(phoneOk ? "valid" : "invalid")
-    if (delivery === "delivery") setAddressState(addressOk ? "valid" : "invalid")
-
-    if (!nameOk || !phoneOk || !addressOk || cartItems.length === 0) return
-
+  async function doSubmit() {
     setLoading(true)
     setSubmitError("")
-
     try {
+      const activeRiceChoices = Object.keys(riceChoices).length > 0 ? riceChoices : undefined
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -127,6 +123,7 @@ export function CheckoutForm() {
           paymentMethod: payment,
           items: cartItems,
           total: finalTotal,
+          riceChoices: activeRiceChoices,
         }),
       })
       const data = await res.json()
@@ -141,12 +138,12 @@ export function CheckoutForm() {
         paymentMethod: payment,
         items: cartItems,
         total: finalTotal,
+        riceChoices: activeRiceChoices,
       })
 
       const waUrl = buildWhatsAppURL(msg)
       const encodedWa = encodeURIComponent(waUrl)
 
-      // Save order summary for confirmation page
       try {
         localStorage.setItem("donna-fit-order-summary", JSON.stringify({
           items: cartItems.map(i => ({ name: i.product.name, qty: i.quantity, price: i.product.price * i.quantity })),
@@ -156,7 +153,6 @@ export function CheckoutForm() {
         }))
       } catch {}
 
-      // Save delivery address and profile to user metadata for future pre-fill
       if (user) {
         try {
           const supabase = createClient()
@@ -178,6 +174,25 @@ export function CheckoutForm() {
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleSubmit() {
+    const nameOk = validateName(name)
+    const phoneOk = validatePhone(phone)
+    const addressOk = delivery === "pickup" || address.trim().length >= 10
+
+    setNameState(nameOk ? "valid" : "invalid")
+    setPhoneState(phoneOk ? "valid" : "invalid")
+    if (delivery === "delivery") setAddressState(addressOk ? "valid" : "invalid")
+
+    if (!nameOk || !phoneOk || !addressOk || cartItems.length === 0) return
+
+    if (riceItems.length > 0) {
+      setShowRiceModal(true)
+      return
+    }
+
+    void doSubmit()
   }
 
   return (
@@ -503,6 +518,135 @@ export function CheckoutForm() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
+
+      {/* Modal de tipo de arroz */}
+      {showRiceModal && (
+        <>
+          <div
+            onClick={() => setShowRiceModal(false)}
+            style={{
+              position: "fixed", inset: 0, zIndex: 200,
+              background: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(4px)",
+            }}
+          />
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 201,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "20px",
+            pointerEvents: "none",
+          }}>
+            <div style={{
+              background: "#fff", borderRadius: 24,
+              padding: "28px 24px",
+              width: "100%", maxWidth: 440,
+              boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
+              pointerEvents: "auto",
+            }}>
+              {/* Header */}
+              <div style={{ textAlign: "center", marginBottom: 24 }}>
+                <div style={{
+                  width: 56, height: 56, borderRadius: "50%",
+                  background: "#F0F4E8",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 12px",
+                }}>
+                  <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="#5A6B2A" strokeWidth="1.8">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 22V11m0 0C7 11 4 8 4 4c0 0 4 0 8 4zm0 0c5 0 8-3 8-7 0 0-4 0-8 4z"/>
+                  </svg>
+                </div>
+                <h2 style={{
+                  fontFamily: "var(--font-montserrat, Montserrat)",
+                  fontWeight: 900, fontSize: 20, color: "#1A1A1A", margin: "0 0 6px",
+                }}>
+                  Tipo de Arroz
+                </h2>
+                <p style={{ fontSize: 13, color: "#888", margin: 0, fontFamily: "var(--font-switzer), sans-serif" }}>
+                  Escolha para cada item com arroz
+                </p>
+              </div>
+
+              {/* Items */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 24 }}>
+                {riceItems.map(item => (
+                  <div
+                    key={item.product.id}
+                    style={{
+                      background: "#FAFAF8", borderRadius: 14,
+                      padding: "14px 16px",
+                      border: `1.5px solid ${riceChoices[item.product.id] ? "#5A6B2A" : "#E5E0D8"}`,
+                      transition: "border-color 0.15s ease",
+                    }}
+                  >
+                    <p style={{
+                      fontFamily: "var(--font-switzer), sans-serif",
+                      fontWeight: 700, fontSize: 14, color: "#1A1A1A",
+                      margin: "0 0 10px",
+                    }}>
+                      {item.quantity}x {item.product.name}
+                    </p>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      {(["integral", "branco"] as const).map(type => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setRiceChoices(prev => ({ ...prev, [item.product.id]: type }))}
+                          style={{
+                            padding: "10px 8px",
+                            borderRadius: 10,
+                            border: `2px solid ${riceChoices[item.product.id] === type ? "#5A6B2A" : "transparent"}`,
+                            background: riceChoices[item.product.id] === type ? "#5A6B2A" : "#F0EDE8",
+                            color: riceChoices[item.product.id] === type ? "#fff" : "#666",
+                            fontFamily: "var(--font-switzer), sans-serif",
+                            fontWeight: 700, fontSize: 13,
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          {type === "integral" ? "Integral" : "Branco"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Botões */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <button
+                  type="button"
+                  disabled={!allRiceChosen}
+                  onClick={() => { setShowRiceModal(false); void doSubmit() }}
+                  style={{
+                    width: "100%", height: 52, borderRadius: 14,
+                    background: allRiceChosen ? "#C89B3C" : "#E5E0D8",
+                    color: allRiceChosen ? "#fff" : "#aaa",
+                    border: "none",
+                    fontFamily: "var(--font-montserrat, Montserrat)",
+                    fontWeight: 800, fontSize: 15,
+                    cursor: allRiceChosen ? "pointer" : "not-allowed",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  Confirmar e Finalizar Pedido
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRiceModal(false)}
+                  style={{
+                    background: "none", border: "none",
+                    color: "#999", fontSize: 13,
+                    cursor: "pointer", padding: "6px",
+                    fontFamily: "var(--font-switzer), sans-serif",
+                  }}
+                >
+                  Voltar ao checkout
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

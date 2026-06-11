@@ -16,6 +16,7 @@ interface OrderBody {
   items: CartItem[]
   subtotal?: number
   total: number
+  riceChoices?: Record<string, "integral" | "branco">
 }
 
 export async function POST(req: Request) {
@@ -63,6 +64,13 @@ export async function POST(req: Request) {
   tomorrow.setDate(tomorrow.getDate() + 1)
   const deliveryDate = tomorrow.toISOString().split("T")[0]
 
+  const riceNotes = Object.entries(body.riceChoices ?? {})
+    .map(([productId, choice]) => {
+      const item = body.items.find(i => i.product.id === productId)
+      return `${item?.product.name ?? productId}: Arroz ${choice === "integral" ? "Integral" : "Branco"}`
+    })
+    .join(" | ")
+
   const insertPayload: Database["public"]["Tables"]["orders"]["Insert"] = {
     customer_name: body.customerName.trim(),
     customer_phone: cleanPhone,
@@ -73,6 +81,7 @@ export async function POST(req: Request) {
     subtotal: calculatedSubtotal,
     total: calculatedTotal,
     delivery_date: deliveryDate,
+    notes: riceNotes || null,
   }
 
   // First attempt: full payload including delivery_address
