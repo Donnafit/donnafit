@@ -456,3 +456,45 @@ body {
   .footer-bottom > div:last-child { align-items: center !important; }
   .payment-chips { justify-content: center; }
 }
+
+/* =============================================
+   BRAND SYSTEM — DONNA FIT ADMIN
+   ============================================= */
+
+:root {
+  --font-display: var(--font-montserrat), 'Montserrat', sans-serif;
+  --font-ui:      var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, sans-serif;
+
+  /* Paleta dark — Floresta */
+  --forest-950: #070C07;
+  --forest-900: #0C150C;
+  --forest-850: #0F1A0F;
+  --forest-700: #1A2F1A;
+  --forest-600: #142414;
+
+  /* Gold */
+  --gold-500:  #C89B3C;
+  --gold-400:  #D4AC50;
+  --gold-600:  #A67C22;
+  --gold-dim:  rgba(200,155,60,0.08);
+  --gold-text: rgba(200,155,60,0.12);
+  --gold-glow: rgba(200,155,60,0.15);
+
+  /* Surface — área de conteúdo claro */
+  --surface-50:  #F3F6F3;
+  --surface-100: #FFFFFF;
+  --surface-200: #E8ECE8;
+
+  /* Texto — contexto claro */
+  --text-950: #0D1117;
+  --text-700: #374151;
+  --text-500: #6B7280;
+  --text-300: #9CA3AF;
+
+  /* Transições */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:      cubic-bezier(0, 0, 0.2, 1);
+  --duration-micro:    100ms;
+  --duration-standard: 200ms;
+  --duration-panel:    250ms;
+}

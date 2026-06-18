@@ -2,19 +2,36 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, ChefHat, Package, LogOut, QrCode, Megaphone, BookOpen } from "lucide-react"
+import {
+  LayoutDashboard, ChefHat, Package, LogOut,
+  QrCode, Megaphone, BookOpen,
+} from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
-const NAV = [
-  { href: "/admin/pedidos",  label: "Pedidos",          icon: LayoutDashboard },
-  { href: "/admin/cozinha",  label: "Cozinha",           icon: ChefHat },
-  { href: "/admin/manual",   label: "Manual de Preparo", icon: BookOpen },
-  { href: "/admin/estoque",  label: "Estoque",           icon: Package },
-  { href: "/admin/anuncios", label: "Anúncios",          icon: Megaphone },
-  { href: "/admin/qrcode",   label: "QR Code",           icon: QrCode },
+const NAV_GROUPS = [
+  {
+    label: "Operação",
+    items: [
+      { href: "/admin/pedidos",  label: "Pedidos",          icon: LayoutDashboard, badge: true },
+      { href: "/admin/cozinha",  label: "Cozinha",           icon: ChefHat },
+      { href: "/admin/manual",   label: "Manual de Preparo", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Gestão",
+    items: [
+      { href: "/admin/estoque",  label: "Estoque",  icon: Package },
+      { href: "/admin/anuncios", label: "Anúncios", icon: Megaphone },
+      { href: "/admin/qrcode",   label: "QR Code",  icon: QrCode },
+    ],
+  },
 ]
 
-export function AdminSidebar() {
+interface Props {
+  pendingCount?: number
+}
+
+export function AdminSidebar({ pendingCount = 0 }: Props) {
   const pathname = usePathname()
   const router   = useRouter()
 
@@ -25,51 +42,154 @@ export function AdminSidebar() {
   }
 
   return (
-    <aside className="hidden md:flex flex-col w-60 text-white min-h-screen shrink-0" style={{ background: "#111827" }}>
+    <aside
+      className="hidden md:flex flex-col shrink-0"
+      style={{ width: 232, background: "var(--forest-900)", minHeight: "100vh" }}
+    >
       {/* Logo */}
-      <div className="p-5 flex items-center gap-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-        <Image src="/logo.svg" alt="Donna FIT" width={32} height={32} />
+      <div
+        className="flex items-center gap-3 px-[18px] py-[22px]"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+      >
+        <div
+          className="flex items-center justify-center shrink-0"
+          style={{ width: 34, height: 34, borderRadius: 9, background: "var(--gold-500)" }}
+        >
+          <Image src="/logo.svg" alt="Donna FIT" width={18} height={18} />
+        </div>
         <div>
-          <span className="font-display font-black text-sm text-white block leading-tight">DONNA FIT</span>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(200,155,60,0.15)", color: "#C89B3C" }}>Admin</span>
+          <span
+            className="block text-white leading-tight"
+            style={{ fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 900, letterSpacing: "1px" }}
+          >
+            DONNA FIT
+          </span>
+          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-ui)" }}>
+            Painel Admin
+          </span>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-3 space-y-0.5">
-        {NAV.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname.startsWith(href)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
-              style={isActive
-                ? { background: "rgba(200,155,60,0.15)", color: "#C89B3C" }
-                : { color: "rgba(255,255,255,0.5)" }
-              }
-              onMouseEnter={e => { if (!isActive) { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.85)" } }}
-              onMouseLeave={e => { if (!isActive) { (e.currentTarget as HTMLElement).style.background = ""; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.5)" } }}
+      <nav className="flex-1 p-3">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label} className="mb-6">
+            <p
+              className="px-2 mb-1"
+              style={{
+                fontFamily: "var(--font-ui)",
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: "1.4px",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.18)",
+              }}
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
-            </Link>
-          )
-        })}
+              {group.label}
+            </p>
+            {group.items.map(({ href, label, icon: Icon, badge }) => {
+              const isActive = pathname.startsWith(href)
+              const count = badge ? pendingCount : 0
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className="flex items-center gap-[10px] mb-[1px] relative"
+                  style={{
+                    padding: "9px 10px",
+                    borderRadius: 10,
+                    fontFamily: "var(--font-ui)",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: isActive ? "var(--gold-500)" : "rgba(255,255,255,0.38)",
+                    background: isActive ? "var(--gold-dim)" : "transparent",
+                    transition: "all var(--duration-micro) var(--ease-standard)",
+                    textDecoration: "none",
+                  }}
+                >
+                  {isActive && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        width: 3,
+                        height: 20,
+                        background: "var(--gold-500)",
+                        borderRadius: "0 3px 3px 0",
+                      }}
+                    />
+                  )}
+                  <Icon size={15} strokeWidth={1.8} style={{ flexShrink: 0, opacity: isActive ? 1 : 0.6 }} />
+                  <span className="flex-1">{label}</span>
+                  {badge && count > 0 && (
+                    <span
+                      style={{
+                        background: "var(--gold-500)",
+                        color: "#000",
+                        fontSize: 9,
+                        fontWeight: 700,
+                        padding: "1px 7px",
+                        borderRadius: 9999,
+                        fontFamily: "var(--font-ui)",
+                        lineHeight: "16px",
+                      }}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
-      {/* Footer */}
-      <div className="p-3" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-        <div className="flex items-center gap-3 px-2 py-2 mb-1">
-          <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0" style={{ background: "#C89B3C", color: "#111" }}>D</div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white leading-tight truncate">Donna FIT</p>
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Administradora</p>
-          </div>
-          <button onClick={handleLogout} className="p-1.5 rounded-lg transition-colors" style={{ color: "rgba(255,255,255,0.3)" }} title="Sair">
-            <LogOut className="h-4 w-4" />
-          </button>
+      {/* User footer */}
+      <div
+        className="flex items-center gap-[10px] p-4"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+      >
+        <div
+          className="flex items-center justify-center shrink-0"
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
+            fontFamily: "var(--font-display)",
+            fontSize: 13,
+            fontWeight: 800,
+            color: "#fff",
+          }}
+        >
+          E
         </div>
+        <div className="flex-1 min-w-0">
+          <p style={{ fontSize: 12, fontWeight: 600, color: "#fff", fontFamily: "var(--font-ui)" }}>
+            Everson
+          </p>
+          <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-ui)" }}>
+            Administrador
+          </p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="flex items-center justify-center"
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 7,
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+          title="Sair"
+        >
+          <LogOut size={12} strokeWidth={1.8} style={{ color: "rgba(255,255,255,0.3)" }} />
+        </button>
       </div>
     </aside>
   )
