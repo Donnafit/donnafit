@@ -10,5 +10,9 @@ export default async function AnunciosPage() {
     .select("*")
     .order("sort_order")
 
-  return <AnunciosClient announcements={announcements ?? []} />
+  return (
+    <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+      <AnunciosClient announcements={announcements ?? []} />
+    </div>
+  )
 }

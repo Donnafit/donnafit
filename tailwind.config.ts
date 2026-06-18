@@ -58,7 +58,8 @@ const config: Config = {
       },
       fontFamily: {
         display: ["var(--font-montserrat)", "sans-serif"],
-        body: ["var(--font-switzer)", "Switzer", "sans-serif"],
+        body:    ["var(--font-switzer)", "Switzer", "sans-serif"],
+        ui:      ["var(--font-jakarta)", "Plus Jakarta Sans", "sans-serif"],
       },
     },
   },

@@ -90,20 +90,20 @@ export function EstoqueClient({ products: initial }: Props) {
   ]
 
   return (
-    <div className="min-h-full" style={{ background: "#F3F4F6" }}>
+    <div className="min-h-full" style={{ background: "var(--surface-50)" }}>
       {/* Topbar */}
       <div
         className="sticky top-0 z-30 px-6 py-4 flex items-center justify-between"
-        style={{ background: "#fff", borderBottom: "1px solid #E5E7EB" }}
+        style={{ background: "var(--surface-100)", borderBottom: "1px solid rgba(0,0,0,0.07)" }}
       >
         <div>
           <h1
-            className="font-black text-gray-900"
-            style={{ fontFamily: "var(--font-montserrat)", fontSize: 18 }}
+            className="font-black"
+            style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--text-950)" }}
           >
             Controle de Estoque
           </h1>
-          <p className="text-xs text-gray-500 mt-0.5">Combos disponíveis no freezer</p>
+          <p style={{ fontSize: 12, color: "var(--text-300)", marginTop: 2 }}>Combos disponíveis no freezer</p>
         </div>
       </div>
 

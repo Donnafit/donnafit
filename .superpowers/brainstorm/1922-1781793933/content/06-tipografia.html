@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Donna FIT — Tipografia</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Font stacks */
+.f-system  { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto, sans-serif; }
+.f-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
+.f-dmsans  { font-family: 'DM Sans', sans-serif; }
+.f-geist   { font-family: 'Geist', 'Inter', sans-serif; }
+.f-display { font-family: 'Montserrat', sans-serif; } /* sempre para headings da marca */
+
+body {
+  background: #070C07;
+  padding: 28px 20px 52px;
+  color: #fff;
+  min-height: 100vh;
+}
+
+.page-header { text-align: center; margin-bottom: 32px; }
+.page-header h1 { font-family: 'Montserrat', sans-serif; font-size: 20px; font-weight: 800; color: rgba(255,255,255,.9); margin-bottom: 6px; }
+.page-header p { font-size: 13px; color: rgba(255,255,255,.35); }
+
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; max-width: 960px; margin: 0 auto; }
+
+.font-card {
+  border-radius: 14px;
+  border: 2px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+  background: #0F1A0F;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.font-card:hover { transform: translateY(-2px); }
+.font-card.selected {
+  border-color: #C89B3C;
+  box-shadow: 0 0 0 1px rgba(200,155,60,0.25), 0 12px 40px rgba(0,0,0,0.5);
+}
+
+/* Each demo panel uses palette C + tone B */
+.demo {
+  background: #0C150C;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Mini hero strip */
+.mini-hero {
+  background: linear-gradient(135deg, #0F1A0F 0%, #1A2F1A 60%, #142414 100%);
+  border-radius: 10px;
+  padding: 14px 16px 0;
+  overflow: hidden;
+}
+.hero-greeting {
+  font-family: 'Montserrat', sans-serif; /* heading always Montserrat */
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+.hero-sub {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  font-weight: 400;
+  margin-bottom: 12px;
+}
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  border-radius: 8px 8px 0 0;
+  overflow: hidden;
+  background: rgba(255,255,255,0.05);
+}
+.mini-stat {
+  background: rgba(255,255,255,0.03);
+  padding: 8px 8px;
+}
+.stat-n {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.stat-n.gold { color: #C89B3C; font-size: 13px; }
+.stat-lbl { font-size: 8px; color: rgba(255,255,255,0.3); }
+
+/* Divider */
+.div { height: 1px; background: rgba(255,255,255,0.06); }
+
+/* Sidebar nav preview */
+.nav-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.nav-lbl {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.18);
+  padding: 0 8px;
+  margin-bottom: 3px;
+}
+.nav-it {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.35);
+  position: relative;
+}
+.nav-it.active {
+  background: rgba(200,155,60,0.08);
+  color: #C89B3C;
+}
+.nav-it.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 20px;
+  background: #C89B3C;
+  border-radius: 0 3px 3px 0;
+}
+.nav-it svg { width: 13px; height: 13px; flex-shrink: 0; opacity: .7; }
+.nav-badge { margin-left: auto; background: #C89B3C; color: #000; font-size: 9px; font-weight: 700; padding: 1px 7px; border-radius: 99px; }
+
+/* Table row preview */
+.table-preview {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.t-head {
+  display: grid;
+  grid-template-columns: 50px 1fr 70px 80px;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.t-head span {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: rgba(255,255,255,0.2);
+}
+.t-row {
+  display: grid;
+  grid-template-columns: 50px 1fr 70px 80px;
+  padding: 8px 12px;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.t-row:last-child { border-bottom: none; }
+.t-row.sel { background: rgba(200,155,60,0.05); }
+.t-id { font-size: 9px; color: rgba(255,255,255,0.2); }
+.t-name { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.85); }
+.t-sub { font-size: 9px; color: rgba(255,255,255,0.3); font-weight: 400; }
+.t-price { font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 700; color: #C89B3C; }
+.t-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9px; font-weight: 600;
+  padding: 3px 9px; border-radius: 99px;
+}
+.t-pill .p { width: 4px; height: 4px; border-radius: 99px; }
+
+/* Buttons preview */
+.btn-row { display: flex; gap: 8px; align-items: center; }
+.btn-p {
+  font-size: 12px; font-weight: 700;
+  padding: 9px 18px; border-radius: 10px;
+  background: linear-gradient(135deg, #C89B3C, #A67C22);
+  color: #000; border: none; cursor: pointer;
+}
+.btn-s {
+  font-size: 12px; font-weight: 500;
+  padding: 9px 18px; border-radius: 10px;
+  background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.1); cursor: pointer;
+}
+.btn-g {
+  font-size: 12px; font-weight: 600;
+  padding: 9px 18px; border-radius: 10px;
+  background: rgba(200,155,60,0.07); color: #C89B3C;
+  border: 1px solid rgba(200,155,60,0.15); cursor: pointer;
+}
+
+/* Font specimen */
+.specimen-row {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 8px;
+}
+.specimen-name {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.5px;
+  color: #C89B3C; text-transform: uppercase; white-space: nowrap;
+  min-width: 90px;
+}
+.specimen-text {
+  font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.4;
+}
+.specimen-sub { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 2px; }
+
+/* Card footer */
+.card-foot {
+  padding: 12px 16px 14px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.card-foot h3 { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 3px; }
+.card-foot p { font-size: 11px; color: rgba(255,255,255,0.38); line-height: 1.5; }
+
+.bottom-note {
+  text-align: center; margin-top: 28px;
+  color: rgba(255,255,255,0.3); font-size: 13px; line-height: 1.7;
+}
+.bottom-note strong { color: rgba(255,255,255,0.65); }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Qual fonte para a UI?</h1>
+  <p>Headings sempre Montserrat — o que muda é a fonte dos textos, navegação, tabelas e botões</p>
+</div>
+
+<div class="grid">
+
+  <!-- ══════ A: SYSTEM UI ══════ -->
+  <div class="font-card f-system" id="f-a" onclick="pick('a')">
+    <div class="demo f-system">
+
+      <!-- Specimen -->
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <div class="specimen-row">
+          <span class="specimen-name f-system">System UI</span>
+          <div>
+            <div class="specimen-text f-system">Gestão de Pedidos</div>
+            <div class="specimen-sub f-system">SF Pro · Segoe UI · Roboto — varia por SO</div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.25);padding:0 4px;font-style:italic;" class="f-system">
+          No seu Mac/Windows aparece a fonte nativa do sistema. Zero download. Máxima familiaridade.
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <!-- Hero -->
+      <div class="mini-hero">
+        <div class="hero-greeting">Boa tarde, Everson</div>
+        <div class="hero-sub f-system">Quarta-feira · 18 de junho de 2026</div>
+        <div class="mini-stats">
+          <div class="mini-stat"><div class="stat-n">12</div><div class="stat-lbl f-system">Pendentes</div></div>
+          <div class="mini-stat"><div class="stat-n">5</div><div class="stat-lbl f-system">Produção</div></div>
+          <div class="mini-stat"><div class="stat-n">3</div><div class="stat-lbl f-system">Prontos</div></div>
+          <div class="mini-stat"><div class="stat-n gold">R$840</div><div class="stat-lbl f-system">Hoje</div></div>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <!-- Nav -->
+      <div class="nav-preview">
+        <div class="nav-lbl f-system">Operação</div>
+        <div class="nav-it active f-system">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Pedidos
+          <span class="nav-badge f-system">12</span>
+        </div>
+        <div class="nav-it f-system">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 010 8h-1M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8z"/></svg>
+          Cozinha
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <!-- Table -->
+      <div class="table-preview">
+        <div class="t-head">
+          <span class="f-system">#</span>
+          <span class="f-system">Cliente</span>
+          <span class="f-system">Total</span>
+          <span class="f-system">Status</span>
+        </div>
+        <div class="t-row sel">
+          <span class="t-id f-system">#001</span>
+          <div><div class="t-name f-system">Maria Silva</div><div class="t-sub f-system">Estrogonofe de Frango</div></div>
+          <span class="t-price">R$15</span>
+          <span class="t-pill f-system" style="background:rgba(245,158,11,0.1);color:#D97706;"><span class="p" style="background:#F59E0B;"></span>Pendente</span>
+        </div>
+        <div class="t-row">
+          <span class="t-id f-system">#002</span>
+          <div><div class="t-name f-system">João Mendes</div><div class="t-sub f-system">Combo 10 refeições</div></div>
+          <span class="t-price">R$141</span>
+          <span class="t-pill f-system" style="background:rgba(52,211,153,0.08);color:#34D399;"><span class="p" style="background:#34D399;"></span>Pronto</span>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <!-- Buttons -->
+      <div class="btn-row">
+        <button class="btn-p f-system">Iniciar Produção</button>
+        <button class="btn-g f-system">Ver Detalhes</button>
+        <button class="btn-s f-system">Cancelar</button>
+      </div>
+
+    </div>
+    <div class="card-foot">
+      <h3>A — System UI</h3>
+      <p>Fonte nativa do sistema operacional. SF Pro no Mac, Segoe UI no Windows. Sensação de app nativo, carrega instantaneamente, máxima legibilidade.</p>
+    </div>
+  </div>
+
+  <!-- ══════ B: PLUS JAKARTA SANS ══════ -->
+  <div class="font-card f-jakarta" id="f-b" onclick="pick('b')">
+    <div class="demo f-jakarta">
+
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <div class="specimen-row">
+          <span class="specimen-name f-jakarta">Jakarta</span>
+          <div>
+            <div class="specimen-text f-jakarta">Gestão de Pedidos</div>
+            <div class="specimen-sub f-jakarta">Plus Jakarta Sans — geométrica com personalidade</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <div class="mini-hero">
+        <div class="hero-greeting">Boa tarde, Everson</div>
+        <div class="hero-sub f-jakarta">Quarta-feira · 18 de junho de 2026</div>
+        <div class="mini-stats">
+          <div class="mini-stat"><div class="stat-n">12</div><div class="stat-lbl f-jakarta">Pendentes</div></div>
+          <div class="mini-stat"><div class="stat-n">5</div><div class="stat-lbl f-jakarta">Produção</div></div>
+          <div class="mini-stat"><div class="stat-n">3</div><div class="stat-lbl f-jakarta">Prontos</div></div>
+          <div class="mini-stat"><div class="stat-n gold">R$840</div><div class="stat-lbl f-jakarta">Hoje</div></div>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <div class="nav-preview">
+        <div class="nav-lbl f-jakarta">Operação</div>
+        <div class="nav-it active f-jakarta">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Pedidos
+          <span class="nav-badge f-jakarta">12</span>
+        </div>
+        <div class="nav-it f-jakarta">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 010 8h-1M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8z"/></svg>
+          Cozinha
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <div class="table-preview">
+        <div class="t-head">
+          <span class="f-jakarta">#</span>
+          <span class="f-jakarta">Cliente</span>
+          <span class="f-jakarta">Total</span>
+          <span class="f-jakarta">Status</span>
+        </div>
+        <div class="t-row sel">
+          <span class="t-id f-jakarta">#001</span>
+          <div><div class="t-name f-jakarta">Maria Silva</div><div class="t-sub f-jakarta">Estrogonofe de Frango</div></div>
+          <span class="t-price">R$15</span>
+          <span class="t-pill f-jakarta" style="background:rgba(245,158,11,0.1);color:#D97706;"><span class="p" style="background:#F59E0B;"></span>Pendente</span>
+        </div>
+        <div class="t-row">
+          <span class="t-id f-jakarta">#002</span>
+          <div><div class="t-name f-jakarta">João Mendes</div><div class="t-sub f-jakarta">Combo 10 refeições</div></div>
+          <span class="t-price">R$141</span>
+          <span class="t-pill f-jakarta" style="background:rgba(52,211,153,0.08);color:#34D399;"><span class="p" style="background:#34D399;"></span>Pronto</span>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <div class="btn-row">
+        <button class="btn-p f-jakarta">Iniciar Produção</button>
+        <button class="btn-g f-jakarta">Ver Detalhes</button>
+        <button class="btn-s f-jakarta">Cancelar</button>
+      </div>
+
+    </div>
+    <div class="card-foot">
+      <h3>B — Plus Jakarta Sans</h3>
+      <p>Geométrica moderna com personalidade. Muito usada em dashboards premium (Linear, Vercel). Combina bem com Montserrat nos headings.</p>
+    </div>
+  </div>
+
+  <!-- ══════ C: DM SANS ══════ -->
+  <div class="font-card f-dmsans" id="f-c" onclick="pick('c')">
+    <div class="demo f-dmsans">
+
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <div class="specimen-row">
+          <span class="specimen-name f-dmsans">DM Sans</span>
+          <div>
+            <div class="specimen-text f-dmsans">Gestão de Pedidos</div>
+            <div class="specimen-sub f-dmsans">DM Sans — humanista, elegante, arredondada</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <div class="mini-hero">
+        <div class="hero-greeting">Boa tarde, Everson</div>
+        <div class="hero-sub f-dmsans">Quarta-feira · 18 de junho de 2026</div>
+        <div class="mini-stats">
+          <div class="mini-stat"><div class="stat-n">12</div><div class="stat-lbl f-dmsans">Pendentes</div></div>
+          <div class="mini-stat"><div class="stat-n">5</div><div class="stat-lbl f-dmsans">Produção</div></div>
+          <div class="mini-stat"><div class="stat-n">3</div><div class="stat-lbl f-dmsans">Prontos</div></div>
+          <div class="mini-stat"><div class="stat-n gold">R$840</div><div class="stat-lbl f-dmsans">Hoje</div></div>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <div class="nav-preview">
+        <div class="nav-lbl f-dmsans">Operação</div>
+        <div class="nav-it active f-dmsans">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Pedidos
+          <span class="nav-badge f-dmsans">12</span>
+        </div>
+        <div class="nav-it f-dmsans">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 010 8h-1M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8z"/></svg>
+          Cozinha
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <div class="table-preview">
+        <div class="t-head">
+          <span class="f-dmsans">#</span>
+          <span class="f-dmsans">Cliente</span>
+          <span class="f-dmsans">Total</span>
+          <span class="f-dmsans">Status</span>
+        </div>
+        <div class="t-row sel">
+          <span class="t-id f-dmsans">#001</span>
+          <div><div class="t-name f-dmsans">Maria Silva</div><div class="t-sub f-dmsans">Estrogonofe de Frango</div></div>
+          <span class="t-price">R$15</span>
+          <span class="t-pill f-dmsans" style="background:rgba(245,158,11,0.1);color:#D97706;"><span class="p" style="background:#F59E0B;"></span>Pendente</span>
+        </div>
+        <div class="t-row">
+          <span class="t-id f-dmsans">#002</span>
+          <div><div class="t-name f-dmsans">João Mendes</div><div class="t-sub f-dmsans">Combo 10 refeições</div></div>
+          <span class="t-price">R$141</span>
+          <span class="t-pill f-dmsans" style="background:rgba(52,211,153,0.08);color:#34D399;"><span class="p" style="background:#34D399;"></span>Pronto</span>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <div class="btn-row">
+        <button class="btn-p f-dmsans">Iniciar Produção</button>
+        <button class="btn-g f-dmsans">Ver Detalhes</button>
+        <button class="btn-s f-dmsans">Cancelar</button>
+      </div>
+
+    </div>
+    <div class="card-foot">
+      <h3>C — DM Sans</h3>
+      <p>Humanista, arredondada, elegante. Usada pelo Google Material 3 e produtos como Notion. Mais "quente" que Inter, parece mais acessível.</p>
+    </div>
+  </div>
+
+  <!-- ══════ D: GEIST ══════ -->
+  <div class="font-card f-geist" id="f-d" onclick="pick('d')">
+    <div class="demo f-geist">
+
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <div class="specimen-row">
+          <span class="specimen-name f-geist">Geist</span>
+          <div>
+            <div class="specimen-text f-geist">Gestão de Pedidos</div>
+            <div class="specimen-sub f-geist">Geist by Vercel — técnica, precisa, neutra</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <div class="mini-hero">
+        <div class="hero-greeting">Boa tarde, Everson</div>
+        <div class="hero-sub f-geist">Quarta-feira · 18 de junho de 2026</div>
+        <div class="mini-stats">
+          <div class="mini-stat"><div class="stat-n">12</div><div class="stat-lbl f-geist">Pendentes</div></div>
+          <div class="mini-stat"><div class="stat-n">5</div><div class="stat-lbl f-geist">Produção</div></div>
+          <div class="mini-stat"><div class="stat-n">3</div><div class="stat-lbl f-geist">Prontos</div></div>
+          <div class="mini-stat"><div class="stat-n gold">R$840</div><div class="stat-lbl f-geist">Hoje</div></div>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <div class="nav-preview">
+        <div class="nav-lbl f-geist">Operação</div>
+        <div class="nav-it active f-geist">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Pedidos
+          <span class="nav-badge f-geist">12</span>
+        </div>
+        <div class="nav-it f-geist">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 010 8h-1M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8z"/></svg>
+          Cozinha
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <div class="table-preview">
+        <div class="t-head">
+          <span class="f-geist">#</span>
+          <span class="f-geist">Cliente</span>
+          <span class="f-geist">Total</span>
+          <span class="f-geist">Status</span>
+        </div>
+        <div class="t-row sel">
+          <span class="t-id f-geist">#001</span>
+          <div><div class="t-name f-geist">Maria Silva</div><div class="t-sub f-geist">Estrogonofe de Frango</div></div>
+          <span class="t-price">R$15</span>
+          <span class="t-pill f-geist" style="background:rgba(245,158,11,0.1);color:#D97706;"><span class="p" style="background:#F59E0B;"></span>Pendente</span>
+        </div>
+        <div class="t-row">
+          <span class="t-id f-geist">#002</span>
+          <div><div class="t-name f-geist">João Mendes</div><div class="t-sub f-geist">Combo 10 refeições</div></div>
+          <span class="t-price">R$141</span>
+          <span class="t-pill f-geist" style="background:rgba(52,211,153,0.08);color:#34D399;"><span class="p" style="background:#34D399;"></span>Pronto</span>
+        </div>
+      </div>
+
+      <div class="div"></div>
+
+      <div class="btn-row">
+        <button class="btn-p f-geist">Iniciar Produção</button>
+        <button class="btn-g f-geist">Ver Detalhes</button>
+        <button class="btn-s f-geist">Cancelar</button>
+      </div>
+
+    </div>
+    <div class="card-foot">
+      <h3>D — Geist (Vercel)</h3>
+      <p>Criada pela Vercel para o Next.js. Técnica, neutra, ultra-legível em telas. Muito boa para dados e tabelas densas. Zero personalidade "quente".</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="bottom-note">
+  <strong>A</strong> = nativa do OS &nbsp;·&nbsp; <strong>B</strong> = Jakarta — moderna com personalidade &nbsp;·&nbsp; <strong>C</strong> = DM Sans — elegante e quente &nbsp;·&nbsp; <strong>D</strong> = Geist — técnica e precisa<br>
+  Headings (<em>Boa tarde, Everson</em>) sempre em Montserrat — só o corpo muda
+</div>
+
+<script>
+function pick(id) {
+  document.querySelectorAll('.font-card').forEach(el => el.classList.remove('selected'));
+  document.getElementById('f-' + id).classList.add('selected');
+  if (window.__companion && window.__companion.sendEvent) {
+    const labels = { a:'A — System UI', b:'B — Plus Jakarta Sans', c:'C — DM Sans', d:'D — Geist' };
+    window.__companion.sendEvent({ type:'click', choice:id, text:labels[id] });
+  }
+}
+</script>
+</body>
+</html>

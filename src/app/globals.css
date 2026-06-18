@@ -498,3 +498,12 @@ body {
   --duration-standard: 200ms;
   --duration-panel:    250ms;
 }
+
+/* Admin: Jakarta Sans como fonte padrão em toda a área administrativa */
+.admin-layout,
+.admin-layout input,
+.admin-layout button,
+.admin-layout select,
+.admin-layout textarea {
+  font-family: var(--font-ui);
+}

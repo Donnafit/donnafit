@@ -7,7 +7,6 @@ export default async function ManualPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createClient()) as any
 
-  // Somente produtos com instrução de preparo cadastrada
   const { data: products } = await supabase
     .from("products")
     .select("*, categories(name, slug)")
@@ -15,5 +14,9 @@ export default async function ManualPage() {
     .not("prep_instructions", "is", null)
     .order("sort_order")
 
-  return <ManualClient products={(products ?? []) as any[]} />
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+      <ManualClient products={(products ?? []) as any[]} />
+    </div>
+  )
 }

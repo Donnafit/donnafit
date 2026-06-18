@@ -28,7 +28,7 @@ export default function PedidosPage() {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <div
           style={{
             background: "linear-gradient(135deg, var(--forest-850) 0%, var(--forest-700) 60%, var(--forest-600) 100%)",
@@ -53,7 +53,7 @@ export default function PedidosPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
       <AdminHero
         pendingCount={pending}
         productionCount={production}
@@ -62,7 +62,7 @@ export default function PedidosPage() {
         todayOrdersCount={todayOrders.length}
       />
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
         <OrderTable
           orders={orders}
           selectedId={selected?.id ?? null}

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Donna FIT — Tom dos Componentes</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: #070C07;
+  padding: 28px 20px 52px;
+  color: #fff;
+  min-height: 100vh;
+}
+.page-header { text-align: center; margin-bottom: 32px; }
+.page-header h1 { font-family: 'Montserrat', sans-serif; font-size: 20px; font-weight: 800; color: rgba(255,255,255,0.9); margin-bottom: 6px; }
+.page-header p { font-size: 13px; color: rgba(255,255,255,0.35); }
+
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 960px; margin: 0 auto; }
+
+.tone-card {
+  border-radius: 14px;
+  border: 2px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+  cursor: pointer;
+  background: #111A11;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.tone-card:hover { transform: translateY(-3px); }
+.tone-card.selected {
+  border-color: #C89B3C;
+  box-shadow: 0 0 0 1px rgba(200,155,60,0.3), 0 16px 48px rgba(0,0,0,0.5);
+}
+
+/* ── TONE A: INDUSTRIAL ─────────────────────
+   Sharp corners · Heavy weights · Dense · Precise
+────────────────────────────────────────────── */
+.tone-a-demo {
+  background: #0A100A;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Typography block A */
+.typo-block-a { }
+.typo-block-a .label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+  margin-bottom: 6px;
+}
+.typo-block-a .h1 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: -0.5px;
+  margin-bottom: 3px;
+}
+.typo-block-a .h2 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.8);
+  margin-bottom: 3px;
+}
+.typo-block-a .body {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.5;
+}
+.typo-block-a .mono {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #C89B3C;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+/* Components A */
+.comp-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.btn-a-primary {
+  background: #C89B3C;
+  color: #000;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 9px 18px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+}
+.btn-a-secondary {
+  background: transparent;
+  color: rgba(255,255,255,0.6);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.15);
+  cursor: pointer;
+}
+.btn-a-ghost {
+  background: rgba(200,155,60,0.08);
+  color: #C89B3C;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(200,155,60,0.2);
+  cursor: pointer;
+}
+
+/* Pills A */
+.pill-a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.pill-a .pip { width: 4px; height: 4px; border-radius: 99px; }
+
+/* Input A */
+.input-a {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  width: 100%;
+  outline: none;
+}
+
+/* Card A */
+.card-a {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.card-a-val {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+}
+.card-a-val.gold { color: #C89B3C; }
+.card-a-lbl { font-size: 9px; color: rgba(255,255,255,0.3); font-weight: 500; margin-top: 2px; letter-spacing: 0.3px; }
+.card-a-icon {
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+}
+.card-a-icon svg { width: 14px; height: 14px; }
+
+/* Nav item A */
+.nav-a-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+/* ── TONE B: PREMIUM/REFINED ────────────────
+   Rounder corners · Elegant weights · Airy · Polished
+────────────────────────────────────────────── */
+.tone-b-demo {
+  background: #0C140C;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.typo-block-b .label {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+  margin-bottom: 6px;
+}
+.typo-block-b .h1 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+  letter-spacing: -0.3px;
+  margin-bottom: 3px;
+}
+.typo-block-b .h2 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.75);
+  margin-bottom: 3px;
+}
+.typo-block-b .body {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.4);
+  line-height: 1.6;
+}
+.typo-block-b .mono {
+  font-size: 10px;
+  font-weight: 500;
+  color: #C89B3C;
+}
+
+.btn-b-primary {
+  background: linear-gradient(135deg, #C89B3C, #A67C22);
+  color: #000;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 12px rgba(200,155,60,0.25);
+}
+.btn-b-secondary {
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.6);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+}
+.btn-b-ghost {
+  background: rgba(200,155,60,0.07);
+  color: #C89B3C;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(200,155,60,0.15);
+  cursor: pointer;
+}
+
+.pill-b {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 99px;
+}
+.pill-b .pip { width: 5px; height: 5px; border-radius: 99px; }
+
+.input-b {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  width: 100%;
+  outline: none;
+}
+
+.card-b {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.card-b-val {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+.card-b-val.gold { color: #C89B3C; }
+.card-b-lbl { font-size: 10px; color: rgba(255,255,255,0.3); font-weight: 400; margin-top: 2px; }
+.card-b-icon {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.card-b-icon svg { width: 14px; height: 14px; }
+
+.nav-b-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Card footer */
+.card-foot {
+  padding: 14px 16px 16px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.card-foot h3 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px; font-weight: 800;
+  color: #fff; margin-bottom: 4px;
+}
+.card-foot p { font-size: 11px; color: rgba(255,255,255,0.38); line-height: 1.5; }
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 2px 0;
+}
+
+.section-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+  margin-bottom: 6px;
+}
+
+.bottom-note {
+  text-align: center;
+  margin-top: 28px;
+  color: rgba(255,255,255,0.3);
+  font-size: 13px;
+}
+.bottom-note strong { color: rgba(255,255,255,0.65); }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Qual é o tom dos componentes?</h1>
+  <p>Mesma paleta Floresta + Gold — personalidade completamente diferente</p>
+</div>
+
+<div class="grid">
+
+  <!-- ════════════════════════════════════
+       TOM A: INDUSTRIAL / PRECISO
+  ════════════════════════════════════ -->
+  <div class="tone-card" id="tone-a" onclick="pick('a')">
+    <div class="tone-a-demo">
+
+      <!-- Tipografia -->
+      <div class="typo-block-a">
+        <div class="label">Tipografia</div>
+        <div class="h1">28 · Montserrat Black</div>
+        <div class="h2">16 · Montserrat ExtraBold</div>
+        <div class="body">12 · Inter Regular — texto de suporte e descrições operacionais</div>
+        <div class="mono" style="margin-top:4px;">RÓTULOS EM CAPS · MONTSERRAT 600</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Botões -->
+      <div>
+        <div class="section-label">Botões</div>
+        <div class="comp-row">
+          <button class="btn-a-primary">INICIAR PRODUÇÃO</button>
+          <button class="btn-a-ghost">VER DETALHES</button>
+          <button class="btn-a-secondary">CANCELAR</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Status pills -->
+      <div>
+        <div class="section-label">Status</div>
+        <div class="comp-row">
+          <span class="pill-a" style="background:rgba(245,158,11,0.12);color:#F59E0B;"><span class="pip" style="background:#F59E0B;"></span>PENDENTE</span>
+          <span class="pill-a" style="background:rgba(96,165,250,0.1);color:#60A5FA;"><span class="pip" style="background:#60A5FA;"></span>PRODUÇÃO</span>
+          <span class="pill-a" style="background:rgba(52,211,153,0.1);color:#34D399;"><span class="pip" style="background:#34D399;"></span>PRONTO</span>
+          <span class="pill-a" style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.3);"><span class="pip" style="background:rgba(255,255,255,0.2);"></span>ENTREGUE</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- KPI cards -->
+      <div>
+        <div class="section-label">Cards de Métricas</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="card-a">
+            <div>
+              <div class="card-a-val">12</div>
+              <div class="card-a-lbl">PENDENTES</div>
+            </div>
+            <div class="card-a-icon" style="background:rgba(245,158,11,0.1);">
+              <svg fill="none" stroke="#F59E0B" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            </div>
+          </div>
+          <div class="card-a">
+            <div>
+              <div class="card-a-val gold" style="font-size:16px;">R$840</div>
+              <div class="card-a-lbl">FATURAMENTO</div>
+            </div>
+            <div class="card-a-icon" style="background:rgba(200,155,60,0.1);">
+              <svg fill="none" stroke="#C89B3C" stroke-width="2" viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Nav item -->
+      <div>
+        <div class="section-label">Item de Navegação Ativo</div>
+        <div class="nav-a-item" style="background:rgba(200,155,60,0.1);color:#C89B3C;position:relative;padding-left:14px;">
+          <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:16px;background:#C89B3C;border-radius:0 2px 2px 0;"></div>
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          PEDIDOS
+          <span style="margin-left:auto;background:#C89B3C;color:#000;font-size:9px;font-weight:800;padding:0 5px;border-radius:3px;font-family:'Montserrat',sans-serif;">12</span>
+        </div>
+      </div>
+
+    </div>
+    <div class="card-foot">
+      <h3>A — Industrial · Preciso</h3>
+      <p>Cantos angulares (6px) · Caps nos rótulos · Botões sem gradiente · Peso máximo nos títulos. Sensação de painel de controle profissional.</p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════
+       TOM B: PREMIUM / REFINADO
+  ════════════════════════════════════ -->
+  <div class="tone-card" id="tone-b" onclick="pick('b')">
+    <div class="tone-b-demo">
+
+      <!-- Tipografia -->
+      <div class="typo-block-b">
+        <div class="label">Tipografia</div>
+        <div class="h1">28 · Montserrat Bold</div>
+        <div class="h2">16 · Montserrat SemiBold</div>
+        <div class="body">12 · Inter Regular — texto de suporte e descrições operacionais</div>
+        <div class="mono" style="margin-top:4px;">Rótulos em sentence case · 500</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Botões -->
+      <div>
+        <div class="section-label">Botões</div>
+        <div class="comp-row">
+          <button class="btn-b-primary">Iniciar Produção</button>
+          <button class="btn-b-ghost">Ver Detalhes</button>
+          <button class="btn-b-secondary">Cancelar</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Status pills -->
+      <div>
+        <div class="section-label">Status</div>
+        <div class="comp-row">
+          <span class="pill-b" style="background:rgba(245,158,11,0.1);color:#D97706;"><span class="pip" style="background:#F59E0B;"></span>Pendente</span>
+          <span class="pill-b" style="background:rgba(96,165,250,0.08);color:#60A5FA;"><span class="pip" style="background:#60A5FA;"></span>Produção</span>
+          <span class="pill-b" style="background:rgba(52,211,153,0.08);color:#34D399;"><span class="pip" style="background:#34D399;"></span>Pronto</span>
+          <span class="pill-b" style="background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.25);"><span class="pip" style="background:rgba(255,255,255,0.15);"></span>Entregue</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- KPI cards -->
+      <div>
+        <div class="section-label">Cards de Métricas</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="card-b">
+            <div>
+              <div class="card-b-val">12</div>
+              <div class="card-b-lbl">Pendentes</div>
+            </div>
+            <div class="card-b-icon" style="background:rgba(245,158,11,0.08);">
+              <svg fill="none" stroke="#F59E0B" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            </div>
+          </div>
+          <div class="card-b">
+            <div>
+              <div class="card-b-val gold" style="font-size:16px;">R$840</div>
+              <div class="card-b-lbl">Faturamento</div>
+            </div>
+            <div class="card-b-icon" style="background:rgba(200,155,60,0.08);">
+              <svg fill="none" stroke="#C89B3C" stroke-width="1.8" viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Nav item -->
+      <div>
+        <div class="section-label">Item de Navegação Ativo</div>
+        <div class="nav-b-item" style="background:rgba(200,155,60,0.08);color:#C89B3C;position:relative;">
+          <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:20px;background:#C89B3C;border-radius:0 3px 3px 0;"></div>
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Pedidos
+          <span style="margin-left:auto;background:#C89B3C;color:#000;font-size:9px;font-weight:700;padding:1px 7px;border-radius:99px;font-family:'Montserrat',sans-serif;">12</span>
+        </div>
+      </div>
+
+    </div>
+    <div class="card-foot">
+      <h3>B — Premium · Refinado</h3>
+      <p>Cantos mais redondos (10-12px) · Sentence case · Botão primário com gradiente dourado · Stroke fino nos ícones. Sensação executiva e polida.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="bottom-note">
+  <strong>A</strong> = cockpit industrial &nbsp;·&nbsp; <strong>B</strong> = software premium &nbsp;·&nbsp; pode ser uma mistura dos dois
+</div>
+
+<script>
+function pick(id) {
+  document.querySelectorAll('.tone-card').forEach(el => el.classList.remove('selected'));
+  document.getElementById('tone-' + id).classList.add('selected');
+  if (window.__companion && window.__companion.sendEvent) {
+    const labels = { a: 'A — Industrial Preciso', b: 'B — Premium Refinado' };
+    window.__companion.sendEvent({ type: 'click', choice: id, text: labels[id] });
+  }
+}
+</script>
+</body>
+</html>

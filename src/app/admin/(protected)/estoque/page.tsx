@@ -15,5 +15,9 @@ export default async function EstoquePage() {
 
   const products = (productsRaw ?? []) as any[]
 
-  return <EstoqueClient products={products} />
+  return (
+    <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+      <EstoqueClient products={products} />
+    </div>
+  )
 }

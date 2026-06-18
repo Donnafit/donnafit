@@ -4,7 +4,7 @@ import type { OrderWithItems } from "@/types"
 
 export const revalidate = 0
 
-function getTodayLabel() {
+function getTomorrowLabel() {
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
   return tomorrow.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" })
@@ -25,51 +25,118 @@ export default async function CozinhaPage() {
     .order("created_at")
 
   const allOrders = (orders ?? []) as OrderWithItems[]
-
-  const totalMarmitas = allOrders.reduce(
-    (sum, o) => sum + o.order_items.reduce((s, i) => s + i.quantity, 0), 0
-  )
-  const totalPedidos = allOrders.length
-
-  const tomorrowLabel = getTodayLabel()
+  const totalMarmitas = allOrders.reduce((sum, o) => sum + o.order_items.reduce((s, i) => s + i.quantity, 0), 0)
+  const totalPedidos  = allOrders.length
+  const tomorrowLabel = getTomorrowLabel()
 
   return (
-    <div className="min-h-full" style={{ background: "#F3F4F6" }}>
-      {/* Dark gradient header */}
-      <div style={{ background: "linear-gradient(135deg, #111827 0%, #1F2D1A 100%)", padding: "24px 24px 28px" }}>
-        <div className="flex items-start justify-between">
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+      {/* Hero */}
+      <div
+        style={{
+          background: "linear-gradient(135deg, var(--forest-850) 0%, var(--forest-700) 60%, var(--forest-600) 100%)",
+          padding: "28px 32px 24px",
+          flexShrink: 0,
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        {/* Glow decorativo */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: -60, right: -60,
+            width: 240, height: 240,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(200,155,60,0.10) 0%, transparent 70%)",
+            pointerEvents: "none",
+          }}
+        />
+
+        <div className="flex items-start justify-between" style={{ position: "relative", zIndex: 1 }}>
           <div>
-            <h1 className="text-white font-black" style={{ fontFamily: "var(--font-montserrat)", fontSize: 22 }}>Painel da Cozinha</h1>
-            <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.6)" }}>
+            <h1
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: 22,
+                fontWeight: 800,
+                color: "#fff",
+                lineHeight: 1.2,
+                marginBottom: 4,
+              }}
+            >
+              Painel da Cozinha
+            </h1>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
               Produção para amanhã —{" "}
-              <span className="font-semibold capitalize" style={{ color: "#C89B3C" }}>{tomorrowLabel}</span>
+              <span style={{ color: "var(--gold-500)", fontWeight: 600, textTransform: "capitalize" }}>
+                {tomorrowLabel}
+              </span>
             </p>
           </div>
-          <span className="text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.8)" }}>
+
+          <div
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 8,
+              padding: "7px 12px",
+              fontSize: 11,
+              color: "rgba(255,255,255,0.5)",
+            }}
+          >
             Cozinha
-          </span>
+          </div>
         </div>
 
-        {/* Metrics in header */}
-        <div className="flex gap-4 mt-5">
-          <div className="text-center">
-            <p className="text-white font-black" style={{ fontFamily: "var(--font-montserrat)", fontSize: 36, lineHeight: 1 }}>{totalMarmitas}</p>
-            <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>marmitas</p>
-          </div>
-          <div className="w-px" style={{ background: "rgba(255,255,255,0.12)" }} />
-          <div className="text-center">
-            <p className="text-white font-black" style={{ fontFamily: "var(--font-montserrat)", fontSize: 36, lineHeight: 1 }}>{totalPedidos}</p>
-            <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>pedidos</p>
-          </div>
+        {/* Stats */}
+        <div className="flex gap-6 mt-6" style={{ position: "relative", zIndex: 1 }}>
+          {[
+            { value: totalMarmitas, label: "marmitas" },
+            { value: totalPedidos,  label: "pedidos" },
+          ].map(({ value, label }) => (
+            <div key={label} className="flex items-end gap-2">
+              <span
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: 36,
+                  fontWeight: 900,
+                  color: "#fff",
+                  lineHeight: 1,
+                }}
+              >
+                {value}
+              </span>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", paddingBottom: 4 }}>
+                {label}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-5">
+      <div style={{ flex: 1, overflowY: "auto", padding: 20, background: "var(--surface-50)" }}>
         {allOrders.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
-            <p className="text-3xl mb-3">--</p>
-            <p className="text-gray-500 font-medium">Nenhum pedido para produção amanhã.</p>
+          <div
+            style={{
+              background: "var(--surface-100)",
+              borderRadius: 16,
+              padding: "48px 24px",
+              textAlign: "center",
+              border: "1px solid rgba(0,0,0,0.06)",
+            }}
+          >
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--text-300)",
+                fontWeight: 500,
+              }}
+            >
+              Nenhum pedido para produção amanhã.
+            </p>
           </div>
         ) : (
           <ProductionList orders={allOrders} />

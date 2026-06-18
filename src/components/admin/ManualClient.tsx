@@ -36,13 +36,13 @@ export function ManualClient({ products }: Props) {
   }, {})
 
   return (
-    <div className="min-h-full" style={{ background: "#F3F4F6" }}>
+    <div className="min-h-full" style={{ background: "var(--surface-50)" }}>
       {/* Topbar */}
-      <div className="sticky top-0 z-30 px-6 py-4 flex items-center gap-3" style={{ background: "#fff", borderBottom: "1px solid #E5E7EB" }}>
-        <BookOpen className="h-5 w-5" style={{ color: "#C89B3C" }} />
+      <div className="sticky top-0 z-30 px-6 py-4 flex items-center gap-3" style={{ background: "var(--surface-100)", borderBottom: "1px solid rgba(0,0,0,0.07)" }}>
+        <BookOpen className="h-5 w-5" style={{ color: "var(--gold-500)" }} />
         <div>
-          <h1 className="font-black text-gray-900" style={{ fontFamily: "var(--font-montserrat)", fontSize: 18 }}>Manual de Preparo</h1>
-          <p className="text-xs text-gray-500 mt-0.5">{products.length} produtos cadastrados</p>
+          <h1 className="font-black" style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--text-950)" }}>Manual de Preparo</h1>
+          <p style={{ fontSize: 12, color: "var(--text-300)", marginTop: 2 }}>{products.length} produtos cadastrados</p>
         </div>
       </div>
 
@@ -59,7 +59,7 @@ export function ManualClient({ products }: Props) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-yellow-400"
-                style={{ background: "#F9FAFB" }}
+                style={{ background: "var(--surface-50)" }}
               />
             </div>
           </div>
@@ -68,7 +68,7 @@ export function ManualClient({ products }: Props) {
           <div className="flex-1 overflow-y-auto">
             {Object.entries(grouped).map(([cat, items]) => (
               <div key={cat}>
-                <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-gray-400" style={{ background: "#F9FAFB", borderBottom: "1px solid #F3F4F6" }}>
+                <div className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-gray-400" style={{ background: "var(--surface-50)", borderBottom: "1px solid #F3F4F6" }}>
                   {cat}
                 </div>
                 {items.map((p) => (
@@ -111,7 +111,7 @@ export function ManualClient({ products }: Props) {
         </div>
 
         {/* Right column — detail */}
-        <div className="flex-1 overflow-y-auto p-6" style={{ background: "#F9FAFB" }}>
+        <div className="flex-1 overflow-y-auto p-6" style={{ background: "var(--surface-50)" }}>
           {selected ? (
             <div className="max-w-2xl">
               {/* Image */}

@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Donna FIT — Brand Direction</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0B0E15;
+    color: #fff;
+    min-height: 100vh;
+    padding: 32px 24px 48px;
+  }
+
+  .page-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .page-header h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .page-header p {
+    font-size: 14px;
+    color: rgba(255,255,255,0.45);
+  }
+
+  .comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .direction-wrap {
+    cursor: pointer;
+    border-radius: 16px;
+    border: 2px solid transparent;
+    transition: border-color 0.2s, transform 0.2s;
+    overflow: hidden;
+    background: #141820;
+  }
+  .direction-wrap:hover {
+    border-color: rgba(200,155,60,0.4);
+    transform: translateY(-2px);
+  }
+  .direction-wrap.selected {
+    border-color: #C89B3C;
+    box-shadow: 0 0 0 1px #C89B3C, 0 8px 40px rgba(200,155,60,0.15);
+  }
+
+  .direction-label {
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .direction-label h2 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.3px;
+  }
+  .direction-label p {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    margin-top: 2px;
+  }
+  .tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 99px;
+    background: rgba(200,155,60,0.12);
+    color: #C89B3C;
+    letter-spacing: 0.5px;
+  }
+
+  /* ===== MOCKUP SHELL ===== */
+  .mockup-shell {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  /* ===== OPÇÃO A: DARK TOTAL ===== */
+  .shell-a {
+    background: #090C12;
+    display: flex;
+    height: 420px;
+  }
+
+  /* Sidebar A */
+  .sidebar-a {
+    width: 220px;
+    background: #0D1017;
+    border-right: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .sidebar-a .logo-area {
+    padding: 20px 18px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: #C89B3C;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .logo-icon svg { width: 16px; height: 16px; }
+  .logo-text { flex: 1; }
+  .logo-text strong {
+    display: block;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 0.8px;
+  }
+  .logo-badge {
+    display: inline-block;
+    margin-top: 2px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #C89B3C;
+    background: rgba(200,155,60,0.12);
+    padding: 1px 7px;
+    border-radius: 99px;
+  }
+  .nav-section {
+    padding: 12px 10px;
+    flex: 1;
+  }
+  .nav-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 0 8px;
+    margin-bottom: 4px;
+    margin-top: 14px;
+  }
+  .nav-label:first-child { margin-top: 0; }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    margin-bottom: 1px;
+    transition: all 0.15s;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.38);
+  }
+  .nav-item .nav-dot {
+    width: 6px; height: 6px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.15);
+    flex-shrink: 0;
+  }
+  .nav-item.active {
+    background: rgba(200,155,60,0.1);
+    color: #C89B3C;
+  }
+  .nav-item.active .nav-dot { background: #C89B3C; }
+  .nav-item.has-badge { justify-content: space-between; }
+  .nav-badge {
+    font-size: 9px;
+    font-weight: 700;
+    background: #C89B3C;
+    color: #000;
+    padding: 1px 6px;
+    border-radius: 99px;
+    margin-left: auto;
+  }
+  .sidebar-footer {
+    padding: 12px 14px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 99px;
+    background: #C89B3C;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 12px;
+    color: #000;
+    flex-shrink: 0;
+  }
+  .user-info { flex: 1; min-width: 0; }
+  .user-info strong { display: block; font-size: 11px; font-weight: 600; color: #fff; }
+  .user-info span { font-size: 10px; color: rgba(255,255,255,0.3); }
+
+  /* Content A */
+  .content-a {
+    flex: 1;
+    background: #0F1319;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .topbar-a {
+    background: #0D1017;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .topbar-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .topbar-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    margin-top: 1px;
+  }
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .icon-btn {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .icon-btn svg { width: 14px; height: 14px; opacity: 0.5; }
+  .notif-dot {
+    position: relative;
+  }
+  .notif-dot::after {
+    content: '';
+    position: absolute;
+    top: 6px; right: 6px;
+    width: 6px; height: 6px;
+    border-radius: 99px;
+    background: #F87171;
+    border: 1px solid #0D1017;
+  }
+  .content-scroll {
+    flex: 1;
+    overflow: hidden;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* KPI Cards */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .kpi-card {
+    background: #141820;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .kpi-card .kpi-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .kpi-icon {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .kpi-icon svg { width: 13px; height: 13px; }
+  .kpi-trend {
+    font-size: 9px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .kpi-trend.up { color: #34D399; }
+  .kpi-trend.warn { color: #F59E0B; }
+  .kpi-value {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 3px;
+  }
+  .kpi-label { font-size: 10px; color: rgba(255,255,255,0.4); font-weight: 500; }
+  .kpi-sub { font-size: 9px; color: rgba(255,255,255,0.22); margin-top: 1px; }
+
+  /* Kanban */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .section-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 0.3px;
+  }
+  .kanban-cols {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .kanban-col-head {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .col-dot {
+    width: 6px; height: 6px;
+    border-radius: 99px;
+  }
+  .order-card-mini {
+    background: #141820;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 5px;
+  }
+  .order-num { font-size: 9px; color: rgba(255,255,255,0.25); margin-bottom: 2px; }
+  .order-name { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.8); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .order-price { font-size: 9px; color: #C89B3C; font-weight: 600; }
+  .order-card-mini.urgent { border-left: 2px solid #F87171; }
+  .order-card-mini.gold { border-left: 2px solid #C89B3C; }
+  .order-card-mini.blue { border-left: 2px solid #60A5FA; }
+  .order-card-mini.green { border-left: 2px solid #34D399; }
+
+  /* ===== OPÇÃO C: HYBRID PRO ===== */
+  .shell-c {
+    background: #F1F3F7;
+    display: flex;
+    height: 420px;
+  }
+
+  /* Sidebar C */
+  .sidebar-c {
+    width: 220px;
+    background: #111827;
+    border-right: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  /* Content C */
+  .content-c {
+    flex: 1;
+    background: #F1F3F7;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .topbar-c {
+    background: #fff;
+    border-bottom: 1px solid #E5E7EB;
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .topbar-c .topbar-title {
+    color: #111;
+  }
+  .topbar-c .topbar-sub {
+    color: #9CA3AF;
+  }
+  .icon-btn-c {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .icon-btn-c svg { width: 14px; height: 14px; color: #6B7280; }
+  .content-scroll-c {
+    flex: 1;
+    overflow: hidden;
+    padding: 18px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* KPI light */
+  .kpi-card-c {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+  .kpi-value-c {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    color: #111;
+    line-height: 1;
+    margin-bottom: 3px;
+  }
+  .kpi-label-c { font-size: 10px; color: #6B7280; font-weight: 500; }
+  .kpi-sub-c { font-size: 9px; color: #D1D5DB; margin-top: 1px; }
+
+  /* Order cards light */
+  .order-card-mini-c {
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .order-num-c { font-size: 9px; color: #D1D5DB; margin-bottom: 2px; }
+  .order-name-c { font-size: 10px; font-weight: 600; color: #374151; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .order-price-c { font-size: 9px; color: #C89B3C; font-weight: 600; }
+  .order-card-mini-c.urgent-c { border-left: 2px solid #F87171; }
+  .order-card-mini-c.gold-c { border-left: 2px solid #C89B3C; }
+  .order-card-mini-c.blue-c { border-left: 2px solid #60A5FA; }
+  .order-card-mini-c.green-c { border-left: 2px solid #34D399; }
+  .section-title-c {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+  }
+  .kanban-col-head-c {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #9CA3AF;
+  }
+
+  /* Bottom prompt */
+  .bottom-prompt {
+    text-align: center;
+    margin-top: 32px;
+    color: rgba(255,255,255,0.35);
+    font-size: 13px;
+  }
+  .bottom-prompt strong { color: rgba(255,255,255,0.6); }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Direção Visual — Alta Fidelidade</h1>
+  <p>Clique na versão que mais chega perto do nível das referências</p>
+</div>
+
+<div class="comparison">
+
+  <!-- ===== OPÇÃO A ===== -->
+  <div class="direction-wrap" id="opt-a" onclick="pick('a')">
+    <div class="direction-label">
+      <div>
+        <h2>A — Industrial Dark</h2>
+        <p>Full dark · Sidebar refinada · Foco em operação</p>
+      </div>
+      <span class="tag">COCKPIT</span>
+    </div>
+    <div class="mockup-shell">
+      <div class="shell-a">
+
+        <!-- Sidebar -->
+        <div class="sidebar-a">
+          <div class="logo-area">
+            <div class="logo-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+                <path d="M3 6h18M3 12h18M3 18h18"/>
+              </svg>
+            </div>
+            <div class="logo-text">
+              <strong>DONNA FIT</strong>
+              <span class="logo-badge">Admin</span>
+            </div>
+          </div>
+          <div class="nav-section">
+            <div class="nav-label">Operação</div>
+            <div class="nav-item active has-badge">
+              <div class="nav-dot"></div>
+              Pedidos
+              <span class="nav-badge">12</span>
+            </div>
+            <div class="nav-item">
+              <div class="nav-dot"></div>
+              Cozinha
+            </div>
+            <div class="nav-item">
+              <div class="nav-dot"></div>
+              Manual de Preparo
+            </div>
+            <div class="nav-label">Gestão</div>
+            <div class="nav-item">
+              <div class="nav-dot"></div>
+              Estoque
+            </div>
+            <div class="nav-item">
+              <div class="nav-dot"></div>
+              Anúncios
+            </div>
+            <div class="nav-item">
+              <div class="nav-dot"></div>
+              QR Code
+            </div>
+          </div>
+          <div class="sidebar-footer">
+            <div class="avatar">E</div>
+            <div class="user-info">
+              <strong>Everson</strong>
+              <span>Administrador</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content-a">
+          <div class="topbar-a">
+            <div>
+              <div class="topbar-title">Gestão de Pedidos</div>
+              <div class="topbar-sub">Quarta-feira, 18 de junho</div>
+            </div>
+            <div class="topbar-actions">
+              <div class="icon-btn notif-dot">
+                <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M15 17H20L18.6 15.6C18.2 15.2 18 14.6 18 14V11C18 8.3 16.2 6 13.7 5.3C13.4 4.5 12.8 4 12 4C11.2 4 10.5 4.5 10.3 5.3C7.8 6 6 8.3 6 11V14C6 14.6 5.8 15.2 5.4 15.6L4 17H9M15 17C15 18.7 13.7 20 12 20C10.3 20 9 18.7 9 17M15 17H9"/></svg>
+              </div>
+              <div class="icon-btn">
+                <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-scroll">
+            <!-- KPIs -->
+            <div class="kpi-row">
+              <div class="kpi-card">
+                <div class="kpi-top">
+                  <div class="kpi-icon" style="background:rgba(245,158,11,0.1);">
+                    <svg fill="none" stroke="#F59E0B" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                  </div>
+                  <span class="kpi-trend warn">▲ 3</span>
+                </div>
+                <div class="kpi-value">12</div>
+                <div class="kpi-label">Pendentes</div>
+                <div class="kpi-sub">aguardando</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-top">
+                  <div class="kpi-icon" style="background:rgba(96,165,250,0.1);">
+                    <svg fill="none" stroke="#60A5FA" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.4-1.8M9 20H4v-2a3 3 0 015.4-1.8M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                  </div>
+                </div>
+                <div class="kpi-value">5</div>
+                <div class="kpi-label">Em Produção</div>
+                <div class="kpi-sub">preparando</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-top">
+                  <div class="kpi-icon" style="background:rgba(52,211,153,0.1);">
+                    <svg fill="none" stroke="#34D399" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M7.8 3A9 9 0 1020.2 21"/></svg>
+                  </div>
+                  <span class="kpi-trend up">▲ 2</span>
+                </div>
+                <div class="kpi-value">3</div>
+                <div class="kpi-label">Prontos</div>
+                <div class="kpi-sub">aguardando retirada</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-top">
+                  <div class="kpi-icon" style="background:rgba(200,155,60,0.1);">
+                    <svg fill="none" stroke="#C89B3C" stroke-width="2" viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                  </div>
+                  <span class="kpi-trend up" style="color:#C89B3C;">▲ 12%</span>
+                </div>
+                <div class="kpi-value" style="font-size:17px;">R$840</div>
+                <div class="kpi-label">Faturamento hoje</div>
+                <div class="kpi-sub">20 pedidos</div>
+              </div>
+            </div>
+
+            <!-- Kanban -->
+            <div>
+              <div class="section-header">
+                <span class="section-title">Quadro de Pedidos</span>
+              </div>
+              <div class="kanban-cols">
+                <div>
+                  <div class="kanban-col-head" style="color:#F59E0B;">
+                    <span class="col-dot" style="background:#F59E0B;"></span>Pendentes
+                  </div>
+                  <div class="order-card-mini urgent">
+                    <div class="order-num">#001</div>
+                    <div class="order-name">Estrogonofe de Frango</div>
+                    <div class="order-price">R$ 15,00</div>
+                  </div>
+                  <div class="order-card-mini gold">
+                    <div class="order-num">#002</div>
+                    <div class="order-name">Combo 10 refeições</div>
+                    <div class="order-price">R$ 141,90</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="kanban-col-head" style="color:#60A5FA;">
+                    <span class="col-dot" style="background:#60A5FA;"></span>Produção
+                  </div>
+                  <div class="order-card-mini blue">
+                    <div class="order-num">#003</div>
+                    <div class="order-name">Nhoque a Bolonhesa</div>
+                    <div class="order-price">R$ 17,00</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="kanban-col-head" style="color:#34D399;">
+                    <span class="col-dot" style="background:#34D399;"></span>Prontos
+                  </div>
+                  <div class="order-card-mini green">
+                    <div class="order-num">#004</div>
+                    <div class="order-name">Sopa de Abóbora</div>
+                    <div class="order-price">R$ 13,00</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="kanban-col-head" style="color:rgba(255,255,255,0.3);">
+                    <span class="col-dot" style="background:rgba(255,255,255,0.2);"></span>Entregues
+                  </div>
+                  <div class="order-card-mini" style="opacity:0.5;">
+                    <div class="order-num">#000</div>
+                    <div class="order-name">Filé de Tilápia</div>
+                    <div class="order-price">R$ 20,00</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== OPÇÃO C ===== -->
+  <div class="direction-wrap" id="opt-c" onclick="pick('c')">
+    <div class="direction-label">
+      <div>
+        <h2>C — Hybrid Pro</h2>
+        <p>Sidebar escura · Conteúdo claro · Melhor dos dois mundos</p>
+      </div>
+      <span class="tag" style="background:rgba(90,107,42,0.15);color:#7EA139;">PROFISSIONAL</span>
+    </div>
+    <div class="mockup-shell">
+      <div class="shell-c">
+
+        <!-- Sidebar (igual ao A) -->
+        <div class="sidebar-c">
+          <div class="logo-area">
+            <div class="logo-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+                <path d="M3 6h18M3 12h18M3 18h18"/>
+              </svg>
+            </div>
+            <div class="logo-text">
+              <strong>DONNA FIT</strong>
+              <span class="logo-badge">Admin</span>
+            </div>
+          </div>
+          <div class="nav-section">
+            <div class="nav-label">Operação</div>
+            <div class="nav-item active has-badge">
+              <div class="nav-dot"></div>
+              Pedidos
+              <span class="nav-badge">12</span>
+            </div>
+            <div class="nav-item">
+              <div class="nav-dot"></div>
+              Cozinha
+            </div>
+            <div class="nav-item">
+              <div class="nav-dot"></div>
+              Manual de Preparo
+            </div>
+            <div class="nav-label">Gestão</div>
+            <div class="nav-item">
+              <div class="nav-dot"></div>
+              Estoque
+            </div>
+            <div class="nav-item">
+              <div class="nav-dot"></div>
+              Anúncios
+            </div>
+            <div class="nav-item">
+              <div class="nav-dot"></div>
+              QR Code
+            </div>
+          </div>
+          <div class="sidebar-footer">
+            <div class="avatar">E</div>
+            <div class="user-info">
+              <strong>Everson</strong>
+              <span>Administrador</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Content light -->
+        <div class="content-c">
+          <div class="topbar-c">
+            <div>
+              <div class="topbar-title" style="font-family:'Montserrat',sans-serif;font-size:15px;font-weight:800;color:#111;">Gestão de Pedidos</div>
+              <div style="font-size:11px;color:#9CA3AF;margin-top:1px;">Quarta-feira, 18 de junho</div>
+            </div>
+            <div class="topbar-actions">
+              <div class="icon-btn-c notif-dot" style="position:relative;">
+                <svg fill="none" stroke="#6B7280" stroke-width="2" viewBox="0 0 24 24" width="14" height="14"><path d="M15 17H20L18.6 15.6C18.2 15.2 18 14.6 18 14V11C18 8.3 16.2 6 13.7 5.3C13.4 4.5 12.8 4 12 4C11.2 4 10.5 4.5 10.3 5.3C7.8 6 6 8.3 6 11V14C6 14.6 5.8 15.2 5.4 15.6L4 17H9M15 17C15 18.7 13.7 20 12 20C10.3 20 9 18.7 9 17M15 17H9"/></svg>
+                <div style="position:absolute;top:6px;right:6px;width:6px;height:6px;background:#F87171;border-radius:99px;border:1.5px solid white;"></div>
+              </div>
+              <div class="icon-btn-c">
+                <svg fill="none" stroke="#6B7280" stroke-width="2" viewBox="0 0 24 24" width="14" height="14"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0112 0v2"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-scroll-c">
+            <!-- KPIs -->
+            <div class="kpi-row">
+              <div class="kpi-card-c">
+                <div class="kpi-top">
+                  <div class="kpi-icon" style="background:#FEF3C7;">
+                    <svg fill="none" stroke="#F59E0B" stroke-width="2" viewBox="0 0 24 24" width="13" height="13"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                  </div>
+                  <span class="kpi-trend warn">▲ 3</span>
+                </div>
+                <div class="kpi-value-c">12</div>
+                <div class="kpi-label-c">Pendentes</div>
+                <div class="kpi-sub-c">aguardando</div>
+              </div>
+              <div class="kpi-card-c">
+                <div class="kpi-top">
+                  <div class="kpi-icon" style="background:#DBEAFE;">
+                    <svg fill="none" stroke="#3B82F6" stroke-width="2" viewBox="0 0 24 24" width="13" height="13"><path d="M17 20h5v-2a3 3 0 00-5.4-1.8M9 20H4v-2a3 3 0 015.4-1.8M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                  </div>
+                </div>
+                <div class="kpi-value-c">5</div>
+                <div class="kpi-label-c">Em Produção</div>
+                <div class="kpi-sub-c">preparando</div>
+              </div>
+              <div class="kpi-card-c">
+                <div class="kpi-top">
+                  <div class="kpi-icon" style="background:#D1FAE5;">
+                    <svg fill="none" stroke="#10B981" stroke-width="2" viewBox="0 0 24 24" width="13" height="13"><path d="M9 12l2 2 4-4M7.8 3A9 9 0 1020.2 21"/></svg>
+                  </div>
+                  <span class="kpi-trend up">▲ 2</span>
+                </div>
+                <div class="kpi-value-c">3</div>
+                <div class="kpi-label-c">Prontos</div>
+                <div class="kpi-sub-c">aguardando retirada</div>
+              </div>
+              <div class="kpi-card-c">
+                <div class="kpi-top">
+                  <div class="kpi-icon" style="background:#FEF9C3;">
+                    <svg fill="none" stroke="#C89B3C" stroke-width="2" viewBox="0 0 24 24" width="13" height="13"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                  </div>
+                  <span class="kpi-trend up" style="color:#C89B3C;">▲ 12%</span>
+                </div>
+                <div class="kpi-value-c" style="font-size:17px;">R$840</div>
+                <div class="kpi-label-c">Faturamento hoje</div>
+                <div class="kpi-sub-c">20 pedidos</div>
+              </div>
+            </div>
+
+            <!-- Kanban -->
+            <div>
+              <div class="section-header">
+                <span class="section-title-c">Quadro de Pedidos</span>
+              </div>
+              <div class="kanban-cols">
+                <div>
+                  <div class="kanban-col-head-c" style="color:#F59E0B;">
+                    <span class="col-dot" style="background:#F59E0B;"></span>Pendentes
+                  </div>
+                  <div class="order-card-mini-c urgent-c">
+                    <div class="order-num-c">#001</div>
+                    <div class="order-name-c">Estrogonofe de Frango</div>
+                    <div class="order-price-c">R$ 15,00</div>
+                  </div>
+                  <div class="order-card-mini-c gold-c">
+                    <div class="order-num-c">#002</div>
+                    <div class="order-name-c">Combo 10 refeições</div>
+                    <div class="order-price-c">R$ 141,90</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="kanban-col-head-c" style="color:#3B82F6;">
+                    <span class="col-dot" style="background:#3B82F6;"></span>Produção
+                  </div>
+                  <div class="order-card-mini-c blue-c">
+                    <div class="order-num-c">#003</div>
+                    <div class="order-name-c">Nhoque a Bolonhesa</div>
+                    <div class="order-price-c">R$ 17,00</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="kanban-col-head-c" style="color:#10B981;">
+                    <span class="col-dot" style="background:#10B981;"></span>Prontos
+                  </div>
+                  <div class="order-card-mini-c green-c">
+                    <div class="order-num-c">#004</div>
+                    <div class="order-name-c">Sopa de Abóbora</div>
+                    <div class="order-price-c">R$ 13,00</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="kanban-col-head-c" style="color:#D1D5DB;">
+                    <span class="col-dot" style="background:#D1D5DB;"></span>Entregues
+                  </div>
+                  <div class="order-card-mini-c" style="opacity:0.5;">
+                    <div class="order-num-c">#000</div>
+                    <div class="order-name-c">Filé de Tilápia</div>
+                    <div class="order-price-c">R$ 20,00</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="bottom-prompt">
+  Clique em <strong>A</strong> ou <strong>C</strong> — ou diga o que pegar de cada um
+</div>
+
+<script>
+function pick(choice) {
+  document.querySelectorAll('.direction-wrap').forEach(el => el.classList.remove('selected'));
+  document.getElementById('opt-' + choice).classList.add('selected');
+  if (window.__companion && window.__companion.sendEvent) {
+    window.__companion.sendEvent({ type: 'click', choice, text: choice === 'a' ? 'A — Industrial Dark' : 'C — Hybrid Pro' });
+  }
+}
+</script>
+</body>
+</html>

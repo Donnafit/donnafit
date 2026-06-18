@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Donna FIT — Paletas</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: #080A0F;
+  padding: 28px 20px 48px;
+  color: #fff;
+  min-height: 100vh;
+}
+.page-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.page-header h1 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 20px; font-weight: 800;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: 6px;
+}
+.page-header p { font-size: 13px; color: rgba(255,255,255,0.35); }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.palette-card {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  background: #111418;
+}
+.palette-card:hover { transform: translateY(-3px); }
+.palette-card.selected {
+  border-color: rgba(255,255,255,0.3);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 12px 40px rgba(0,0,0,0.5);
+}
+
+/* Shared mini-app structure */
+.mini-app {
+  height: 360px;
+  display: flex;
+  overflow: hidden;
+}
+.mini-sidebar {
+  width: 130px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.mini-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.mini-hero {
+  padding: 14px 14px 0;
+  position: relative;
+  overflow: hidden;
+}
+.mini-hero::after {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.mini-greeting {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 2px;
+}
+.mini-sub { font-size: 9px; color: rgba(255,255,255,0.35); margin-bottom: 12px; }
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  border-radius: 8px 8px 0 0;
+  overflow: hidden;
+}
+.mini-stat {
+  padding: 8px 8px;
+}
+.stat-val {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.stat-lbl { font-size: 7px; color: rgba(255,255,255,0.35); font-weight: 500; }
+
+.mini-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.mini-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  padding: 0 10px;
+}
+.mini-tab {
+  padding: 7px 8px;
+  font-size: 8px;
+  font-weight: 600;
+  color: #9CA3AF;
+  border-bottom: 1.5px solid transparent;
+  white-space: nowrap;
+}
+.mini-tab.active { border-bottom-color: inherit; }
+
+.mini-table { flex: 1; overflow: hidden; }
+.mini-row {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  gap: 6px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  font-size: 8px;
+}
+.mini-row.sel { background: rgba(0,0,0,0.03); }
+.mini-pill {
+  font-size: 7px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 99px;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.mini-name { color: #1F2937; font-weight: 600; font-size: 9px; }
+.mini-price { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 8px; }
+
+/* sidebar items */
+.s-logo { padding: 10px 10px 8px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.s-mark { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.s-mark svg { width: 11px; height: 11px; }
+.s-brand { font-family: 'Montserrat', sans-serif; font-size: 9px; font-weight: 900; color: #fff; letter-spacing: 0.5px; }
+.s-nav { padding: 8px 8px; flex: 1; }
+.s-item { display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-radius: 5px; font-size: 8px; font-weight: 500; color: rgba(255,255,255,0.35); margin-bottom: 1px; }
+.s-item svg { width: 10px; height: 10px; flex-shrink: 0; }
+.s-item.active { color: inherit; }
+.s-badge { font-size: 7px; font-weight: 700; padding: 0 4px; border-radius: 99px; background: inherit; margin-left: auto; }
+.s-footer { padding: 6px 8px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 5px; }
+.s-avatar { width: 20px; height: 20px; border-radius: 99px; display: flex; align-items: center; justify-content: center; font-family: 'Montserrat', sans-serif; font-size: 8px; font-weight: 800; flex-shrink: 0; }
+.s-uname { font-size: 8px; font-weight: 600; color: #fff; }
+
+/* Card info */
+.card-info {
+  padding: 14px 16px 16px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.card-info h3 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px; font-weight: 800;
+  color: #fff; margin-bottom: 4px;
+}
+.card-info p { font-size: 11px; color: rgba(255,255,255,0.4); line-height: 1.5; }
+.swatches {
+  display: flex; gap: 6px; margin-top: 10px;
+}
+.swatch {
+  width: 22px; height: 22px; border-radius: 99px;
+  border: 2px solid rgba(255,255,255,0.1);
+}
+.swatch-label { font-size: 9px; color: rgba(255,255,255,0.3); margin-top: 4px; }
+
+.bottom-note {
+  text-align: center;
+  margin-top: 28px;
+  color: rgba(255,255,255,0.3);
+  font-size: 13px;
+}
+.bottom-note strong { color: rgba(255,255,255,0.6); }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Qual paleta define o Donna FIT?</h1>
+  <p>Mesmo layout — três personalidades de cor completamente diferentes</p>
+</div>
+
+<div class="grid">
+
+  <!-- ═══════════════════════════════════════════════
+       PALETA A — NAVY + GOLD CLÁSSICO
+       Sidebar: azul-marinho profundo  |  Dourado quente
+  ═══════════════════════════════════════════════ -->
+  <div class="palette-card" id="pal-a" onclick="pick('a')">
+    <div class="mini-app">
+
+      <!-- sidebar -->
+      <div class="mini-sidebar" style="background:#0D1117;border-right:1px solid rgba(255,255,255,0.04);">
+        <div class="s-logo">
+          <div class="s-mark" style="background:#C89B3C;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>
+          </div>
+          <span class="s-brand">DONNA FIT</span>
+        </div>
+        <div class="s-nav">
+          <div class="s-item active" style="background:rgba(200,155,60,0.1);color:#C89B3C;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Pedidos
+            <span class="s-badge" style="background:#C89B3C;color:#000;">12</span>
+          </div>
+          <div class="s-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 8h1a4 4 0 010 8h-1M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8z"/></svg>Cozinha</div>
+          <div class="s-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/></svg>Estoque</div>
+          <div class="s-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Manual</div>
+        </div>
+        <div class="s-footer">
+          <div class="s-avatar" style="background:#C89B3C;color:#000;">E</div>
+          <span class="s-uname">Everson</span>
+        </div>
+      </div>
+
+      <!-- main -->
+      <div class="mini-main">
+        <div class="mini-hero" style="background:linear-gradient(135deg,#111827 0%,#1a2436 60%,#1e2d1a 100%);">
+          <div class="mini-hero::after" style="background:radial-gradient(circle,rgba(200,155,60,0.15) 0%,transparent 70%);"></div>
+          <div class="mini-greeting">Boa tarde, Everson</div>
+          <div class="mini-sub">Quarta-feira · 18 de junho</div>
+          <div class="mini-stats" style="background:rgba(255,255,255,0.05);">
+            <div class="mini-stat" style="background:rgba(255,255,255,0.03);">
+              <div class="stat-val">12</div><div class="stat-lbl">Pendentes</div>
+            </div>
+            <div class="mini-stat" style="background:rgba(255,255,255,0.03);">
+              <div class="stat-val">5</div><div class="stat-lbl">Produção</div>
+            </div>
+            <div class="mini-stat" style="background:rgba(255,255,255,0.03);">
+              <div class="stat-val">3</div><div class="stat-lbl">Prontos</div>
+            </div>
+            <div class="mini-stat" style="background:rgba(255,255,255,0.03);">
+              <div class="stat-val" style="color:#C89B3C;font-size:12px;">R$840</div><div class="stat-lbl">Hoje</div>
+            </div>
+          </div>
+        </div>
+        <div class="mini-content" style="background:#F5F7FA;">
+          <div class="mini-tabs" style="background:#fff;">
+            <div class="mini-tab active" style="color:#111827;border-bottom-color:#C89B3C;">Todos</div>
+            <div class="mini-tab">Pendentes</div>
+            <div class="mini-tab">Produção</div>
+          </div>
+          <div class="mini-table" style="background:#fff;">
+            <div class="mini-row sel" style="background:#FDFAF3;border-left:2px solid #C89B3C;">
+              <div><div class="mini-name">Maria Silva</div><div style="font-size:7px;color:#9CA3AF;">Estrogonofe de Frango</div></div>
+              <div class="mini-price" style="color:#C89B3C;">R$15</div>
+              <span class="mini-pill" style="background:#FEF3C7;color:#92400E;">Pendente</span>
+            </div>
+            <div class="mini-row">
+              <div><div class="mini-name">João Mendes</div><div style="font-size:7px;color:#9CA3AF;">Combo 10 refeições</div></div>
+              <div class="mini-price" style="color:#111;">R$141</div>
+              <span class="mini-pill" style="background:#DBEAFE;color:#1E40AF;">Produção</span>
+            </div>
+            <div class="mini-row">
+              <div><div class="mini-name">Ana Beatriz</div><div style="font-size:7px;color:#9CA3AF;">Nhoque a Bolonhesa</div></div>
+              <div class="mini-price" style="color:#111;">R$34</div>
+              <span class="mini-pill" style="background:#D1FAE5;color:#065F46;">Pronto</span>
+            </div>
+            <div class="mini-row">
+              <div><div class="mini-name">Carlos Lima</div><div style="font-size:7px;color:#9CA3AF;">Sopa de Abóbora</div></div>
+              <div class="mini-price" style="color:#111;">R$13</div>
+              <span class="mini-pill" style="background:#F3F4F6;color:#6B7280;">Entregue</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-info">
+      <h3>A — Navy + Gold</h3>
+      <p>Azul-marinho profundo + dourado quente. Clássico, executivo, referência de luxo.</p>
+      <div class="swatches">
+        <div class="swatch" style="background:#0D1117;" title="Navy"></div>
+        <div class="swatch" style="background:#1a2436;" title="Navy mid"></div>
+        <div class="swatch" style="background:#C89B3C;" title="Gold"></div>
+        <div class="swatch" style="background:#F5F7FA;" title="Surface"></div>
+        <div class="swatch" style="background:#FEF3C7;" title="Pending"></div>
+        <div class="swatch" style="background:#D1FAE5;" title="Ready"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       PALETA B — GRAFITE + ÂMBAR
+       Sidebar: grafite quase preto  |  Âmbar saturado
+  ═══════════════════════════════════════════════ -->
+  <div class="palette-card" id="pal-b" onclick="pick('b')">
+    <div class="mini-app">
+      <div class="mini-sidebar" style="background:#141414;border-right:1px solid rgba(255,255,255,0.04);">
+        <div class="s-logo">
+          <div class="s-mark" style="background:#D4920A;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>
+          </div>
+          <span class="s-brand">DONNA FIT</span>
+        </div>
+        <div class="s-nav">
+          <div class="s-item active" style="background:rgba(212,146,10,0.1);color:#D4920A;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Pedidos
+            <span class="s-badge" style="background:#D4920A;color:#000;">12</span>
+          </div>
+          <div class="s-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 8h1a4 4 0 010 8h-1M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8z"/></svg>Cozinha</div>
+          <div class="s-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/></svg>Estoque</div>
+          <div class="s-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Manual</div>
+        </div>
+        <div class="s-footer">
+          <div class="s-avatar" style="background:#D4920A;color:#000;">E</div>
+          <span class="s-uname">Everson</span>
+        </div>
+      </div>
+      <div class="mini-main">
+        <div class="mini-hero" style="background:linear-gradient(135deg,#1A1200 0%,#261A00 55%,#1a1a0a 100%);">
+          <div class="mini-greeting">Boa tarde, Everson</div>
+          <div class="mini-sub">Quarta-feira · 18 de junho</div>
+          <div class="mini-stats">
+            <div class="mini-stat" style="background:rgba(255,255,255,0.03);">
+              <div class="stat-val">12</div><div class="stat-lbl">Pendentes</div>
+            </div>
+            <div class="mini-stat" style="background:rgba(255,255,255,0.03);">
+              <div class="stat-val">5</div><div class="stat-lbl">Produção</div>
+            </div>
+            <div class="mini-stat" style="background:rgba(255,255,255,0.03);">
+              <div class="stat-val">3</div><div class="stat-lbl">Prontos</div>
+            </div>
+            <div class="mini-stat" style="background:rgba(255,255,255,0.03);">
+              <div class="stat-val" style="color:#D4920A;font-size:12px;">R$840</div><div class="stat-lbl">Hoje</div>
+            </div>
+          </div>
+        </div>
+        <div class="mini-content" style="background:#F7F5F2;">
+          <div class="mini-tabs" style="background:#fff;">
+            <div class="mini-tab active" style="color:#111;border-bottom-color:#D4920A;">Todos</div>
+            <div class="mini-tab">Pendentes</div>
+            <div class="mini-tab">Produção</div>
+          </div>
+          <div class="mini-table" style="background:#fff;">
+            <div class="mini-row" style="background:#FFFBF0;border-left:2px solid #D4920A;">
+              <div><div class="mini-name">Maria Silva</div><div style="font-size:7px;color:#9CA3AF;">Estrogonofe de Frango</div></div>
+              <div class="mini-price" style="color:#D4920A;">R$15</div>
+              <span class="mini-pill" style="background:#FEF3C7;color:#78350F;">Pendente</span>
+            </div>
+            <div class="mini-row">
+              <div><div class="mini-name">João Mendes</div><div style="font-size:7px;color:#9CA3AF;">Combo 10 refeições</div></div>
+              <div class="mini-price" style="color:#111;">R$141</div>
+              <span class="mini-pill" style="background:#E0E7FF;color:#3730A3;">Produção</span>
+            </div>
+            <div class="mini-row">
+              <div><div class="mini-name">Ana Beatriz</div><div style="font-size:7px;color:#9CA3AF;">Nhoque a Bolonhesa</div></div>
+              <div class="mini-price" style="color:#111;">R$34</div>
+              <span class="mini-pill" style="background:#D1FAE5;color:#064E3B;">Pronto</span>
+            </div>
+            <div class="mini-row">
+              <div><div class="mini-name">Carlos Lima</div><div style="font-size:7px;color:#9CA3AF;">Sopa de Abóbora</div></div>
+              <div class="mini-price" style="color:#111;">R$13</div>
+              <span class="mini-pill" style="background:#F3F4F6;color:#6B7280;">Entregue</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-info">
+      <h3>B — Grafite + Âmbar</h3>
+      <p>Preto profundo com toque quente dourado-âmbar. Mais rústico e gourmet, evoca cozinha artesanal premium.</p>
+      <div class="swatches">
+        <div class="swatch" style="background:#141414;"></div>
+        <div class="swatch" style="background:#261A00;"></div>
+        <div class="swatch" style="background:#D4920A;"></div>
+        <div class="swatch" style="background:#F7F5F2;"></div>
+        <div class="swatch" style="background:#FEF3C7;"></div>
+        <div class="swatch" style="background:#D1FAE5;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       PALETA C — VERDE FLORESTA + GOLD
+       Sidebar: verde-floresta escuro  |  Dourado
+  ═══════════════════════════════════════════════ -->
+  <div class="palette-card" id="pal-c" onclick="pick('c')">
+    <div class="mini-app">
+      <div class="mini-sidebar" style="background:#0F1A0F;border-right:1px solid rgba(255,255,255,0.04);">
+        <div class="s-logo">
+          <div class="s-mark" style="background:#C89B3C;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>
+          </div>
+          <span class="s-brand">DONNA FIT</span>
+        </div>
+        <div class="s-nav">
+          <div class="s-item active" style="background:rgba(200,155,60,0.1);color:#C89B3C;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Pedidos
+            <span class="s-badge" style="background:#C89B3C;color:#000;">12</span>
+          </div>
+          <div class="s-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 8h1a4 4 0 010 8h-1M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8z"/></svg>Cozinha</div>
+          <div class="s-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/></svg>Estoque</div>
+          <div class="s-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Manual</div>
+        </div>
+        <div class="s-footer">
+          <div class="s-avatar" style="background:#C89B3C;color:#000;">E</div>
+          <span class="s-uname">Everson</span>
+        </div>
+      </div>
+      <div class="mini-main">
+        <div class="mini-hero" style="background:linear-gradient(135deg,#0F1A0F 0%,#1A2F1A 55%,#142414 100%);">
+          <div class="mini-greeting">Boa tarde, Everson</div>
+          <div class="mini-sub">Quarta-feira · 18 de junho</div>
+          <div class="mini-stats">
+            <div class="mini-stat" style="background:rgba(255,255,255,0.03);">
+              <div class="stat-val">12</div><div class="stat-lbl">Pendentes</div>
+            </div>
+            <div class="mini-stat" style="background:rgba(255,255,255,0.03);">
+              <div class="stat-val">5</div><div class="stat-lbl">Produção</div>
+            </div>
+            <div class="mini-stat" style="background:rgba(255,255,255,0.03);">
+              <div class="stat-val">3</div><div class="stat-lbl">Prontos</div>
+            </div>
+            <div class="mini-stat" style="background:rgba(255,255,255,0.03);">
+              <div class="stat-val" style="color:#C89B3C;font-size:12px;">R$840</div><div class="stat-lbl">Hoje</div>
+            </div>
+          </div>
+        </div>
+        <div class="mini-content" style="background:#F3F6F3;">
+          <div class="mini-tabs" style="background:#fff;">
+            <div class="mini-tab active" style="color:#111;border-bottom-color:#C89B3C;">Todos</div>
+            <div class="mini-tab">Pendentes</div>
+            <div class="mini-tab">Produção</div>
+          </div>
+          <div class="mini-table" style="background:#fff;">
+            <div class="mini-row" style="background:#FDFAF3;border-left:2px solid #C89B3C;">
+              <div><div class="mini-name">Maria Silva</div><div style="font-size:7px;color:#9CA3AF;">Estrogonofe de Frango</div></div>
+              <div class="mini-price" style="color:#C89B3C;">R$15</div>
+              <span class="mini-pill" style="background:#FEF3C7;color:#92400E;">Pendente</span>
+            </div>
+            <div class="mini-row">
+              <div><div class="mini-name">João Mendes</div><div style="font-size:7px;color:#9CA3AF;">Combo 10 refeições</div></div>
+              <div class="mini-price" style="color:#111;">R$141</div>
+              <span class="mini-pill" style="background:#DBEAFE;color:#1E40AF;">Produção</span>
+            </div>
+            <div class="mini-row">
+              <div><div class="mini-name">Ana Beatriz</div><div style="font-size:7px;color:#9CA3AF;">Nhoque a Bolonhesa</div></div>
+              <div class="mini-price" style="color:#111;">R$34</div>
+              <span class="mini-pill" style="background:#DCFCE7;color:#14532D;">Pronto</span>
+            </div>
+            <div class="mini-row">
+              <div><div class="mini-name">Carlos Lima</div><div style="font-size:7px;color:#9CA3AF;">Sopa de Abóbora</div></div>
+              <div class="mini-price" style="color:#111;">R$13</div>
+              <span class="mini-pill" style="background:#F3F4F6;color:#6B7280;">Entregue</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-info">
+      <h3>C — Floresta + Gold</h3>
+      <p>Verde-floresta escuro + dourado. Usa as duas cores da marca Donna FIT. Identitário, orgânico e premium.</p>
+      <div class="swatches">
+        <div class="swatch" style="background:#0F1A0F;"></div>
+        <div class="swatch" style="background:#1A2F1A;"></div>
+        <div class="swatch" style="background:#C89B3C;"></div>
+        <div class="swatch" style="background:#F3F6F3;"></div>
+        <div class="swatch" style="background:#FEF3C7;"></div>
+        <div class="swatch" style="background:#DCFCE7;"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="bottom-note">
+  Clique na paleta — pode combinar elementos de mais de uma
+</div>
+
+<script>
+function pick(id) {
+  document.querySelectorAll('.palette-card').forEach(el => el.classList.remove('selected'));
+  document.getElementById('pal-' + id).classList.add('selected');
+  if (window.__companion && window.__companion.sendEvent) {
+    const labels = { a: 'A — Navy + Gold', b: 'B — Grafite + Âmbar', c: 'C — Floresta + Gold' };
+    window.__companion.sendEvent({ type: 'click', choice: id, text: labels[id] });
+  }
+}
+</script>
+</body>
+</html>
