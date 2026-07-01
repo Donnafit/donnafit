@@ -46,7 +46,7 @@ export function OrderKanban({ orders, onUpdateStatus }: Props) {
                   />
                   <span
                     className="text-sm font-bold text-gray-800"
-                    style={{ fontFamily: "var(--font-montserrat)" }}
+                    style={{ fontFamily: "var(--font-ui)" }}
                   >
                     {label}
                   </span>

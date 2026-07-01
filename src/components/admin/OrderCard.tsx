@@ -78,7 +78,7 @@ export function OrderCard({ order, onClick, onUpdateStatus }: Props) {
       {/* Order number */}
       <p
         className="text-xs font-bold mb-2"
-        style={{ color: "#C89B3C", fontFamily: "var(--font-montserrat)" }}
+        style={{ color: "#C89B3C", fontFamily: "var(--font-ui)" }}
       >
         #{order.order_number}
       </p>

@@ -1,4 +1,5 @@
 "use client"
+import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 import { FiscalCopyButton } from "./FiscalCopyButton"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -30,14 +31,26 @@ interface Props {
 }
 
 export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
-  const nextStatus = order ? NEXT_STATUS[order.status as OrderStatus] : undefined
-  const nextLabel  = order ? NEXT_LABEL[order.status as OrderStatus]  : undefined
-  const pill       = order ? (STATUS_PILLS[order.status] ?? STATUS_PILLS.delivered) : null
+  // Keep content rendered during close animation (250ms)
+  const [displayOrder, setDisplayOrder] = useState<OrderWithItems | null>(null)
+
+  useEffect(() => {
+    if (order) {
+      setDisplayOrder(order)
+    } else {
+      const t = setTimeout(() => setDisplayOrder(null), 260)
+      return () => clearTimeout(t)
+    }
+  }, [order])
+
+  const nextStatus = displayOrder ? NEXT_STATUS[displayOrder.status as OrderStatus] : undefined
+  const nextLabel  = displayOrder ? NEXT_LABEL[displayOrder.status as OrderStatus]  : undefined
+  const pill       = displayOrder ? (STATUS_PILLS[displayOrder.status] ?? STATUS_PILLS.delivered) : null
 
   async function handleAdvance() {
-    if (!order || !nextStatus) return
+    if (!displayOrder || !nextStatus) return
     try {
-      await onUpdateStatus(order.id, nextStatus)
+      await onUpdateStatus(displayOrder.id, nextStatus)
       onClose()
     } catch (err) {
       console.error("Erro ao atualizar status:", err)
@@ -47,23 +60,34 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
   return (
     <div
       style={{
-        width: 280,
+        position: "absolute",
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: 300,
         background: "var(--surface-100)",
-        borderLeft: "1px solid rgba(0,0,0,0.07)",
+        borderLeft: "1px solid var(--surface-200)",
         display: "flex",
         flexDirection: "column",
-        flexShrink: 0,
         transform: order ? "translateX(0)" : "translateX(100%)",
         transition: `transform var(--duration-panel) var(--ease-out)`,
         overflow: "hidden",
+        zIndex: 10,
+        boxShadow: order ? "-8px 0 24px rgba(0,0,0,0.07)" : "none",
       }}
     >
-      {order && (
+      {displayOrder && (
         <>
           {/* Header */}
           <div
-            className="flex items-start justify-between"
-            style={{ padding: "18px 20px 14px", borderBottom: "1px solid rgba(0,0,0,0.07)" }}
+            style={{
+              padding: "18px 20px 14px",
+              borderBottom: "1px solid var(--surface-200)",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              flexShrink: 0,
+            }}
           >
             <div>
               <p
@@ -74,30 +98,32 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
                   marginBottom: 3,
                 }}
               >
-                Pedido #{order.order_number} · {formatDate(order.created_at)}
+                Pedido #{displayOrder.order_number} · {formatDate(displayOrder.created_at)}
               </p>
               <p
                 style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: 14,
-                  fontWeight: 800,
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 15,
+                  fontWeight: 700,
                   color: "var(--text-950)",
                   lineHeight: 1.2,
                 }}
               >
-                {order.customer_name}
+                {displayOrder.customer_name}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="flex items-center justify-center"
               style={{
-                width: 26, height: 26,
-                borderRadius: 6,
+                width: 28, height: 28,
+                borderRadius: 7,
                 background: "var(--surface-50)",
-                border: "1px solid rgba(0,0,0,0.07)",
+                border: "1px solid var(--surface-200)",
                 cursor: "pointer",
                 flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
               <X size={12} strokeWidth={1.8} style={{ color: "var(--text-500)" }} />
@@ -105,19 +131,23 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto" style={{ padding: "16px 20px" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
             {[
-              { label: "Telefone",  value: order.customer_phone },
-              { label: "Tipo",      value: order.delivery_type === "delivery" ? "Entrega" : "Retirada" },
-              ...(order.delivery_type === "delivery" && order.delivery_address
-                ? [{ label: "Endereço", value: order.delivery_address }]
+              { label: "Telefone",  value: displayOrder.customer_phone },
+              { label: "Tipo",      value: displayOrder.delivery_type === "delivery" ? "Entrega" : "Retirada" },
+              ...(displayOrder.delivery_type === "delivery" && displayOrder.delivery_address
+                ? [{ label: "Endereço", value: displayOrder.delivery_address }]
                 : []),
-              { label: "Pagamento", value: order.payment_method === "pix" ? "PIX" : "Maquininha" },
+              { label: "Pagamento", value: displayOrder.payment_method === "pix" ? "PIX" : "Maquininha" },
             ].map(({ label, value }) => (
               <div
                 key={label}
-                className="flex justify-between"
-                style={{ padding: "9px 0", borderBottom: "1px solid rgba(0,0,0,0.06)" }}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "9px 0",
+                  borderBottom: "1px solid var(--surface-200)",
+                }}
               >
                 <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)" }}>
                   {label}
@@ -129,7 +159,7 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
                     fontWeight: 600,
                     color: "var(--text-950)",
                     textAlign: "right",
-                    maxWidth: 160,
+                    maxWidth: 165,
                   }}
                 >
                   {value ?? "—"}
@@ -152,18 +182,22 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
             >
               Itens
             </p>
-            {order.order_items.map((item) => (
+            {displayOrder.order_items.map((item) => (
               <div
                 key={item.id}
-                className="flex justify-between"
-                style={{ padding: "7px 0", borderBottom: "1px solid rgba(0,0,0,0.05)" }}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "7px 0",
+                  borderBottom: "1px solid var(--surface-200)",
+                }}
               >
                 <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-700)" }}>
                   {item.quantity}× {item.product_name}
                 </span>
                 <span
                   style={{
-                    fontFamily: "var(--font-display)",
+                    fontFamily: "var(--font-ui)",
                     fontSize: 12,
                     fontWeight: 700,
                     color: "var(--text-950)",
@@ -175,41 +209,40 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
             ))}
 
             {/* Total */}
-            <div className="flex justify-between" style={{ padding: "10px 0", marginTop: 2 }}>
-              <span
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: 13,
-                  fontWeight: 800,
-                  color: "var(--text-950)",
-                }}
-              >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                padding: "12px 0 10px",
+                marginTop: 2,
+                borderTop: "1px solid var(--surface-200)",
+              }}
+            >
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 800, color: "var(--text-950)" }}>
                 Total
               </span>
-              <span
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: 14,
-                  fontWeight: 900,
-                  color: "var(--gold-500)",
-                }}
-              >
-                {formatCurrency(Number(order.total))}
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 900, color: "var(--gold-500)" }}>
+                {formatCurrency(Number(displayOrder.total))}
               </span>
             </div>
 
             {/* Status */}
             <div
-              className="flex justify-between items-center"
-              style={{ padding: "9px 0", borderTop: "1px solid rgba(0,0,0,0.06)" }}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "9px 0",
+                borderTop: "1px solid var(--surface-200)",
+              }}
             >
-              <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)" }}>
-                Status
-              </span>
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)" }}>Status</span>
               {pill && (
                 <span
-                  className="flex items-center gap-1"
                   style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
                     background: pill.bg,
                     color: pill.color,
                     padding: "4px 10px",
@@ -219,16 +252,14 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
                     fontFamily: "var(--font-ui)",
                   }}
                 >
-                  <span
-                    style={{ width: 5, height: 5, borderRadius: "50%", background: pill.pip, flexShrink: 0 }}
-                  />
+                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: pill.pip, flexShrink: 0 }} />
                   {pill.label}
                 </span>
               )}
             </div>
 
             {/* Notas */}
-            {order.notes && order.notes.trim() && (
+            {displayOrder.notes && displayOrder.notes.trim() && (
               <div
                 style={{
                   background: "var(--surface-50)",
@@ -237,19 +268,11 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
                   marginTop: 8,
                 }}
               >
-                <p
-                  style={{
-                    fontFamily: "var(--font-ui)",
-                    fontSize: 10,
-                    fontWeight: 600,
-                    color: "var(--text-300)",
-                    marginBottom: 4,
-                  }}
-                >
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 600, color: "var(--text-300)", marginBottom: 4 }}>
                   Observações
                 </p>
                 <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-700)" }}>
-                  {order.notes}
+                  {displayOrder.notes}
                 </p>
               </div>
             )}
@@ -263,61 +286,42 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
                 marginTop: 12,
               }}
             >
-              <p
-                style={{
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 10,
-                  color: "#92400E",
-                  fontWeight: 500,
-                  marginBottom: 6,
-                }}
-              >
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, color: "#92400E", fontWeight: 500, marginBottom: 6 }}>
                 Fase 1 — copie os dados fiscais:
               </p>
-              <FiscalCopyButton order={order} />
+              <FiscalCopyButton order={displayOrder} />
             </div>
           </div>
 
           {/* Actions */}
-          {nextStatus && nextLabel && (
-            <div style={{ padding: "0 20px 8px" }}>
+          <div style={{ padding: "12px 20px", borderTop: "1px solid var(--surface-200)", flexShrink: 0 }}>
+            {nextStatus && nextLabel && (
               <button
                 onClick={handleAdvance}
                 style={{
                   width: "100%",
-                  fontFamily: "var(--font-display)",
+                  fontFamily: "var(--font-ui)",
                   fontSize: 12,
                   fontWeight: 700,
                   padding: "11px 16px",
                   borderRadius: 10,
                   background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
-                  color: "#000",
+                  color: "#fff",
                   border: "none",
                   cursor: "pointer",
                   boxShadow: "0 2px 12px rgba(200,155,60,0.25)",
-                  transition: "box-shadow var(--duration-standard), transform var(--duration-micro)",
+                  marginBottom: 8,
                 }}
               >
                 {nextLabel}
               </button>
-            </div>
-          )}
-
-          {order.status === "delivered" && (
-            <p
-              style={{
-                textAlign: "center",
-                fontFamily: "var(--font-ui)",
-                fontSize: 12,
-                color: "var(--text-300)",
-                padding: "0 20px 20px",
-              }}
-            >
-              Pedido entregue
-            </p>
-          )}
-
-          <div style={{ height: 16 }} />
+            )}
+            {displayOrder.status === "delivered" && (
+              <p style={{ textAlign: "center", fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-300)" }}>
+                Pedido entregue
+              </p>
+            )}
+          </div>
         </>
       )}
     </div>

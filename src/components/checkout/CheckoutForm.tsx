@@ -37,7 +37,28 @@ export function CheckoutForm() {
   useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
-    if (!user) return
+    if (!user) {
+      try {
+        const savedGuest = localStorage.getItem("donna-fit-guest")
+        if (savedGuest) {
+          const guest = JSON.parse(savedGuest)
+          if (guest.name && !name) {
+            setName(guest.name)
+            setNameState(validateName(guest.name) ? "valid" : "idle")
+          }
+          if (guest.phone && !phone) {
+            setPhone(guest.phone)
+            setPhoneState(validatePhone(guest.phone) ? "valid" : "idle")
+          }
+          if (guest.address && !address) {
+            setAddress(guest.address)
+            setAddressState("valid")
+            setDelivery("delivery")
+          }
+        }
+      } catch {}
+      return
+    }
     const meta = user.user_metadata ?? {}
     if (meta.name && !name) {
       const n = meta.name as string
@@ -151,6 +172,13 @@ export function CheckoutForm() {
           paymentMethod: payment,
           total: finalTotal,
         }))
+        if (!user) {
+          localStorage.setItem("donna-fit-guest", JSON.stringify({
+            name: name.trim(),
+            phone: phone.trim(),
+            address: delivery === "delivery" ? address.trim() : "",
+          }))
+        }
       } catch {}
 
       if (user) {

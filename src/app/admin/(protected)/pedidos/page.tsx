@@ -53,7 +53,7 @@ export default function PedidosPage() {
   }
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
       <AdminHero
         pendingCount={pending}
         productionCount={production}
@@ -62,7 +62,7 @@ export default function PedidosPage() {
         todayOrdersCount={todayOrders.length}
       />
 
-      <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
         <OrderTable
           orders={orders}
           selectedId={selected?.id ?? null}

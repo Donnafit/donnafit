@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/hooks/useCart'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, resolveImageSrc } from '@/lib/utils'
 import { ShoppingBag } from 'lucide-react'
 
 export default function CarrinhoPage() {
@@ -89,7 +89,7 @@ export default function CarrinhoPage() {
                   display: 'flex', alignItems: 'center', gap: 12,
                 }}>
                   <img
-                    src={item.product.image_url || '/marmita.jpg'}
+                    src={resolveImageSrc(item.product.image_url)}
                     alt={item.product.name}
                     style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
                     onError={(e) => { (e.target as HTMLImageElement).src = '/marmita.jpg' }}

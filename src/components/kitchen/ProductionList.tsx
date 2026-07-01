@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
-import { Check, ChefHat } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Check, ChefHat, Loader2, CheckCircle2 } from "lucide-react"
 import type { OrderWithItems } from "@/types"
 
 interface ProductionItem {
@@ -8,6 +9,8 @@ interface ProductionItem {
   productName: string
   productSku: string | null
   totalQuantity: number
+  // Para chamar deduct_stock por pedido
+  orderItems: { orderId: string; productId: string | null; quantity: number }[]
 }
 
 interface Props {
@@ -25,19 +28,32 @@ function aggregateItems(orders: OrderWithItems[]): ProductionItem[] {
           productName: item.product_name,
           productSku: item.product_sku,
           totalQuantity: 0,
+          orderItems: [],
         }
       }
       map[key].totalQuantity += item.quantity
+      map[key].orderItems.push({
+        orderId:   order.id,
+        productId: item.product_id,
+        quantity:  item.quantity,
+      })
     }
   }
   return Object.values(map).sort((a, b) => b.totalQuantity - a.totalQuantity)
 }
 
 export function ProductionList({ orders }: Props) {
-  const items = aggregateItems(orders)
-  const [checked, setChecked] = useState<Set<string>>(new Set())
+  const router = useRouter()
+  const items  = aggregateItems(orders)
+  const orderIds = orders.map((o) => o.id)
+
+  const [checked,    setChecked]    = useState<Set<string>>(new Set())
+  const [finalizing, setFinalizing] = useState(false)
+  const [finalized,  setFinalized]  = useState(false)
+  const [error,      setError]      = useState<string | null>(null)
 
   function toggle(key: string) {
+    if (finalized) return
     setChecked((prev) => {
       const next = new Set(prev)
       next.has(key) ? next.delete(key) : next.add(key)
@@ -45,109 +61,222 @@ export function ProductionList({ orders }: Props) {
     })
   }
 
-  const done = checked.size
-  const total = items.length
+  async function handleFinalize() {
+    setFinalizing(true)
+    setError(null)
+    try {
+      // Monta a lista de items por pedido para o deduct_stock
+      const orderItems = items.flatMap((item) => item.orderItems)
+
+      const res = await fetch("/api/kitchen/finalize", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ orderIds, orderItems }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Erro ao finalizar produção.")
+      setFinalized(true)
+      // Recarrega a página para refletir os novos status no banco
+      setTimeout(() => router.refresh(), 1500)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao finalizar produção.")
+    } finally {
+      setFinalizing(false)
+    }
+  }
+
+  const done     = checked.size
+  const total    = items.length
+  const pct      = total ? Math.round((done / total) * 100) : 0
+  const allDone  = done === total && total > 0
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-20 text-gray-500 flex flex-col items-center justify-center">
-        <ChefHat size={48} className="mb-4 text-brand-gold" />
-        <p className="font-medium">Nenhum pedido para amanha ainda.</p>
+      <div style={{
+        background: "var(--surface-100)",
+        borderRadius: 16, padding: "48px 24px", textAlign: "center",
+        border: "1px solid var(--surface-200)",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
+      }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: "50%",
+          background: "rgba(200,155,60,0.08)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <ChefHat size={22} strokeWidth={1.5} style={{ color: "var(--gold-500)" }} />
+        </div>
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--text-300)", fontWeight: 500 }}>
+          Nenhum pedido para produção.
+        </p>
+      </div>
+    )
+  }
+
+  if (finalized) {
+    return (
+      <div style={{
+        background: "rgba(16,185,129,0.06)",
+        border: "1px solid rgba(16,185,129,0.25)",
+        borderRadius: 16, padding: "48px 24px", textAlign: "center",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
+      }}>
+        <CheckCircle2 size={48} strokeWidth={1.5} style={{ color: "#10B981" }} />
+        <div>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 18, fontWeight: 900, color: "#10B981" }}>
+            Produção finalizada!
+          </p>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "rgba(16,185,129,0.7)", marginTop: 6 }}>
+            {orderIds.length} pedido(s) marcado(s) como prontos. Estoque atualizado.
+          </p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
-      {/* Progress bar */}
-      <div className="bg-gray-800 rounded-2xl p-4">
-        <div className="flex justify-between mb-2">
-          <p className="text-sm font-semibold text-gray-300">
-            Progresso da producao
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+      {/* Barra de progresso */}
+      <div style={{
+        background: "var(--surface-100)",
+        border: "1px solid var(--surface-200)",
+        borderRadius: 14, padding: "16px 20px",
+        display: "flex", flexDirection: "column", gap: 10,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <p style={{
+            fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700,
+            color: "var(--text-500)", textTransform: "uppercase", letterSpacing: "0.6px",
+          }}>
+            Progresso da produção
           </p>
-          <p className="text-sm font-bold text-white">
-            {done}/{total} itens
+          <p style={{
+            fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700,
+            color: allDone ? "#10B981" : "var(--text-950)",
+          }}>
+            {done}/{total} itens · {pct}%
           </p>
         </div>
-        <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-brand-gold rounded-full transition-all duration-300"
-            style={{ width: total ? `${(done / total) * 100}%` : "0%" }}
-          />
+        <div style={{ height: 6, background: "var(--surface-200)", borderRadius: 99, overflow: "hidden" }}>
+          <div style={{
+            height: "100%", width: `${pct}%`, borderRadius: 99,
+            background: allDone
+              ? "linear-gradient(90deg, #10B981, #34D399)"
+              : "linear-gradient(90deg, var(--gold-500), var(--gold-600))",
+            transition: "width 300ms ease, background 400ms",
+          }} />
         </div>
       </div>
 
-      {/* Item list */}
-      <div className="space-y-2">
-        {items.map((item) => {
-          const isDone = checked.has(item.key)
-          return (
-            <button
-              key={item.key}
-              onClick={() => toggle(item.key)}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
-                isDone
-                  ? "border-green-500 bg-green-500/10"
-                  : "border-gray-700 bg-gray-800 hover:border-gray-600 active:scale-[0.99]"
-              }`}
-            >
-              {/* Checkbox / count */}
-              <div
-                className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 border-2 transition-colors ${
-                  isDone
-                    ? "bg-green-500 border-green-500"
-                    : "bg-gray-700 border-gray-600"
-                }`}
-              >
-                {isDone ? (
-                  <Check className="h-6 w-6 text-white" />
-                ) : (
-                  <span className="text-xl font-black text-white">
-                    {item.totalQuantity}
-                  </span>
-                )}
-              </div>
+      {/* Lista de itens */}
+      {items.map((item) => {
+        const isDone = checked.has(item.key)
+        return (
+          <button
+            key={item.key}
+            onClick={() => toggle(item.key)}
+            style={{
+              display: "flex", alignItems: "center", gap: 16,
+              padding: "16px 20px", borderRadius: 14,
+              border: isDone ? "1px solid rgba(16,185,129,0.3)" : "1px solid var(--surface-200)",
+              background: isDone ? "rgba(16,185,129,0.05)" : "var(--surface-100)",
+              cursor: "pointer", textAlign: "left", width: "100%",
+              transition: "all 180ms",
+            }}
+          >
+            {/* Badge quantidade */}
+            <div style={{
+              width: 52, height: 52, borderRadius: 13, flexShrink: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: isDone ? "#10B981" : "rgba(200,155,60,0.10)",
+              border: `1px solid ${isDone ? "transparent" : "rgba(200,155,60,0.2)"}`,
+              transition: "all 200ms",
+            }}>
+              {isDone
+                ? <Check size={22} strokeWidth={2.5} style={{ color: "#fff" }} />
+                : <span style={{
+                    fontFamily: "var(--font-ui)", fontSize: 20, fontWeight: 900,
+                    color: "var(--gold-500)", lineHeight: 1,
+                  }}>{item.totalQuantity}</span>
+              }
+            </div>
 
-              {/* Name */}
-              <div className="flex-1 min-w-0">
-                <p
-                  className={`text-[18px] font-bold leading-tight ${
-                    isDone
-                      ? "text-green-400 line-through decoration-green-500"
-                      : "text-white"
-                  }`}
-                >
-                  {item.productName}
+            {/* Nome e SKU */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{
+                fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 700, lineHeight: 1.3,
+                color: isDone ? "var(--text-300)" : "var(--text-950)",
+                textDecoration: isDone ? "line-through" : "none",
+                transition: "all 200ms",
+              }}>
+                {item.productName}
+              </p>
+              {item.productSku && (
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 2 }}>
+                  SKU #{item.productSku}
                 </p>
-                {item.productSku && (
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    SKU #{item.productSku}
-                  </p>
-                )}
-              </div>
-
-              {/* Quantity badge */}
-              {!isDone && (
-                <span className="text-3xl font-black text-brand-gold shrink-0">
-                  {item.totalQuantity}x
-                </span>
               )}
-            </button>
-          )
-        })}
-      </div>
+            </div>
 
-      {/* Completion state */}
-      {done === total && total > 0 && (
-        <div className="bg-green-500/20 border-2 border-green-500 rounded-2xl p-5 text-center">
-          <p className="text-green-400 font-black text-xl">
-            Producao completa!
-          </p>
-          <p className="text-green-400/70 text-sm mt-1">
-            Todos os itens foram marcados como produzidos.
-          </p>
+            {/* Quantidade direita / pill pronto */}
+            {!isDone ? (
+              <span style={{
+                fontFamily: "var(--font-ui)", fontSize: 22, fontWeight: 900,
+                color: "var(--gold-500)", flexShrink: 0, lineHeight: 1,
+              }}>
+                {item.totalQuantity}×
+              </span>
+            ) : (
+              <span style={{
+                fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 700,
+                color: "#10B981", background: "rgba(16,185,129,0.1)",
+                border: "1px solid rgba(16,185,129,0.2)",
+                borderRadius: 99, padding: "3px 10px", flexShrink: 0,
+              }}>
+                Pronto
+              </span>
+            )}
+          </button>
+        )
+      })}
+
+      {/* Erro */}
+      {error && (
+        <div style={{
+          background: "rgba(239,68,68,0.07)",
+          border: "1px solid rgba(239,68,68,0.25)",
+          borderRadius: 12, padding: "12px 16px",
+        }}>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "#EF4444" }}>{error}</p>
         </div>
       )}
+
+      {/* Botão finalizar — aparece quando tudo está marcado */}
+      {allDone && (
+        <button
+          onClick={handleFinalize}
+          disabled={finalizing}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+            padding: "16px 24px", borderRadius: 14, border: "none", cursor: "pointer",
+            background: finalizing
+              ? "rgba(16,185,129,0.5)"
+              : "linear-gradient(135deg, #10B981, #059669)",
+            color: "#fff",
+            fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 800,
+            boxShadow: "0 4px 20px rgba(16,185,129,0.3)",
+            transition: "opacity 200ms",
+            opacity: finalizing ? 0.7 : 1,
+          }}
+        >
+          {finalizing
+            ? <><Loader2 size={18} strokeWidth={2} style={{ animation: "spin 1s linear infinite" }} /> Finalizando...</>
+            : <><CheckCircle2 size={18} strokeWidth={2} /> Finalizar Produção — {orderIds.length} pedido(s)</>
+          }
+        </button>
+      )}
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 }

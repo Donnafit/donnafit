@@ -292,14 +292,16 @@ body {
 .btn-outline:hover { background: #FFF8EE; }
 
 .whatsapp-btn {
-  background: #25D366;
-  transition: all 0.2s ease;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   color: #fff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
 }
 .whatsapp-btn:hover {
-  background: #1EB855;
-  box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #20c35b, #0f786b);
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
+  transform: translateY(-2px);
 }
 
 /* Card white */
@@ -499,11 +501,23 @@ body {
   --duration-panel:    250ms;
 }
 
-/* Admin: Jakarta Sans como fonte padrão em toda a área administrativa */
+/* Dark mode — área de conteúdo admin */
+.dark .admin-layout {
+  --surface-50:  #0D1117;
+  --surface-100: #161B22;
+  --surface-200: #21262D;
+  --text-950: #F0F6FC;
+  --text-700: #C9D1D9;
+  --text-500: #8B949E;
+  --text-300: #6E7681;
+}
+
+/* Admin: Jakarta Sans como fonte padrão em TODA a área administrativa */
 .admin-layout,
+.admin-layout *,
 .admin-layout input,
 .admin-layout button,
 .admin-layout select,
 .admin-layout textarea {
-  font-family: var(--font-ui);
+  font-family: var(--font-ui) !important;
 }

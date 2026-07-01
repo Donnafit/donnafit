@@ -27,12 +27,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <main
           style={{
             flex: 1,
-            display: "flex",
-            flexDirection: "column",
+            position: "relative",
             overflow: "hidden",
-            minHeight: 0,
           }}
-          className="pb-20 md:pb-0"
         >
           {children}
         </main>

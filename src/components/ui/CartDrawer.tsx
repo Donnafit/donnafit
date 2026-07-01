@@ -1,13 +1,13 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useCart } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, resolveImageSrc } from "@/lib/utils"
 
 function CartItemImage({ src, alt }: { src: string | null | undefined; alt: string }) {
-  const [imgSrc, setImgSrc] = useState(src || "/marmita.jpg")
+  const [imgSrc, setImgSrc] = useState(resolveImageSrc(src))
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img

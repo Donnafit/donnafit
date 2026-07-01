@@ -3,11 +3,11 @@
 import { useState } from "react"
 import { Minus, Plus, Trash2 } from "lucide-react"
 import { useCart } from "@/hooks/useCart"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, resolveImageSrc } from "@/lib/utils"
 import type { CartItem as CartItemType } from "@/types"
 
 function ProductThumb({ src, alt }: { src: string | null | undefined; alt: string }) {
-  const [imgSrc, setImgSrc] = useState<string>(src || "/marmita.jpg")
+  const [imgSrc, setImgSrc] = useState<string>(resolveImageSrc(src))
 
   return (
     // eslint-disable-next-line @next/next/no-img-element

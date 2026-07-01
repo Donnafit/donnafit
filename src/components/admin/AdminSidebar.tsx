@@ -1,12 +1,15 @@
 "use client"
+import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import {
-  LayoutDashboard, ChefHat, Package, LogOut,
+  LayoutDashboard, ChefHat, Package,
   QrCode, Megaphone, BookOpen,
+  PanelLeftClose, PanelLeftOpen,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { ProfileModal } from "./ProfileModal"
 
 const NAV_GROUPS = [
   {
@@ -27,6 +30,9 @@ const NAV_GROUPS = [
   },
 ]
 
+const EXPANDED_W = 232
+const COLLAPSED_W = 64
+
 interface Props {
   pendingCount?: number
 }
@@ -34,6 +40,10 @@ interface Props {
 export function AdminSidebar({ pendingCount = 0 }: Props) {
   const pathname = usePathname()
   const router   = useRouter()
+  const [collapsed,    setCollapsed]    = useState(false)
+  const [showProfile,  setShowProfile]  = useState(false)
+  const [profileName,  setProfileName]  = useState("Everson")
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
 
   async function handleLogout() {
     const supabase = createClient()
@@ -41,156 +51,225 @@ export function AdminSidebar({ pendingCount = 0 }: Props) {
     router.push("/admin/login")
   }
 
+  function handleSaveProfile(name: string, photo: string | null) {
+    setProfileName(name)
+    setProfilePhoto(photo)
+  }
+
+  const w = collapsed ? COLLAPSED_W : EXPANDED_W
+
   return (
-    <aside
-      className="hidden md:flex flex-col shrink-0"
-      style={{ width: 232, background: "var(--forest-900)", minHeight: "100vh" }}
-    >
-      {/* Logo */}
-      <div
-        className="flex items-center gap-3 px-[18px] py-[22px]"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+    <>
+      <aside
+        className="hidden md:flex flex-col shrink-0"
+        style={{
+          width: w,
+          minWidth: w,
+          background: "var(--forest-900)",
+          minHeight: "100vh",
+          transition: "width 220ms ease, min-width 220ms ease",
+          overflow: "hidden",
+        }}
       >
+        {/* Logo header */}
         <div
-          className="flex items-center justify-center shrink-0"
-          style={{ width: 34, height: 34, borderRadius: 9, background: "var(--gold-500)" }}
-        >
-          <Image src="/logo.svg" alt="Donna FIT" width={18} height={18} />
-        </div>
-        <div>
-          <span
-            className="block text-white leading-tight"
-            style={{ fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 900, letterSpacing: "1px" }}
-          >
-            DONNA FIT
-          </span>
-          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-ui)" }}>
-            Painel Admin
-          </span>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 p-3">
-        {NAV_GROUPS.map((group) => (
-          <div key={group.label} className="mb-6">
-            <p
-              className="px-2 mb-1"
-              style={{
-                fontFamily: "var(--font-ui)",
-                fontSize: 9,
-                fontWeight: 700,
-                letterSpacing: "1.4px",
-                textTransform: "uppercase",
-                color: "rgba(255,255,255,0.18)",
-              }}
-            >
-              {group.label}
-            </p>
-            {group.items.map(({ href, label, icon: Icon, badge }) => {
-              const isActive = pathname.startsWith(href)
-              const count = badge ? pendingCount : 0
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex items-center gap-[10px] mb-[1px] relative"
-                  style={{
-                    padding: "9px 10px",
-                    borderRadius: 10,
-                    fontFamily: "var(--font-ui)",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: isActive ? "var(--gold-500)" : "rgba(255,255,255,0.38)",
-                    background: isActive ? "var(--gold-dim)" : "transparent",
-                    transition: "all var(--duration-micro) var(--ease-standard)",
-                    textDecoration: "none",
-                  }}
-                >
-                  {isActive && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        left: 0,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        width: 3,
-                        height: 20,
-                        background: "var(--gold-500)",
-                        borderRadius: "0 3px 3px 0",
-                      }}
-                    />
-                  )}
-                  <Icon size={15} strokeWidth={1.8} style={{ flexShrink: 0, opacity: isActive ? 1 : 0.6 }} />
-                  <span className="flex-1">{label}</span>
-                  {badge && count > 0 && (
-                    <span
-                      style={{
-                        background: "var(--gold-500)",
-                        color: "#000",
-                        fontSize: 9,
-                        fontWeight: 700,
-                        padding: "1px 7px",
-                        borderRadius: 9999,
-                        fontFamily: "var(--font-ui)",
-                        lineHeight: "16px",
-                      }}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </Link>
-              )
-            })}
-          </div>
-        ))}
-      </nav>
-
-      {/* User footer */}
-      <div
-        className="flex items-center gap-[10px] p-4"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
-      >
-        <div
-          className="flex items-center justify-center shrink-0"
           style={{
-            width: 34,
-            height: 34,
-            borderRadius: "50%",
-            background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
-            fontFamily: "var(--font-display)",
-            fontSize: 13,
-            fontWeight: 800,
-            color: "#fff",
-          }}
-        >
-          E
-        </div>
-        <div className="flex-1 min-w-0">
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#fff", fontFamily: "var(--font-ui)" }}>
-            Everson
-          </p>
-          <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-ui)" }}>
-            Administrador
-          </p>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center justify-center"
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 7,
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            cursor: "pointer",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+            padding: "16px 14px",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            justifyContent: collapsed ? "center" : "space-between",
             flexShrink: 0,
           }}
-          title="Sair"
         >
-          <LogOut size={12} strokeWidth={1.8} style={{ color: "rgba(255,255,255,0.3)" }} />
-        </button>
-      </div>
-    </aside>
+          {/* Logo + nome */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <div
+              style={{
+                width: 34, height: 34, borderRadius: "50%", background: "#fff",
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              }}
+            >
+              <Image src="/logo.svg" alt="Donna FIT" width={20} height={20} />
+            </div>
+            {!collapsed && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 1, overflow: "hidden" }}>
+                <span style={{
+                  fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 900,
+                  letterSpacing: "1px", color: "#fff", lineHeight: 1, whiteSpace: "nowrap",
+                }}>
+                  DONNA FIT
+                </span>
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-ui)", lineHeight: 1 }}>
+                  Painel Admin
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Toggle — no cabeçalho quando expandido */}
+          {!collapsed && (
+            <button
+              onClick={() => setCollapsed(true)}
+              title="Recolher menu"
+              style={{
+                width: 28, height: 28, borderRadius: 7, border: "none",
+                background: "rgba(255,255,255,0.05)", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                transition: "background 150ms",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.10)" }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)" }}
+            >
+              <PanelLeftClose size={14} strokeWidth={1.8} style={{ color: "rgba(255,255,255,0.4)" }} />
+            </button>
+          )}
+        </div>
+
+        {/* Nav */}
+        <nav style={{ flex: 1, padding: "12px 8px", overflowY: "auto" }}>
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label} style={{ marginBottom: collapsed ? 4 : 24 }}>
+              {!collapsed && (
+                <p style={{
+                  padding: "0 8px", marginBottom: 4,
+                  fontFamily: "var(--font-ui)", fontSize: 9, fontWeight: 700,
+                  letterSpacing: "1.4px", textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.18)",
+                }}>
+                  {group.label}
+                </p>
+              )}
+              {collapsed && <div style={{ height: 8 }} />}
+
+              {group.items.map(({ href, label, icon: Icon, badge }) => {
+                const isActive = pathname.startsWith(href)
+                const count    = badge ? pendingCount : 0
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    title={collapsed ? label : undefined}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: collapsed ? 0 : 10,
+                      justifyContent: collapsed ? "center" : "flex-start",
+                      padding: collapsed ? "10px 0" : "9px 10px",
+                      borderRadius: 10,
+                      marginBottom: 1,
+                      fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 500,
+                      color: isActive ? "var(--gold-500)" : "rgba(255,255,255,0.38)",
+                      background: isActive ? "var(--gold-dim)" : "transparent",
+                      transition: "all 150ms",
+                      textDecoration: "none",
+                      position: "relative",
+                    }}
+                  >
+                    <Icon size={15} strokeWidth={1.8} style={{ flexShrink: 0, opacity: isActive ? 1 : 0.6 }} />
+                    {!collapsed && <span style={{ flex: 1 }}>{label}</span>}
+                    {badge && count > 0 && !collapsed && (
+                      <span style={{
+                        background: "var(--gold-500)", color: "#000",
+                        fontSize: 9, fontWeight: 700,
+                        padding: "1px 7px", borderRadius: 9999,
+                        fontFamily: "var(--font-ui)", lineHeight: "16px",
+                      }}>
+                        {count}
+                      </span>
+                    )}
+                    {/* Badge dot quando recolhido */}
+                    {badge && count > 0 && collapsed && (
+                      <span style={{
+                        position: "absolute", top: 6, right: 10,
+                        width: 7, height: 7, borderRadius: "50%",
+                        background: "var(--gold-500)",
+                      }} />
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
+        </nav>
+
+        {/* Footer — perfil */}
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", flexShrink: 0 }}>
+          {/* Toggle — acima do perfil quando recolhido */}
+          {collapsed && (
+            <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px" }}>
+              <button
+                onClick={() => setCollapsed(false)}
+                title="Expandir menu"
+                style={{
+                  width: 36, height: 36, borderRadius: 9, border: "none",
+                  background: "rgba(255,255,255,0.05)", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "background 150ms",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.10)" }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)" }}
+              >
+                <PanelLeftOpen size={15} strokeWidth={1.8} style={{ color: "rgba(255,255,255,0.4)" }} />
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={() => setShowProfile(true)}
+            title={collapsed ? profileName : undefined}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: collapsed ? 0 : 10,
+              justifyContent: collapsed ? "center" : "flex-start",
+              padding: collapsed ? "12px 0" : "14px 16px",
+              width: "100%", border: "none",
+              background: "transparent", cursor: "pointer",
+              transition: "background 150ms",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.03)" }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}
+          >
+            <div style={{
+              width: 34, height: 34, borderRadius: "50%", overflow: "hidden",
+              background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
+              fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 800, color: "#fff",
+              flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {profilePhoto
+                ? <Image src={profilePhoto} alt="Perfil" width={34} height={34} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
+                : profileName.charAt(0).toUpperCase()
+              }
+            </div>
+            {!collapsed && (
+              <>
+                <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "#fff", fontFamily: "var(--font-ui)" }}>
+                    {profileName}
+                  </p>
+                  <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-ui)" }}>
+                    Administrador
+                  </p>
+                </div>
+                <span style={{ fontSize: 16, color: "rgba(255,255,255,0.18)", lineHeight: 1 }}>›</span>
+              </>
+            )}
+          </button>
+        </div>
+      </aside>
+
+      {showProfile && (
+        <ProfileModal
+          name={profileName}
+          photo={profilePhoto}
+          sidebarWidth={w}
+          onSave={handleSaveProfile}
+          onClose={() => setShowProfile(false)}
+          onLogout={handleLogout}
+        />
+      )}
+    </>
   )
 }

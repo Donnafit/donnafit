@@ -1,13 +1,20 @@
 "use client"
-import { useState, useTransition } from "react"
-import Image from "next/image"
-import { Package, Search, CheckCircle2, AlertTriangle, XCircle } from "lucide-react"
+import { useState, useTransition, useRef, useEffect, useCallback } from "react"
+import { Package, Search, CheckCircle2, AlertTriangle, XCircle, Minus, Plus,
+  ChevronDown, Check, X, ImageIcon, PlusCircle, UploadCloud, Loader2, Edit3
+} from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { resolveImageSrc } from "@/lib/utils"
 
+// ─── Tipos ────────────────────────────────────────────────────────────────────
 interface ProductWithCat {
   id: string
   name: string
   sku: string | null
+  description: string | null
+  price: number
+  category_id: string | null
+  is_active: boolean
   stock_quantity: number
   min_stock_alert: number
   stock_type: "combo" | "avulso"
@@ -15,58 +22,618 @@ interface ProductWithCat {
   categories: { name: string; slug: string } | null
 }
 
+interface CategoryOption {
+  id: string
+  name: string
+  slug: string
+}
+
 interface Props {
   products: ProductWithCat[]
 }
 
-function StockBar({ qty, min }: { qty: number; min: number }) {
-  const max     = Math.max(qty, min * 3, 10)
-  const pct     = Math.min((qty / max) * 100, 100)
-  const isEmpty = qty === 0
-  const isLow   = !isEmpty && qty <= min
-  const color   = isEmpty ? "#EF4444" : isLow ? "#F59E0B" : "#10B981"
-
+// ─── Thumbnail (usa img nativo — Google Drive faz redirect 302) ───────────────
+function ProductThumb({ src, alt }: { src: string | null; alt: string }) {
+  const [broken, setBroken] = useState(false)
+  if (!src || broken) {
+    return <Package size={16} strokeWidth={1.5} style={{ color: "var(--text-300)" }} />
+  }
   return (
-    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "#F3F4F6", flex: 1 }}>
-      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={resolveImageSrc(src, 120)} alt={alt} onError={() => setBroken(true)}
+      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+  )
+}
+
+// ─── Barra de estoque ─────────────────────────────────────────────────────────
+function StockBar({ qty, min }: { qty: number; min: number }) {
+  const max   = Math.max(qty, min * 3, 10)
+  const pct   = Math.min((qty / max) * 100, 100)
+  const color = qty === 0 ? "#EF4444" : qty <= min ? "#F59E0B" : "#10B981"
+  return (
+    <div style={{ flex: 1, height: 4, borderRadius: 99, background: "var(--surface-200)", overflow: "hidden" }}>
+      <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 99, transition: "width 300ms" }} />
     </div>
   )
 }
 
-export function EstoqueClient({ products: initial }: Props) {
-  const [products, setProducts]   = useState<ProductWithCat[]>(initial)
-  const [search, setSearch]       = useState("")
-  const [catFilter, setCatFilter] = useState<string>("all")
-  const [saving, setSaving]       = useState<Record<string, boolean>>({})
-  const [saved, setSaved]         = useState<Record<string, boolean>>({})
-  const [, startTransition]       = useTransition()
+// ─── Dropdown customizado (sem select nativo) ─────────────────────────────────
+interface DropdownOption { value: string; label: string }
+interface DropdownProps {
+  value: string
+  onChange: (v: string) => void
+  options: DropdownOption[]
+  placeholder?: string
+  compact?: boolean
+}
 
-  const combos = products.filter(p => p.stock_type === "combo")
-  const filtered = combos.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase())
-    const matchCat    = catFilter === "all" || (p.categories?.slug ?? "") === catFilter
-    return matchSearch && matchCat
+function CustomDropdown({ value, onChange, options, placeholder = "Selecionar", compact = false }: DropdownProps) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
+
+  const current = options.find((o) => o.value === value)?.label ?? placeholder
+
+  return (
+    <div ref={ref} style={{ position: "relative", width: "100%" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 8, textAlign: "left",
+          fontFamily: "var(--font-ui)", fontSize: compact ? 12 : 13, fontWeight: 500,
+          color: value ? "var(--text-950)" : "var(--text-300)",
+          background: "var(--surface-50)",
+          border: `1px solid ${open ? "rgba(200,155,60,0.6)" : "var(--surface-200)"}`,
+          borderRadius: 9, padding: compact ? "0 12px" : "10px 12px",
+          height: compact ? 40 : "auto",
+          cursor: "pointer",
+          transition: "border-color 150ms",
+          boxSizing: "border-box",
+        }}
+      >
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{current}</span>
+        <ChevronDown size={compact ? 12 : 14} strokeWidth={2.5}
+          style={{ color: "var(--gold-500)", flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 180ms" }} />
+      </button>
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 5px)", left: 0, right: 0, zIndex: 200,
+          background: "var(--surface-100)",
+          border: "1px solid var(--surface-200)",
+          borderRadius: 10,
+          boxShadow: "0 12px 32px rgba(0,0,0,0.16)",
+          overflow: "hidden",
+          animation: "ddIn 120ms ease",
+          maxHeight: 220, overflowY: "auto",
+        }}>
+          {options.map((opt) => {
+            const sel = opt.value === value
+            return (
+              <button key={opt.value} type="button"
+                onClick={() => { onChange(opt.value); setOpen(false) }}
+                style={{
+                  width: "100%", textAlign: "left", border: "none", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "10px 14px",
+                  fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: sel ? 700 : 400,
+                  color: sel ? "var(--gold-500)" : "var(--text-700)",
+                  background: sel ? "rgba(200,155,60,0.07)" : "transparent",
+                  transition: "background 100ms",
+                }}
+                onMouseEnter={(e) => { if (!sel) e.currentTarget.style.background = "var(--surface-50)" }}
+                onMouseLeave={(e) => { if (!sel) e.currentTarget.style.background = "transparent" }}
+              >
+                {opt.label}
+                {sel && <Check size={12} strokeWidth={2.5} style={{ color: "var(--gold-500)", flexShrink: 0 }} />}
+              </button>
+            )
+          })}
+        </div>
+      )}
+      <style>{`@keyframes ddIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}`}</style>
+    </div>
+  )
+}
+
+// ─── Toggle switch ─────────────────────────────────────────────────────────────
+function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <button
+      type="button" onClick={onChange} role="switch" aria-checked={checked}
+      style={{
+        width: 44, height: 24, borderRadius: 99, border: "none",
+        background: checked ? "#10B981" : "var(--surface-200)",
+        position: "relative", cursor: "pointer", flexShrink: 0,
+        transition: "background 200ms",
+        padding: 0,
+      }}
+    >
+      <span style={{
+        position: "absolute", top: 4, left: checked ? 23 : 4,
+        width: 16, height: 16, borderRadius: "50%",
+        background: "#fff", transition: "left 200ms",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+        display: "block",
+      }} />
+    </button>
+  )
+}
+
+// ─── Upload de Imagem (Supabase Storage) ───────────────────────────────────────
+interface ImageUploaderProps {
+  value: string
+  onChange: (url: string) => void
+}
+
+function ImageUploader({ value, onChange }: ImageUploaderProps) {
+  const [uploading, setUploading] = useState(false)
+  const [urlError, setUrlError]   = useState(false)
+  const [dragging, setDragging]   = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  async function uploadFile(file: File) {
+    if (!file.type.startsWith("image/")) return
+    setUploading(true)
+    setUrlError(false)
+    try {
+      const supabase = createClient()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = supabase as any
+      const ext  = file.name.split(".").pop()?.toLowerCase() ?? "jpg"
+      const path = `products/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error } = await sb.storage.from("products-images").upload(path, file, { upsert: true })
+      if (error) throw error
+      const { data } = sb.storage.from("products-images").getPublicUrl(path)
+      onChange(data.publicUrl)
+    } catch (err) {
+      console.error(err)
+      setUrlError(true)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function handleFiles(files: FileList | null) {
+    if (files && files[0]) uploadFile(files[0])
+  }
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); setDragging(false)
+    handleFiles(e.dataTransfer.files)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const hasImage = !!value && !urlError
+
+  return (
+    <div>
+      {/* Drop zone */}
+      <div
+        onDragEnter={(e) => { e.preventDefault(); setDragging(true) }}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        onClick={() => !uploading && inputRef.current?.click()}
+        style={{
+          position: "relative", borderRadius: 12, overflow: "hidden",
+          height: hasImage ? 140 : 110,
+          border: `2px dashed ${dragging ? "var(--gold-500)" : hasImage ? "transparent" : "var(--surface-200)"}`,
+          background: dragging ? "rgba(200,155,60,0.06)" : hasImage ? "transparent" : "var(--surface-50)",
+          cursor: uploading ? "wait" : "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "border-color 180ms, background 180ms",
+        }}
+      >
+        {uploading ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <Loader2 size={24} strokeWidth={1.5} style={{ color: "var(--gold-500)", animation: "spin 0.9s linear infinite" }} />
+            <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-300)" }}>Enviando imagem…</span>
+          </div>
+        ) : hasImage ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={value} alt="Preview"
+              onError={() => setUrlError(true)}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            {/* overlay ao hover */}
+            <div className="img-overlay" style={{
+              position: "absolute", inset: 0,
+              background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)",
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6,
+              opacity: 0, transition: "opacity 180ms",
+            }}>
+              <UploadCloud size={20} style={{ color: "#fff" }} />
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "#fff", fontWeight: 600 }}>Trocar imagem</span>
+            </div>
+            <style>{`.img-overlay:hover{opacity:1!important}`}</style>
+          </>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, pointerEvents: "none" }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: "50%", background: "var(--surface-200)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <UploadCloud size={20} strokeWidth={1.5} style={{ color: "var(--text-300)" }} />
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: "var(--text-700)" }}>
+                Clique ou arraste a foto aqui
+              </p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 2 }}>
+                JPG, PNG, WebP · máx. 5MB
+              </p>
+            </div>
+          </div>
+        )}
+        <input ref={inputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp"
+          onChange={(e) => handleFiles(e.target.files)} style={{ display: "none" }} />
+      </div>
+
+
+
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
+}
+
+// ─── Modal de Produto (Criar / Editar) ──────────────────────────────────────────
+interface ProductModalProps {
+  onClose: () => void
+  onSaved: (product: ProductWithCat) => void
+  productToEdit?: ProductWithCat | null
+}
+
+function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
+  const [categories, setCategories] = useState<CategoryOption[]>([])
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState<string | null>(null)
+
+  const [form, setForm] = useState({
+    name: productToEdit?.name ?? "",
+    description: productToEdit?.description ?? "",
+    sku: productToEdit?.sku ?? "",
+    price: productToEdit?.price?.toString() ?? "",
+    image_url: productToEdit?.image_url ?? "",
+    category_id: productToEdit?.category_id ?? "",
+    stock_type: productToEdit?.stock_type ?? "combo",
+    stock_quantity: productToEdit?.stock_quantity?.toString() ?? "0",
+    min_stock_alert: productToEdit?.min_stock_alert?.toString() ?? "10",
+    is_active: productToEdit?.is_active ?? true,
   })
 
-  const categories = Array.from(
-    new Map(
-      combos.map(p => [p.categories?.slug ?? "outros", p.categories?.name ?? "Outros"])
-    ).entries()
-  )
+  useEffect(() => {
+    const supabase = createClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(supabase as any).from("categories").select("id,name,slug").order("sort_order")
+      .then(({ data }: { data: CategoryOption[] | null }) => { if (data) setCategories(data) })
+  }, [])
 
-  const total      = combos.length
-  const okCount    = combos.filter(p => p.stock_quantity > p.min_stock_alert).length
-  const lowCount   = combos.filter(p => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock_alert).length
-  const emptyCount = combos.filter(p => p.stock_quantity === 0).length
+  // Bloqueia scroll do body ao abrir modal
+  useEffect(() => {
+    document.body.style.overflow = "hidden"
+    return () => { document.body.style.overflow = "" }
+  }, [])
+
+  const catOptions: DropdownOption[] = [
+    { value: "", label: "Sem categoria" },
+    ...categories.map((c) => ({ value: c.id, label: c.name })),
+  ]
+
+  const typeOptions: DropdownOption[] = [
+    { value: "combo",  label: "Combo — reserva no checkout" },
+    { value: "avulso", label: "Avulso — baixa na produção" },
+  ]
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!form.name.trim()) return setError("O nome do produto é obrigatório.")
+    if (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 0)
+      return setError("Informe um preço válido maior que zero.")
+
+    setSaving(true)
+    const supabase = createClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+
+    const payload = {
+      name: form.name.trim(),
+      description: form.description.trim() || null,
+      sku: form.sku.trim().toUpperCase() || null,
+      price: Number(Number(form.price).toFixed(2)),
+      image_url: form.image_url.trim() || null,
+      category_id: form.category_id || null,
+      stock_type: form.stock_type,
+      stock_quantity: Math.max(0, parseInt(form.stock_quantity) || 0),
+      min_stock_alert: Math.max(1, parseInt(form.min_stock_alert) || 10),
+      is_active: form.is_active,
+    }
+
+    let query = sb.from("products")
+    if (productToEdit) {
+      query = query.update(payload).eq("id", productToEdit.id)
+    } else {
+      query = query.insert({ ...payload, sort_order: 999 })
+    }
+
+    const { data, error: saveError } = await query.select("*, categories(name, slug)").single()
+
+    if (saveError) {
+      setError(saveError.message ?? "Erro ao salvar. Tente novamente.")
+      setSaving(false)
+      return
+    }
+    onSaved(data as ProductWithCat)
+    onClose()
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", fontFamily: "var(--font-ui)", fontSize: 13,
+    color: "var(--text-950)", background: "var(--surface-50)",
+    border: "1px solid var(--surface-200)", borderRadius: 9,
+    padding: "10px 12px", outline: "none", boxSizing: "border-box",
+    transition: "border-color 150ms",
+  }
+  const labelStyle: React.CSSProperties = {
+    fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700,
+    color: "var(--text-300)", letterSpacing: "0.5px", textTransform: "uppercase",
+    display: "block", marginBottom: 5,
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)",
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{
+        background: "var(--surface-100)",
+        borderRadius: 18, width: "100%", maxWidth: 560,
+        maxHeight: "92vh", overflowY: "auto",
+        boxShadow: "0 28px 72px rgba(0,0,0,0.32)",
+        animation: "fadeUp 180ms ease",
+      }}>
+        <style>{`
+          @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+          .modal-input:focus{border-color:rgba(200,155,60,0.6)!important}
+        `}</style>
+
+        {/* Header */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "20px 24px", borderBottom: "1px solid var(--surface-200)",
+          position: "sticky", top: 0, background: "var(--surface-100)", zIndex: 1,
+          borderRadius: "18px 18px 0 0",
+        }}>
+          <div>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 800, color: "var(--text-950)" }}>
+              {productToEdit ? "Editar Produto" : "Novo Produto"}
+            </p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 2 }}>
+              {productToEdit ? "Edite os detalhes do produto abaixo" : "Preencha os dados para adicionar ao cardápio"}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} style={{
+            width: 34, height: 34, borderRadius: 9, border: "none",
+            background: "var(--surface-200)", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <X size={14} strokeWidth={2.5} style={{ color: "var(--text-700)" }} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ padding: "22px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
+
+          {/* Foto */}
+          <div>
+            <label style={labelStyle}>Foto do Produto</label>
+            <ImageUploader value={form.image_url} onChange={(url) => setForm((f) => ({ ...f, image_url: url }))} />
+          </div>
+
+          <div style={{ borderTop: "1px solid var(--surface-200)" }} />
+
+          {/* Nome */}
+          <div>
+            <label style={labelStyle}>Nome do Produto *</label>
+            <input className="modal-input" style={inputStyle}
+              placeholder="Ex: Frango Grelhado com Arroz Integral (350g)"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              required />
+          </div>
+
+          {/* Descrição */}
+          <div>
+            <label style={labelStyle}>Descrição</label>
+            <textarea className="modal-input" style={{ ...inputStyle, resize: "vertical", minHeight: 72 }}
+              placeholder="Ingredientes, informações nutricionais, modo de preparo…"
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+          </div>
+
+          {/* Preço + SKU */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Preço (R$) *</label>
+              <input type="number" step="0.01" min="0"
+                className="modal-input" style={inputStyle}
+                placeholder="0,00"
+                value={form.price}
+                onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                required />
+            </div>
+            <div>
+              <label style={labelStyle}>SKU</label>
+              <input className="modal-input" style={inputStyle}
+                placeholder="Ex: FRG-GRELHADO-350"
+                value={form.sku}
+                onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} />
+            </div>
+          </div>
+
+          {/* Categoria + Tipo */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Categoria</label>
+              <CustomDropdown
+                value={form.category_id}
+                onChange={(v) => setForm((f) => ({ ...f, category_id: v }))}
+                options={catOptions}
+                placeholder="Sem categoria"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Tipo de Estoque</label>
+              <CustomDropdown
+                value={form.stock_type}
+                onChange={(v) => setForm((f) => ({ ...f, stock_type: v as "combo" | "avulso" }))}
+                options={typeOptions}
+              />
+            </div>
+          </div>
+
+          {/* Estoque Inicial + Alerta */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Estoque Inicial</label>
+              <input type="number" min="0" className="modal-input" style={inputStyle}
+                value={form.stock_quantity}
+                onChange={(e) => setForm((f) => ({ ...f, stock_quantity: e.target.value }))} />
+            </div>
+            <div>
+              <label style={labelStyle}>Alerta de Baixo Estoque</label>
+              <input type="number" min="1" className="modal-input" style={inputStyle}
+                value={form.min_stock_alert}
+                onChange={(e) => setForm((f) => ({ ...f, min_stock_alert: e.target.value }))} />
+            </div>
+          </div>
+
+          {/* Ativo */}
+          <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+            <Toggle checked={form.is_active} onChange={() => setForm((f) => ({ ...f, is_active: !f.is_active }))} />
+            <div>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--text-950)" }}>
+                Produto ativo
+              </p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 1 }}>
+                {form.is_active ? "Visível no cardápio" : "Oculto no cardápio"}
+              </p>
+            </div>
+          </label>
+
+          {/* Erro */}
+          {error && (
+            <div style={{
+              background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+              borderRadius: 9, padding: "10px 14px",
+              fontFamily: "var(--font-ui)", fontSize: 12, color: "#EF4444",
+              display: "flex", alignItems: "center", gap: 8,
+            }}>
+              <XCircle size={14} strokeWidth={2} style={{ flexShrink: 0 }} />
+              {error}
+            </div>
+          )}
+
+          {/* Ações */}
+          <div style={{ display: "flex", gap: 10, paddingTop: 2 }}>
+            <button type="button" onClick={onClose} style={{
+              flex: 1, padding: "12px", borderRadius: 10,
+              border: "1px solid var(--surface-200)",
+              background: "transparent", cursor: "pointer",
+              fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600,
+              color: "var(--text-700)", transition: "border-color 150ms",
+            }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--gold-500)" }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--surface-200)" }}
+            >
+              Cancelar
+            </button>
+            <button type="submit" disabled={saving} style={{
+              flex: 2, padding: "12px", borderRadius: 10, border: "none",
+              background: saving ? "var(--surface-200)" : "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
+              cursor: saving ? "not-allowed" : "pointer",
+              fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700,
+              /* ✅ Letra BRANCA em fundos dourados */
+              color: saving ? "var(--text-300)" : "#FFFFFF",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              transition: "all 200ms",
+              boxShadow: saving ? "none" : "0 4px 14px rgba(200,155,60,0.35)",
+            }}>
+              {saving ? (
+                <>
+                  <Loader2 size={14} style={{ animation: "spin 0.8s linear infinite" }} />
+                  Salvando…
+                </>
+              ) : (
+                <>
+                  <PlusCircle size={14} strokeWidth={2.5} />
+                  {productToEdit ? "Salvar Alterações" : "Adicionar ao Cardápio"}
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Componente Principal ─────────────────────────────────────────────────────
+export function EstoqueClient({ products: initial }: Props) {
+  const [products,   setProducts]   = useState<ProductWithCat[]>(initial)
+  const [search,     setSearch]     = useState("")
+  const [catFilter,  setCatFilter]  = useState("all")
+  const [typeFilter, setTypeFilter] = useState("all")
+  const [saving,     setSaving]     = useState<Record<string, boolean>>({})
+  const [saved,      setSaved]      = useState<Record<string, boolean>>({})
+  const [showModal,  setShowModal]  = useState(false)
+  const [editingProduct, setEditingProduct] = useState<ProductWithCat | null>(null)
+  const [, startTransition] = useTransition()
+
+  const filtered = products.filter((p) => {
+    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
+                        (p.sku ?? "").toLowerCase().includes(search.toLowerCase())
+    const matchCat    = catFilter  === "all" || (p.categories?.slug ?? "") === catFilter
+    const matchType   = typeFilter === "all" || p.stock_type === typeFilter
+    return matchSearch && matchCat && matchType
+  })
+
+  // Categorias únicas para filtro
+  const catOptions: DropdownOption[] = [
+    { value: "all", label: "Todas categorias" },
+    ...Array.from(
+      new Map(products.map((p) => [p.categories?.slug ?? "__", p.categories?.name ?? "Sem categoria"])).entries()
+    ).map(([slug, name]) => ({ value: slug, label: name })),
+  ]
+  const typeOptions: DropdownOption[] = [
+    { value: "all",    label: "Todos os tipos" },
+    { value: "combo",  label: "Combos" },
+    { value: "avulso", label: "Avulsos" },
+  ]
+
+  const total      = products.length
+  const okCount    = products.filter((p) => p.stock_quantity > p.min_stock_alert).length
+  const lowCount   = products.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock_alert).length
+  const emptyCount = products.filter((p) => p.stock_quantity === 0).length
 
   async function adjustQty(product: ProductWithCat, delta: number) {
     const newQty = Math.max(0, product.stock_quantity + delta)
-
-    setProducts(prev =>
-      prev.map(p => p.id === product.id ? { ...p, stock_quantity: newQty } : p)
-    )
-    setSaving(prev => ({ ...prev, [product.id]: true }))
-
+    setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, stock_quantity: newQty } : p)))
+    setSaving((prev) => ({ ...prev, [product.id]: true }))
     const supabase = createClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.rpc as any)("adjust_stock", {
@@ -74,175 +641,272 @@ export function EstoqueClient({ products: initial }: Props) {
       p_new_quantity: newQty,
       p_notes: "Ajuste manual — painel admin",
     })
-
-    setSaving(prev => ({ ...prev, [product.id]: false }))
-    setSaved(prev => ({ ...prev, [product.id]: true }))
+    setSaving((prev) => ({ ...prev, [product.id]: false }))
+    setSaved((prev) => ({ ...prev, [product.id]: true }))
     startTransition(() => {
-      setTimeout(() => setSaved(prev => ({ ...prev, [product.id]: false })), 1500)
+      setTimeout(() => setSaved((prev) => ({ ...prev, [product.id]: false })), 1500)
     })
   }
 
   const metrics = [
-    { label: "Total",         value: total,      icon: Package,       iconBg: "#F3F4F6", iconColor: "#6B7280" },
-    { label: "Em estoque",    value: okCount,    icon: CheckCircle2,  iconBg: "#D1FAE5", iconColor: "#059669" },
-    { label: "Estoque baixo", value: lowCount,   icon: AlertTriangle, iconBg: "#FEF3C7", iconColor: "#D97706" },
-    { label: "Esgotado",      value: emptyCount, icon: XCircle,       iconBg: "#FEE2E2", iconColor: "#DC2626" },
+    { label: "Total",         value: total,      Icon: Package,       accent: "var(--text-300)",  dim: "var(--surface-200)" },
+    { label: "Em estoque",    value: okCount,    Icon: CheckCircle2,  accent: "#10B981",           dim: "rgba(16,185,129,0.1)" },
+    { label: "Estoque baixo", value: lowCount,   Icon: AlertTriangle, accent: "#F59E0B",           dim: "rgba(245,158,11,0.1)" },
+    { label: "Esgotado",      value: emptyCount, Icon: XCircle,       accent: "#EF4444",           dim: "rgba(239,68,68,0.1)" },
   ]
 
   return (
-    <div className="min-h-full" style={{ background: "var(--surface-50)" }}>
-      {/* Topbar */}
-      <div
-        className="sticky top-0 z-30 px-6 py-4 flex items-center justify-between"
-        style={{ background: "var(--surface-100)", borderBottom: "1px solid rgba(0,0,0,0.07)" }}
-      >
-        <div>
-          <h1
-            className="font-black"
-            style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--text-950)" }}
-          >
-            Controle de Estoque
-          </h1>
-          <p style={{ fontSize: 12, color: "var(--text-300)", marginTop: 2 }}>Combos disponíveis no freezer</p>
-        </div>
-      </div>
+    <>
+      <div style={{ position: "absolute", inset: 0, overflowY: "auto", background: "var(--surface-50)" }}>
 
-      <div className="p-6">
-        {/* Metric cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {metrics.map(({ label, value, icon: Icon, iconBg, iconColor }) => (
-            <div key={label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center mb-3"
-                style={{ background: iconBg }}
-              >
-                <Icon className="h-5 w-5" style={{ color: iconColor }} />
-              </div>
-              <p
-                className="font-black text-gray-900"
-                style={{ fontFamily: "var(--font-montserrat)", fontSize: 28, lineHeight: 1 }}
-              >
-                {value}
-              </p>
-              <p className="text-sm text-gray-500 mt-1">{label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Search + category filter */}
-        <div className="flex gap-3 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar produto..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-yellow-400 bg-white"
-            />
+        {/* Header */}
+        <div style={{
+          background: "var(--surface-100)", borderBottom: "1px solid var(--surface-200)",
+          padding: "18px 28px",
+          position: "sticky", top: 0, zIndex: 10,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <div>
+            <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 17, fontWeight: 800, color: "var(--text-950)" }}>
+              Controle de Estoque
+            </h1>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 2 }}>
+              {total} produto{total !== 1 ? "s" : ""} cadastrado{total !== 1 ? "s" : ""}
+            </p>
           </div>
-          <select
-            value={catFilter}
-            onChange={e => setCatFilter(e.target.value)}
-            className="text-sm rounded-xl border border-gray-200 px-3 py-2.5 bg-white text-gray-700 focus:outline-none focus:border-yellow-400"
+          {/* ✅ Botão "Novo Produto" — letra branca */}
+          <button
+            onClick={() => { setEditingProduct(null); setShowModal(true); }}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
+              border: "none", borderRadius: 10, padding: "0 18px", height: 38,
+              cursor: "pointer", flexShrink: 0,
+              fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700,
+              color: "#FFFFFF", /* ✅ branco para contraste */
+              boxShadow: "0 4px 14px rgba(200,155,60,0.3)",
+              transition: "opacity 200ms, transform 200ms, box-shadow 200ms",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = "0.88"
+              e.currentTarget.style.transform = "translateY(-1px)"
+              e.currentTarget.style.boxShadow = "0 6px 20px rgba(200,155,60,0.45)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = "1"
+              e.currentTarget.style.transform = "none"
+              e.currentTarget.style.boxShadow = "0 4px 14px rgba(200,155,60,0.3)"
+            }}
           >
-            <option value="all">Todas</option>
-            {categories.map(([slug, name]) => (
-              <option key={slug} value={slug}>{name}</option>
-            ))}
-          </select>
+            <Plus size={14} strokeWidth={2.5} />
+            Novo Produto
+          </button>
         </div>
 
-        {/* Product cards */}
-        <div className="space-y-3">
-          {filtered.map(product => {
-            const qty         = product.stock_quantity
-            const isEmpty     = qty === 0
-            const isLow       = !isEmpty && qty <= product.min_stock_alert
-            const statusColor = isEmpty ? "#EF4444" : isLow ? "#F59E0B" : "#10B981"
-            const statusLabel = isEmpty ? "Esgotado" : isLow ? "Estoque baixo" : "OK"
-            const isSaving    = saving[product.id]
-            const isSaved     = saved[product.id]
-
-            return (
-              <div
-                key={product.id}
-                className="bg-white rounded-2xl p-4 shadow-sm border flex items-center gap-4 transition-all"
-                style={{ borderColor: isEmpty ? "#FECACA" : isLow ? "#FDE68A" : "#F3F4F6" }}
-              >
-                {/* Thumbnail */}
-                <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                  {product.image_url ? (
-                    <Image
-                      src={product.image_url}
-                      alt={product.name}
-                      width={56}
-                      height={56}
-                      className="w-full h-full object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="h-5 w-5 text-gray-300" />
-                    </div>
-                  )}
+        <div style={{ padding: "22px 28px" }}>
+          {/* Métricas */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
+            {metrics.map(({ label, value, Icon, accent, dim }) => (
+              <div key={label} style={{
+                background: "var(--surface-100)", border: "1px solid var(--surface-200)",
+                borderRadius: 14, padding: "18px 20px",
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, background: dim,
+                  display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12,
+                }}>
+                  <Icon size={16} strokeWidth={1.8} style={{ color: accent }} />
                 </div>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 28, fontWeight: 900, color: "var(--text-950)", lineHeight: 1 }}>
+                  {value}
+                </p>
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 4 }}>
+                  {label}
+                </p>
+              </div>
+            ))}
+          </div>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 text-sm leading-tight truncate">
-                    {product.name}
-                  </p>
-                  {product.sku && (
-                    <p className="text-xs text-gray-400 mt-0.5">{product.sku}</p>
-                  )}
-                  <div className="flex items-center gap-2 mt-2">
-                    <StockBar qty={qty} min={product.min_stock_alert} />
-                    <span className="text-xs font-semibold shrink-0" style={{ color: statusColor }}>
-                      {statusLabel}
+          {/* Busca + filtros */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            <div style={{
+              flex: 1, display: "flex", alignItems: "center", gap: 8,
+              background: "var(--surface-100)", border: "1px solid var(--surface-200)",
+              borderRadius: 9, padding: "0 12px",
+            }}>
+              <Search size={13} strokeWidth={1.8} style={{ color: "var(--text-300)", flexShrink: 0 }} />
+              <input
+                type="text" placeholder="Buscar por nome ou SKU…"
+                value={search} onChange={(e) => setSearch(e.target.value)}
+                style={{
+                  flex: 1, fontFamily: "var(--font-ui)", fontSize: 13,
+                  color: "var(--text-950)", background: "transparent",
+                  border: "none", outline: "none", padding: "10px 0",
+                }}
+              />
+            </div>
+            <div style={{ width: 180 }}>
+              <CustomDropdown value={catFilter} onChange={setCatFilter} options={catOptions} compact />
+            </div>
+            <div style={{ width: 150 }}>
+              <CustomDropdown value={typeFilter} onChange={setTypeFilter} options={typeOptions} compact />
+            </div>
+          </div>
+
+          {filtered.length !== products.length && (
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginBottom: 10 }}>
+              Exibindo {filtered.length} de {total} produtos
+            </p>
+          )}
+
+          {/* Linhas de produtos */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {filtered.map((product) => {
+              const qty      = product.stock_quantity
+              const isEmpty  = qty === 0
+              const isLow    = !isEmpty && qty <= product.min_stock_alert
+              const pill     = isEmpty
+                ? { bg: "rgba(239,68,68,0.08)", color: "#EF4444", label: "Esgotado" }
+                : isLow
+                ? { bg: "rgba(245,158,11,0.08)", color: "#F59E0B", label: "Baixo" }
+                : { bg: "rgba(16,185,129,0.08)", color: "#10B981", label: "OK" }
+              const isSaving = saving[product.id]
+              const isSaved  = saved[product.id]
+
+              return (
+                <div key={product.id} style={{
+                  background: "var(--surface-100)",
+                  border: `1px solid ${isEmpty ? "rgba(239,68,68,0.2)" : isLow ? "rgba(245,158,11,0.2)" : "var(--surface-200)"}`,
+                  borderRadius: 12, padding: "14px 18px",
+                  display: "flex", alignItems: "center", gap: 14,
+                  transition: "border-color 200ms",
+                }}>
+                  {/* Thumbnail */}
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 10, overflow: "hidden", flexShrink: 0,
+                    background: "var(--surface-200)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <ProductThumb src={product.image_url} alt={product.name} />
+                  </div>
+
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--text-950)", lineHeight: 1.2 }}>
+                        {product.name}
+                      </p>
+                      <span style={{
+                        fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700,
+                        padding: "2px 8px", borderRadius: 99,
+                        background: pill.bg, color: pill.color, flexShrink: 0,
+                      }}>
+                        {pill.label}
+                      </span>
+                      {product.stock_type === "combo" && (
+                        <span style={{
+                          fontFamily: "var(--font-ui)", fontSize: 9, fontWeight: 700,
+                          padding: "2px 7px", borderRadius: 99,
+                          background: "rgba(200,155,60,0.10)", color: "var(--gold-500)",
+                          textTransform: "uppercase", letterSpacing: "0.5px", flexShrink: 0,
+                        }}>
+                          Combo
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <StockBar qty={qty} min={product.min_stock_alert} />
+                      {product.sku && (
+                        <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, color: "var(--text-300)", flexShrink: 0 }}>
+                          {product.sku}
+                        </span>
+                      )}
+                      <button
+                        onClick={() => setEditingProduct(product)}
+                        style={{
+                          background: "transparent", border: "none", padding: 4,
+                          cursor: "pointer", display: "flex", alignItems: "center",
+                          color: "var(--text-300)", marginLeft: 4, transition: "color 150ms",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = "var(--gold-500)"}
+                        onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-300)"}
+                      >
+                        <Edit3 size={13} strokeWidth={2} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Stepper */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                    <button
+                      onClick={() => adjustQty(product, -1)}
+                      disabled={qty === 0 || isSaving}
+                      style={{
+                        width: 30, height: 30, borderRadius: 8,
+                        background: "var(--surface-200)", border: "none",
+                        cursor: qty === 0 || isSaving ? "not-allowed" : "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        opacity: qty === 0 || isSaving ? 0.35 : 1, transition: "opacity 200ms",
+                      }}
+                    >
+                      <Minus size={13} strokeWidth={2.5} style={{ color: "var(--text-700)" }} />
+                    </button>
+
+                    <span style={{
+                      fontFamily: "var(--font-ui)", fontSize: 17, fontWeight: 900,
+                      color: isSaved ? "#10B981" : "var(--text-950)",
+                      width: 36, textAlign: "center", transition: "color 200ms",
+                    }}>
+                      {isSaving ? "…" : isSaved ? "✓" : qty}
                     </span>
+
+                    <button
+                      onClick={() => adjustQty(product, 1)}
+                      disabled={isSaving}
+                      style={{
+                        width: 30, height: 30, borderRadius: 8,
+                        background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
+                        border: "none", cursor: isSaving ? "not-allowed" : "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        opacity: isSaving ? 0.4 : 1, transition: "opacity 200ms",
+                      }}
+                    >
+                      <Plus size={13} strokeWidth={2.5} style={{ color: "#fff" }} />
+                    </button>
                   </div>
                 </div>
+              )
+            })}
 
-                {/* Stepper */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => adjustQty(product, -1)}
-                    disabled={qty === 0 || isSaving}
-                    className="w-8 h-8 rounded-lg font-bold text-lg flex items-center justify-center transition-colors disabled:opacity-30"
-                    style={{ background: "#F3F4F6", color: "#374151" }}
-                    aria-label={`Diminuir estoque de ${product.name}`}
-                  >
-                    −
-                  </button>
-                  <span
-                    className="w-10 text-center font-black text-gray-900"
-                    style={{ fontFamily: "var(--font-montserrat)", fontSize: 18 }}
-                  >
-                    {isSaving ? "…" : isSaved ? "✓" : qty}
-                  </span>
-                  <button
-                    onClick={() => adjustQty(product, 1)}
-                    disabled={isSaving}
-                    className="w-8 h-8 rounded-lg font-bold text-lg flex items-center justify-center transition-colors"
-                    style={{ background: "#C89B3C", color: "#fff" }}
-                    aria-label={`Aumentar estoque de ${product.name}`}
-                  >
-                    +
-                  </button>
-                </div>
+            {filtered.length === 0 && (
+              <div style={{
+                background: "var(--surface-100)", border: "1px solid var(--surface-200)",
+                borderRadius: 14, padding: "48px 24px", textAlign: "center",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
+              }}>
+                <Package size={28} strokeWidth={1.5} style={{ color: "var(--text-300)", opacity: 0.5 }} />
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--text-300)" }}>
+                  Nenhum produto encontrado.
+                </p>
               </div>
-            )
-          })}
-
-          {filtered.length === 0 && (
-            <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
-              <Package className="h-10 w-10 mx-auto mb-3 text-gray-300" />
-              <p className="text-gray-400 font-medium">Nenhum produto encontrado.</p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {(showModal || editingProduct) && (
+        <ProductModal
+          productToEdit={editingProduct}
+          onClose={() => { setShowModal(false); setEditingProduct(null); }}
+          onSaved={(product) => {
+            if (editingProduct) {
+              setProducts((prev) => prev.map((p) => p.id === product.id ? product : p))
+            } else {
+              setProducts((prev) => [product, ...prev])
+            }
+          }}
+        />
+      )}
+    </>
   )
 }

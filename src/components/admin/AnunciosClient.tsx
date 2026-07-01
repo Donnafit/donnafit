@@ -12,11 +12,11 @@ interface Props {
 }
 
 export function AnunciosClient({ announcements: initial }: Props) {
-  const [items, setItems] = useState<Announcement[]>(initial)
+  const [items, setItems]   = useState<Announcement[]>(initial)
   const [newText, setNewText] = useState("")
-  const [adding, setAdding] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [adding, setAdding]  = useState(false)
+  const [error, setError]    = useState<string | null>(null)
+  const [, startTransition]  = useTransition()
   const router = useRouter()
 
   async function handleAdd() {
@@ -40,9 +40,7 @@ export function AnunciosClient({ announcements: initial }: Props) {
   }
 
   async function handleToggle(item: Announcement) {
-    setItems((prev) =>
-      prev.map((a) => (a.id === item.id ? { ...a, is_active: !a.is_active } : a))
-    )
+    setItems((prev) => prev.map((a) => (a.id === item.id ? { ...a, is_active: !a.is_active } : a)))
     await fetch("/api/announcements", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -61,99 +59,187 @@ export function AnunciosClient({ announcements: initial }: Props) {
     startTransition(() => router.refresh())
   }
 
+  const activeCount = items.filter((a) => a.is_active).length
+
   return (
-    <div className="p-4 md:p-6 text-white min-h-full">
+    <div style={{ position: "absolute", inset: 0, overflowY: "auto", background: "var(--surface-50)" }}>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6 border-b border-gray-800 pb-4">
-        <Megaphone className="h-5 w-5 text-brand-gold" />
+      <div style={{
+        background: "var(--surface-100)",
+        borderBottom: "1px solid var(--surface-200)",
+        padding: "20px 28px",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+      }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: 9,
+          background: "rgba(200,155,60,0.10)",
+          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        }}>
+          <Megaphone size={16} strokeWidth={1.8} style={{ color: "var(--gold-500)" }} />
+        </div>
         <div>
-          <h1 className="text-xl font-black">Avisos do Site</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Frases que aparecem na barra verde no topo do cardápio</p>
+          <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 17, fontWeight: 800, color: "var(--text-950)" }}>
+            Avisos do Site
+          </h1>
+          <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 1 }}>
+            Frases que aparecem na barra verde no topo do cardápio
+          </p>
         </div>
       </div>
 
-      {/* Adicionar novo */}
-      <div className="bg-gray-900 rounded-2xl p-4 mb-6 border border-gray-800">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Novo aviso</p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newText}
-            onChange={(e) => setNewText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            placeholder="Ex: Frete grátis acima de R$ 80 esta semana!"
-            className="flex-1 bg-gray-800 text-white text-sm rounded-xl px-4 py-2.5 border border-gray-700 focus:outline-none focus:border-brand-gold placeholder:text-gray-600"
-          />
-          <button
-            onClick={handleAdd}
-            disabled={adding || !newText.trim()}
-            className="flex items-center gap-2 bg-brand-gold hover:opacity-90 disabled:opacity-40 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-opacity shrink-0"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar
-          </button>
-        </div>
-        {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
-      </div>
-
-      {/* Lista */}
-      <div className="space-y-2">
-        {items.length === 0 && (
-          <div className="text-center py-16 text-gray-500">
-            <Megaphone className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Nenhum aviso cadastrado. Adicione o primeiro acima.</p>
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 28px" }}>
+        {/* Add new */}
+        <div style={{
+          background: "var(--surface-100)",
+          border: "1px solid var(--surface-200)",
+          borderRadius: 14,
+          padding: "18px 20px",
+          marginBottom: 16,
+        }}>
+          <p style={{
+            fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700,
+            textTransform: "uppercase", letterSpacing: "0.7px",
+            color: "var(--text-300)", marginBottom: 10,
+          }}>
+            Novo aviso
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type="text"
+              value={newText}
+              onChange={(e) => setNewText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              placeholder="Ex: Frete grátis acima de R$ 80 esta semana!"
+              style={{
+                flex: 1,
+                fontFamily: "var(--font-ui)",
+                fontSize: 13,
+                color: "var(--text-950)",
+                background: "var(--surface-50)",
+                border: "1px solid var(--surface-200)",
+                borderRadius: 9,
+                padding: "10px 14px",
+                outline: "none",
+              }}
+            />
+            <button
+              onClick={handleAdd}
+              disabled={adding || !newText.trim()}
+              style={{
+                display: "flex", alignItems: "center", gap: 7,
+                fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700,
+                padding: "10px 18px", borderRadius: 9,
+                background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
+                color: "#fff",
+                border: "none", cursor: "pointer",
+                opacity: adding || !newText.trim() ? 0.45 : 1,
+                flexShrink: 0,
+                transition: "opacity 150ms",
+              }}
+            >
+              <Plus size={13} strokeWidth={2.5} />
+              Adicionar
+            </button>
           </div>
-        )}
+          {error && (
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "#EF4444", marginTop: 6 }}>
+              {error}
+            </p>
+          )}
+        </div>
 
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className={`flex items-center gap-3 bg-gray-900 rounded-xl px-4 py-3 border transition-all ${
-              item.is_active ? "border-gray-800" : "border-gray-800 opacity-50"
-            }`}
-          >
-            <GripVertical className="h-4 w-4 text-gray-600 shrink-0" />
-
-            <span className="flex-1 text-sm text-gray-200 leading-snug">
-              {item.text}
-            </span>
-
-            <div className="flex items-center gap-1 shrink-0">
-              {/* Toggle ativo/inativo */}
-              <button
-                onClick={() => handleToggle(item)}
-                title={item.is_active ? "Desativar" : "Ativar"}
-                className={`p-2 rounded-lg transition-colors ${
-                  item.is_active
-                    ? "text-green-400 hover:bg-green-400/10"
-                    : "text-gray-500 hover:bg-gray-700"
-                }`}
-              >
-                {item.is_active ? (
-                  <Eye className="h-4 w-4" />
-                ) : (
-                  <EyeOff className="h-4 w-4" />
-                )}
-              </button>
-
-              {/* Deletar */}
-              <button
-                onClick={() => handleDelete(item.id)}
-                title="Remover"
-                className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+        {/* List */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {items.length === 0 && (
+            <div style={{
+              background: "var(--surface-100)",
+              border: "1px solid var(--surface-200)",
+              borderRadius: 14,
+              padding: "48px 24px",
+              textAlign: "center",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
+            }}>
+              <Megaphone size={28} strokeWidth={1.5} style={{ color: "var(--text-300)", opacity: 0.5 }} />
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--text-300)" }}>
+                Nenhum aviso cadastrado. Adicione o primeiro acima.
+              </p>
             </div>
-          </div>
-        ))}
-      </div>
+          )}
 
-      {items.length > 0 && (
-        <p className="text-xs text-gray-600 mt-4 text-center">
-          {items.filter((a) => a.is_active).length} ativo(s) · Alterna automaticamente a cada 4 segundos no site
-        </p>
-      )}
+          {items.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                background: "var(--surface-100)",
+                border: "1px solid var(--surface-200)",
+                borderRadius: 11,
+                padding: "12px 16px",
+                opacity: item.is_active ? 1 : 0.45,
+                transition: "opacity 200ms",
+              }}
+            >
+              <GripVertical size={15} strokeWidth={1.5} style={{ color: "var(--text-300)", flexShrink: 0, cursor: "grab" }} />
+
+              <span style={{
+                flex: 1,
+                fontFamily: "var(--font-ui)",
+                fontSize: 13,
+                color: "var(--text-950)",
+                lineHeight: 1.4,
+              }}>
+                {item.text}
+              </span>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
+                <button
+                  onClick={() => handleToggle(item)}
+                  title={item.is_active ? "Desativar" : "Ativar"}
+                  style={{
+                    width: 32, height: 32, borderRadius: 8, border: "none",
+                    background: "transparent", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  {item.is_active
+                    ? <Eye size={15} strokeWidth={1.8} style={{ color: "#10B981" }} />
+                    : <EyeOff size={15} strokeWidth={1.8} style={{ color: "var(--text-300)" }} />
+                  }
+                </button>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  title="Remover"
+                  style={{
+                    width: 32, height: 32, borderRadius: 8, border: "none",
+                    background: "transparent", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)" }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}
+                >
+                  <Trash2 size={14} strokeWidth={1.8} style={{ color: "var(--text-300)" }} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {items.length > 0 && (
+          <p style={{
+            fontFamily: "var(--font-ui)", fontSize: 11,
+            color: "var(--text-300)", marginTop: 14, textAlign: "center",
+          }}>
+            {activeCount} ativo(s) · Alterna automaticamente a cada 4 segundos no site
+          </p>
+        )}
+      </div>
     </div>
   )
 }

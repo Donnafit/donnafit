@@ -513,12 +513,12 @@ async function run() {
     log.info(`Mensagem Formatada Gerada:\n${formattedMessage}\n`);
     
     // Verificações
-    const c1 = formattedMessage.includes('*ID:* #DF0042');
+    const c1 = formattedMessage.includes('*Pedido:* #DF0042');
     const c2 = formattedMessage.includes('Patricia Everson');
     const c3 = formattedMessage.includes('2x Marmita M2 Combo Teste');
-    const c4 = formattedMessage.includes('*Total:* R$ 60,00');
-    const c5 = formattedMessage.includes('🚚 Entrega');
-    const c6 = formattedMessage.includes('💰 PIX');
+    const c4 = formattedMessage.includes('*Total a pagar: R$ 60,00*');
+    const c5 = formattedMessage.includes('*Entrega*');
+    const c6 = formattedMessage.includes('*Forma de pagamento:* PIX');
     
     log.info(`Condições WhatsApp: ID=${c1}, Name=${c2}, Product=${c3}, Total=${c4}, Delivery=${c5}, Payment=${c6}`);
     

@@ -379,7 +379,18 @@ export function ProfileModal({ open, onClose }: Props) {
     if (!open) return
     document.body.style.overflow = "hidden"
     setError(null); setSuccess(null)
-    if (!authLoading) setView(user ? "profile" : "login")
+    if (!authLoading) {
+      if (user) {
+        setView("profile")
+      } else {
+        try {
+          const intent = localStorage.getItem("donna-fit-checkout-intent")
+          setView(intent === "1" ? "register" : "login")
+        } catch {
+          setView("login")
+        }
+      }
+    }
     return () => { document.body.style.overflow = "" }
   }, [open, user, authLoading])
 

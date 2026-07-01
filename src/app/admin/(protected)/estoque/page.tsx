@@ -10,7 +10,6 @@ export default async function EstoquePage() {
   const { data: productsRaw } = await supabase
     .from("products")
     .select("*, categories(name, slug)")
-    .eq("is_active", true)
     .order("sort_order")
 
   const products = (productsRaw ?? []) as any[]

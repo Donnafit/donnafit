@@ -1,10 +1,9 @@
-﻿"use client"
+"use client"
 
 import { useState } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { useCart } from "@/hooks/useCart"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, resolveImageSrc } from "@/lib/utils"
 import { StockBadge } from "./StockBadge"
 import type { Product } from "@/types"
 
@@ -60,11 +59,10 @@ export function ProductCard({ product, index }: Props) {
       {/* ── Área da imagem ── */}
       <Link href={"/produto/" + product.id} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
       <div style={{ position: "relative", overflow: "hidden", flexShrink: 0 }}>
-        <Image
-          src={product.image_url ?? "/marmita.jpg"}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={resolveImageSrc(product.image_url, 640)}
           alt={product.name}
-          width={400}
-          height={190}
           style={{
             width: "100%",
             height: 190,

@@ -39,7 +39,7 @@ export default function QRCodePage() {
         <div>
           <h1
             style={{
-              fontFamily: "var(--font-display)",
+              fontFamily: "var(--font-ui)",
               fontSize: 18,
               fontWeight: 800,
               color: "var(--text-950)",
@@ -107,7 +107,7 @@ export default function QRCodePage() {
           <div style={{ textAlign: "center" }}>
             <p
               style={{
-                fontFamily: "var(--font-display)",
+                fontFamily: "var(--font-ui)",
                 fontSize: 13,
                 fontWeight: 800,
                 color: "var(--text-950)",
@@ -135,8 +135,8 @@ export default function QRCodePage() {
             padding: "13px 24px",
             borderRadius: 12,
             background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
-            color: "#000",
-            fontFamily: "var(--font-display)",
+            color: "#fff",
+            fontFamily: "var(--font-ui)",
             fontSize: 13,
             fontWeight: 700,
             border: "none",

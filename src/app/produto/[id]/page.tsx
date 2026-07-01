@@ -6,7 +6,7 @@ import { Footer } from "@/components/catalog/Footer"
 import { ProductDetailClient } from "@/components/catalog/ProductDetailClient"
 import { CartBar } from "@/components/cart/CartBar"
 import Link from "next/link"
-import Image from "next/image"
+import { resolveImageSrc } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
 
@@ -101,12 +101,11 @@ export default async function ProductPage({ params }: { params: { id: string } }
         >
           {/* Imagem */}
           <div style={{ position: "relative", aspectRatio: "4/3", minHeight: 300 }}>
-            <Image
-              src={product.image_url ?? "/marmita.jpg"}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={resolveImageSrc(product.image_url, 800)}
               alt={product.name}
-              fill
-              style={{ objectFit: "cover" }}
-              priority
+              style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
             />
             {category?.name && (
               <span

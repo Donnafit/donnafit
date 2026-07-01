@@ -1,9 +1,9 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useCart } from "@/hooks/useCart"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency, resolveImageSrc } from "@/lib/utils"
 
 interface SearchResult {
   id: string
@@ -214,7 +214,7 @@ export function SearchModal({ open, onClose }: Props) {
                   }}>
                     {p.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.image_url} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={resolveImageSrc(p.image_url)} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
                       <span style={{ fontSize: 22 }}>🥗</span>
                     )}
