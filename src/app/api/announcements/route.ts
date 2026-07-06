@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { requireStaff } from "@/lib/auth"
 
 export async function POST(req: Request) {
+  if (!(await requireStaff())) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = (await createClient()) as any
+  const supabase = createAdminClient() as any
   const body = await req.json()
 
   if (!body.text?.trim()) {
@@ -21,8 +26,12 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  if (!(await requireStaff())) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = (await createClient()) as any
+  const supabase = createAdminClient() as any
   const body = await req.json()
 
   if (!body.id) return NextResponse.json({ error: "ID obrigatório" }, { status: 400 })
@@ -38,8 +47,12 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  if (!(await requireStaff())) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = (await createClient()) as any
+  const supabase = createAdminClient() as any
   const { id } = await req.json()
 
   if (!id) return NextResponse.json({ error: "ID obrigatório" }, { status: 400 })

@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { requireStaff } from "@/lib/auth"
 
 export async function POST(request: Request) {
   try {
+    if (!(await requireStaff())) {
+      return NextResponse.json({ error: "Não autorizado." }, { status: 401 })
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = (await createClient()) as any
     const { productId, quantity, notes } = await request.json()

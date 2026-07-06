@@ -1,4 +1,3 @@
-// AUTH TEMPORARIAMENTE DESATIVADA — reativar antes do go-live
 import { AdminSidebar } from "@/components/admin/AdminSidebar"
 import { AdminBottomNav } from "@/components/admin/AdminBottomNav"
 

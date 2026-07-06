@@ -268,19 +268,19 @@ export type Database = {
         Row: {
           id: string
           full_name: string | null
-          role: "admin" | "kitchen" | "staff"
+          role: "admin" | "kitchen" | "staff" | "customer"
           created_at: string
         }
         Insert: {
           id: string
           full_name?: string | null
-          role?: "admin" | "kitchen" | "staff"
+          role?: "admin" | "kitchen" | "staff" | "customer"
           created_at?: string
         }
         Update: {
           id?: string
           full_name?: string | null
-          role?: "admin" | "kitchen" | "staff"
+          role?: "admin" | "kitchen" | "staff" | "customer"
           created_at?: string
         }
       }
