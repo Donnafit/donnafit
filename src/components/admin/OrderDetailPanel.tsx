@@ -2,27 +2,10 @@
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 import { FiscalCopyButton } from "./FiscalCopyButton"
+import { ConfirmDialog } from "./ConfirmDialog"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import type { OrderWithItems, OrderStatus } from "@/types"
-
-const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
-  pending:    "production",
-  production: "ready",
-  ready:      "delivered",
-}
-
-const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
-  pending:    "Iniciar Produção",
-  production: "Marcar como Pronto",
-  ready:      "Confirmar Entrega",
-}
-
-const STATUS_PILLS: Record<string, { bg: string; color: string; pip: string; label: string }> = {
-  pending:    { bg: "#FEF3C7", color: "#92400E", pip: "#F59E0B", label: "Pendente" },
-  production: { bg: "#DBEAFE", color: "#1E40AF", pip: "#3B82F6", label: "Em Produção" },
-  ready:      { bg: "#D1FAE5", color: "#065F46", pip: "#10B981", label: "Pronto" },
-  delivered:  { bg: "#F3F4F6", color: "#6B7280", pip: "#9CA3AF", label: "Entregue" },
-}
+import { getNextStep, getStatusPill } from "@/lib/orderStatus"
+import type { OrderWithItems } from "@/types"
 
 interface Props {
   order: OrderWithItems | null
@@ -33,6 +16,7 @@ interface Props {
 export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
   // Keep content rendered during close animation (250ms)
   const [displayOrder, setDisplayOrder] = useState<OrderWithItems | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     if (order) {
@@ -43,28 +27,38 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
     }
   }, [order])
 
-  const nextStatus = displayOrder ? NEXT_STATUS[displayOrder.status as OrderStatus] : undefined
-  const nextLabel  = displayOrder ? NEXT_LABEL[displayOrder.status as OrderStatus]  : undefined
-  const pill       = displayOrder ? (STATUS_PILLS[displayOrder.status] ?? STATUS_PILLS.delivered) : null
+  const nextStep = displayOrder ? getNextStep(displayOrder) : null
+  const pill      = displayOrder ? getStatusPill(displayOrder) : null
 
   async function handleAdvance() {
-    if (!displayOrder || !nextStatus) return
+    if (!displayOrder || !nextStep) return
     try {
-      await onUpdateStatus(displayOrder.id, nextStatus)
+      await onUpdateStatus(displayOrder.id, nextStep.status)
       onClose()
     } catch (err) {
       console.error("Erro ao atualizar status:", err)
     }
   }
 
+  async function handleDelete() {
+    if (!displayOrder) return
+    try {
+      await onUpdateStatus(displayOrder.id, "cancelled")
+      setConfirmDelete(false)
+      onClose()
+    } catch (err) {
+      console.error("Erro ao excluir pedido:", err)
+    }
+  }
+
   return (
     <div
+      className="w-full sm:w-[300px]"
       style={{
         position: "absolute",
         right: 0,
         top: 0,
         bottom: 0,
-        width: 300,
         background: "var(--surface-100)",
         borderLeft: "1px solid var(--surface-200)",
         display: "flex",
@@ -115,8 +109,8 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
             <button
               onClick={onClose}
               style={{
-                width: 28, height: 28,
-                borderRadius: 7,
+                width: 44, height: 44,
+                borderRadius: 10,
                 background: "var(--surface-50)",
                 border: "1px solid var(--surface-200)",
                 cursor: "pointer",
@@ -126,7 +120,7 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
                 justifyContent: "center",
               }}
             >
-              <X size={12} strokeWidth={1.8} style={{ color: "var(--text-500)" }} />
+              <X size={14} strokeWidth={1.8} style={{ color: "var(--text-500)" }} />
             </button>
           </div>
 
@@ -295,7 +289,7 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
 
           {/* Actions */}
           <div style={{ padding: "12px 20px", borderTop: "1px solid var(--surface-200)", flexShrink: 0 }}>
-            {nextStatus && nextLabel && (
+            {nextStep && (
               <button
                 onClick={handleAdvance}
                 style={{
@@ -313,17 +307,44 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
                   marginBottom: 8,
                 }}
               >
-                {nextLabel}
+                {nextStep.label}
               </button>
             )}
             {displayOrder.status === "delivered" && (
-              <p style={{ textAlign: "center", fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-300)" }}>
-                Pedido entregue
+              <p style={{ textAlign: "center", fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-300)", marginBottom: 8 }}>
+                {displayOrder.delivery_type === "pickup" ? "Pedido retirado" : "Pedido entregue"}
               </p>
             )}
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{
+                width: "100%",
+                fontFamily: "var(--font-ui)",
+                fontSize: 12,
+                fontWeight: 600,
+                padding: "10px 16px",
+                borderRadius: 10,
+                background: "transparent",
+                color: "#DC2626",
+                border: "1px solid rgba(220,38,38,0.25)",
+                cursor: "pointer",
+              }}
+            >
+              Excluir pedido
+            </button>
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Excluir pedido"
+        description={displayOrder ? `Excluir o pedido #${displayOrder.order_number}? Ele sairá da lista de pedidos.` : ""}
+        confirmLabel="Excluir"
+        danger
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   )
 }

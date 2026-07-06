@@ -5,7 +5,7 @@ import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, ChefHat, Package,
-  QrCode, Megaphone, BookOpen,
+  QrCode, Megaphone, BookOpen, Truck,
   PanelLeftClose, PanelLeftOpen,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
@@ -15,9 +15,10 @@ const NAV_GROUPS = [
   {
     label: "Operação",
     items: [
-      { href: "/admin/pedidos",  label: "Pedidos",          icon: LayoutDashboard, badge: true },
-      { href: "/admin/cozinha",  label: "Cozinha",           icon: ChefHat },
-      { href: "/admin/manual",   label: "Manual de Preparo", icon: BookOpen },
+      { href: "/admin/pedidos",       label: "Pedidos",          icon: LayoutDashboard, badge: true },
+      { href: "/admin/cozinha",       label: "Cozinha",           icon: ChefHat },
+      { href: "/admin/rota-entrega",  label: "Rota de Entrega",   icon: Truck },
+      { href: "/admin/manual",        label: "Manual de Preparo", icon: BookOpen },
     ],
   },
   {

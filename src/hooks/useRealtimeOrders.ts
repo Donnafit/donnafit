@@ -30,11 +30,13 @@ export function useRealtimeOrders() {
       // Save previous state for rollback
       const previousOrders = orders
 
-      // Optimistic update: apply locally before hitting Supabase
+      // Optimistic update: apply locally before hitting Supabase.
+      // fetchOrders always excludes 'cancelled', so drop it locally too —
+      // otherwise it lingers in "Todos" until the next realtime refetch.
       setOrders((current) =>
-        current.map((o) =>
-          o.id === orderId ? { ...o, status: validStatus } : o
-        )
+        validStatus === "cancelled"
+          ? current.filter((o) => o.id !== orderId)
+          : current.map((o) => (o.id === orderId ? { ...o, status: validStatus } : o))
       )
 
       const supabase = createClient()

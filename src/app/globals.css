@@ -459,6 +459,22 @@ body {
   .payment-chips { justify-content: center; }
 }
 
+.scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+@media (max-width: 640px) {
+  /* Reserve space so the next tab always peeks in, hinting there's more to scroll */
+  .tabs-scroll-wrap { max-width: calc(100% - 16px); }
+}
+@media (max-width: 480px) {
+  .kitchen-qty-row { flex: 1 1 100%; justify-content: space-between; }
+  .kitchen-search-wrap { min-width: 0; }
+}
+
 /* =============================================
    BRAND SYSTEM — DONNA FIT ADMIN
    ============================================= */

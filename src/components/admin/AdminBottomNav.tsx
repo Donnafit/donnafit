@@ -1,14 +1,14 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, ChefHat, Package, QrCode, BookOpen } from "lucide-react"
+import { LayoutDashboard, ChefHat, Package, QrCode, Truck } from "lucide-react"
 
 const NAV = [
-  { href: "/admin/pedidos",  label: "Pedidos",  icon: LayoutDashboard },
-  { href: "/admin/cozinha",  label: "Cozinha",  icon: ChefHat },
-  { href: "/admin/manual",   label: "Manual",   icon: BookOpen },
-  { href: "/admin/estoque",  label: "Estoque",  icon: Package },
-  { href: "/admin/qrcode",   label: "QR Code",  icon: QrCode },
+  { href: "/admin/pedidos",       label: "Pedidos",  icon: LayoutDashboard },
+  { href: "/admin/cozinha",       label: "Cozinha",  icon: ChefHat },
+  { href: "/admin/rota-entrega",  label: "Entrega",  icon: Truck },
+  { href: "/admin/estoque",       label: "Estoque",  icon: Package },
+  { href: "/admin/qrcode",        label: "QR Code",  icon: QrCode },
 ]
 
 export function AdminBottomNav() {

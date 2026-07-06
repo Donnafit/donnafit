@@ -264,7 +264,7 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {/* Search / Select produto */}
-            <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
+            <div className="kitchen-search-wrap" style={{ flex: 1, minWidth: 140, position: "relative" }}>
               <div style={{
                 display: "flex", alignItems: "center", gap: 8,
                 background: "var(--surface-50)",
@@ -319,7 +319,10 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
                       onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface-50)" }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}
                     >
-                      <span>{p.name}</span>
+                      <span style={{
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        flex: "1 1 auto", minWidth: 0,
+                      }}>{p.name}</span>
                       <span style={{
                         fontFamily: "var(--font-ui)", fontSize: 11,
                         color: p.stock_quantity === 0 ? "#EF4444" : p.stock_quantity <= p.min_stock_alert ? "#F59E0B" : "var(--text-300)",
@@ -338,43 +341,45 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
               )}
             </div>
 
-            {/* Quantidade */}
-            <input
-              ref={qtyRef}
-              type="number"
-              min="1"
-              placeholder="Qtd"
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleRegister()}
-              style={{
-                width: 80, fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 700,
-                color: "var(--text-950)",
-                background: "var(--surface-50)",
-                border: "1px solid var(--surface-200)",
-                borderRadius: 9, padding: "0 14px", outline: "none",
-                textAlign: "center",
-              }}
-            />
+            <div className="kitchen-qty-row" style={{ display: "flex", gap: 8 }}>
+              {/* Quantidade */}
+              <input
+                ref={qtyRef}
+                type="number"
+                min="1"
+                placeholder="Qtd"
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleRegister()}
+                style={{
+                  width: 80, fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 700,
+                  color: "var(--text-950)",
+                  background: "var(--surface-50)",
+                  border: "1px solid var(--surface-200)",
+                  borderRadius: 9, padding: "0 14px", outline: "none",
+                  textAlign: "center",
+                }}
+              />
 
-            {/* Botão */}
-            <button
-              onClick={handleRegister}
-              disabled={saving || !selectedId || !qty || parseInt(qty) <= 0}
-              style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "0 20px", height: 44, borderRadius: 9, border: "none",
-                background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
-                color: "#fff",
-                fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700,
-                cursor: "pointer", flexShrink: 0,
-                opacity: saving || !selectedId || !qty || parseInt(qty) <= 0 ? 0.4 : 1,
-                transition: "opacity 150ms",
-              }}
-            >
-              <Plus size={14} strokeWidth={2.5} />
-              {saving ? "Salvando..." : "Registrar"}
-            </button>
+              {/* Botão */}
+              <button
+                onClick={handleRegister}
+                disabled={saving || !selectedId || !qty || parseInt(qty) <= 0}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "0 20px", height: 44, borderRadius: 9, border: "none",
+                  background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
+                  color: "#fff",
+                  fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700,
+                  cursor: "pointer", flexShrink: 0,
+                  opacity: saving || !selectedId || !qty || parseInt(qty) <= 0 ? 0.4 : 1,
+                  transition: "opacity 150ms",
+                }}
+              >
+                <Plus size={14} strokeWidth={2.5} />
+                {saving ? "Salvando..." : "Registrar"}
+              </button>
+            </div>
           </div>
 
           {error && (
@@ -429,7 +434,10 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
                     </span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--text-950)" }}>
+                    <p style={{
+                      fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--text-950)",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
                       {entry.product?.name ?? "—"}
                     </p>
                     {entry.product?.sku && (

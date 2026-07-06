@@ -25,10 +25,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         }}
       >
         <main
+          className="pb-16 md:pb-0"
           style={{
             flex: 1,
             position: "relative",
             overflow: "hidden",
+            boxSizing: "border-box",
           }}
         >
           {children}

@@ -65,7 +65,7 @@ export function AdminHero({
     },
     {
       value: productionCount,
-      label: "Em Produção",
+      label: "Em Separação",
       sub: "em preparo",
       accent: "#60A5FA",
       dimAccent: "rgba(96,165,250,0.12)",
@@ -74,8 +74,8 @@ export function AdminHero({
     },
     {
       value: readyCount,
-      label: "Prontos",
-      sub: "para retirar",
+      label: "Liberados",
+      sub: "balcão + rota",
       accent: "#34D399",
       dimAccent: "rgba(52,211,153,0.12)",
       Icon: CheckCircle2,
@@ -116,7 +116,10 @@ export function AdminHero({
       />
 
       {/* Greeting row */}
-      <div className="flex items-start justify-between mb-6" style={{ position: "relative", zIndex: 1 }}>
+      <div
+        className="flex flex-col items-center text-center gap-3 mb-6 sm:flex-row sm:items-start sm:justify-between sm:text-left"
+        style={{ position: "relative", zIndex: 1 }}
+      >
         <div>
           <h2
             suppressHydrationWarning
@@ -174,9 +177,8 @@ export function AdminHero({
 
       {/* Stats bar */}
       <div
+        className="grid grid-cols-2 md:grid-cols-4"
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
           gap: 8,
           position: "relative",
           zIndex: 1,
@@ -194,6 +196,7 @@ export function AdminHero({
               padding: "14px 18px 16px",
               position: "relative",
               overflow: "hidden",
+              boxShadow: "0 6px 10px -4px rgba(0,0,0,0.35)",
             }}
           >
             {/* Icon badge */}

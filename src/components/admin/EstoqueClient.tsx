@@ -396,13 +396,14 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
         position: "fixed", inset: 0, zIndex: 1000,
         display: "flex", alignItems: "center", justifyContent: "center",
         background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)",
+        padding: 16, boxSizing: "border-box",
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div style={{
         background: "var(--surface-100)",
         borderRadius: 18, width: "100%", maxWidth: 560,
-        maxHeight: "92vh", overflowY: "auto",
+        maxHeight: "calc(100vh - 32px)", overflowY: "auto",
         boxShadow: "0 28px 72px rgba(0,0,0,0.32)",
         animation: "fadeUp 180ms ease",
       }}>
@@ -412,9 +413,9 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
         `}</style>
 
         {/* Header */}
-        <div style={{
+        <div className="px-4 sm:px-6" style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "20px 24px", borderBottom: "1px solid var(--surface-200)",
+          paddingTop: 20, paddingBottom: 20, borderBottom: "1px solid var(--surface-200)",
           position: "sticky", top: 0, background: "var(--surface-100)", zIndex: 1,
           borderRadius: "18px 18px 0 0",
         }}>
@@ -436,7 +437,7 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} style={{ padding: "22px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
+        <form onSubmit={handleSubmit} className="px-4 sm:px-6" style={{ paddingTop: 22, paddingBottom: 22, display: "flex", flexDirection: "column", gap: 18 }}>
 
           {/* Foto */}
           <div>
@@ -466,7 +467,7 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
           </div>
 
           {/* Preço + SKU */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12 }}>
             <div>
               <label style={labelStyle}>Preço (R$) *</label>
               <input type="number" step="0.01" min="0"
@@ -486,7 +487,7 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
           </div>
 
           {/* Categoria + Tipo */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12 }}>
             <div>
               <label style={labelStyle}>Categoria</label>
               <CustomDropdown
@@ -507,7 +508,7 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
           </div>
 
           {/* Estoque Inicial + Alerta */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12 }}>
             <div>
               <label style={labelStyle}>Estoque Inicial</label>
               <input type="number" min="0" className="modal-input" style={inputStyle}
@@ -551,7 +552,7 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
           {/* Ações */}
           <div style={{ display: "flex", gap: 10, paddingTop: 2 }}>
             <button type="button" onClick={onClose} style={{
-              flex: 1, padding: "12px", borderRadius: 10,
+              flex: 1, padding: "12px", minHeight: 44, borderRadius: 10,
               border: "1px solid var(--surface-200)",
               background: "transparent", cursor: "pointer",
               fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600,
@@ -563,7 +564,7 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
               Cancelar
             </button>
             <button type="submit" disabled={saving} style={{
-              flex: 2, padding: "12px", borderRadius: 10, border: "none",
+              flex: 2, padding: "12px", minHeight: 44, borderRadius: 10, border: "none",
               background: saving ? "var(--surface-200)" : "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
               cursor: saving ? "not-allowed" : "pointer",
               fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700,
@@ -660,12 +661,14 @@ export function EstoqueClient({ products: initial }: Props) {
       <div style={{ position: "absolute", inset: 0, overflowY: "auto", background: "var(--surface-50)" }}>
 
         {/* Header */}
-        <div style={{
-          background: "var(--surface-100)", borderBottom: "1px solid var(--surface-200)",
-          padding: "18px 28px",
-          position: "sticky", top: 0, zIndex: 10,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-        }}>
+        <div
+          className="flex-wrap gap-3 px-4 sm:px-7"
+          style={{
+            background: "var(--surface-100)", borderBottom: "1px solid var(--surface-200)",
+            paddingTop: 18, paddingBottom: 18,
+            position: "sticky", top: 0, zIndex: 10,
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
           <div>
             <h1 style={{ fontFamily: "var(--font-ui)", fontSize: 17, fontWeight: 800, color: "var(--text-950)" }}>
               Controle de Estoque
@@ -703,13 +706,13 @@ export function EstoqueClient({ products: initial }: Props) {
           </button>
         </div>
 
-        <div style={{ padding: "22px 28px" }}>
+        <div className="px-4 sm:px-7" style={{ paddingTop: 22, paddingBottom: 22 }}>
           {/* Métricas */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
+          <div className="grid grid-cols-2 md:grid-cols-4" style={{ gap: 12, marginBottom: 20 }}>
             {metrics.map(({ label, value, Icon, accent, dim }) => (
               <div key={label} style={{
                 background: "var(--surface-100)", border: "1px solid var(--surface-200)",
-                borderRadius: 14, padding: "18px 20px",
+                borderRadius: 14, padding: "18px 20px", minWidth: 0,
               }}>
                 <div style={{
                   width: 36, height: 36, borderRadius: 10, background: dim,
@@ -728,28 +731,30 @@ export function EstoqueClient({ products: initial }: Props) {
           </div>
 
           {/* Busca + filtros */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+          <div className="flex flex-col sm:flex-row" style={{ gap: 8, marginBottom: 14 }}>
             <div style={{
               flex: 1, display: "flex", alignItems: "center", gap: 8,
               background: "var(--surface-100)", border: "1px solid var(--surface-200)",
-              borderRadius: 9, padding: "0 12px",
+              borderRadius: 9, padding: "0 12px", minWidth: 0,
             }}>
               <Search size={13} strokeWidth={1.8} style={{ color: "var(--text-300)", flexShrink: 0 }} />
               <input
                 type="text" placeholder="Buscar por nome ou SKU…"
                 value={search} onChange={(e) => setSearch(e.target.value)}
                 style={{
-                  flex: 1, fontFamily: "var(--font-ui)", fontSize: 13,
+                  flex: 1, minWidth: 0, fontFamily: "var(--font-ui)", fontSize: 13,
                   color: "var(--text-950)", background: "transparent",
                   border: "none", outline: "none", padding: "10px 0",
                 }}
               />
             </div>
-            <div style={{ width: 180 }}>
-              <CustomDropdown value={catFilter} onChange={setCatFilter} options={catOptions} compact />
-            </div>
-            <div style={{ width: 150 }}>
-              <CustomDropdown value={typeFilter} onChange={setTypeFilter} options={typeOptions} compact />
+            <div className="grid grid-cols-2 sm:contents" style={{ gap: 8 }}>
+              <div className="sm:w-[180px]">
+                <CustomDropdown value={catFilter} onChange={setCatFilter} options={catOptions} compact />
+              </div>
+              <div className="sm:w-[150px]">
+                <CustomDropdown value={typeFilter} onChange={setTypeFilter} options={typeOptions} compact />
+              </div>
             </div>
           </div>
 
@@ -792,8 +797,12 @@ export function EstoqueClient({ products: initial }: Props) {
 
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                      <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--text-950)", lineHeight: 1.2 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                      <p style={{
+                        fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--text-950)", lineHeight: 1.2,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        flex: "1 1 auto", minWidth: "60px",
+                      }}>
                         {product.name}
                       </p>
                       <span style={{
@@ -824,38 +833,38 @@ export function EstoqueClient({ products: initial }: Props) {
                       <button
                         onClick={() => setEditingProduct(product)}
                         style={{
-                          background: "transparent", border: "none", padding: 4,
-                          cursor: "pointer", display: "flex", alignItems: "center",
-                          color: "var(--text-300)", marginLeft: 4, transition: "color 150ms",
+                          width: 44, height: 44, background: "transparent", border: "none",
+                          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                          color: "var(--text-300)", flexShrink: 0, transition: "color 150ms",
                         }}
                         onMouseEnter={(e) => e.currentTarget.style.color = "var(--gold-500)"}
                         onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-300)"}
                       >
-                        <Edit3 size={13} strokeWidth={2} />
+                        <Edit3 size={14} strokeWidth={2} />
                       </button>
                     </div>
                   </div>
 
                   {/* Stepper */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
                     <button
                       onClick={() => adjustQty(product, -1)}
                       disabled={qty === 0 || isSaving}
                       style={{
-                        width: 30, height: 30, borderRadius: 8,
+                        width: 44, height: 44, borderRadius: 8,
                         background: "var(--surface-200)", border: "none",
                         cursor: qty === 0 || isSaving ? "not-allowed" : "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         opacity: qty === 0 || isSaving ? 0.35 : 1, transition: "opacity 200ms",
                       }}
                     >
-                      <Minus size={13} strokeWidth={2.5} style={{ color: "var(--text-700)" }} />
+                      <Minus size={14} strokeWidth={2.5} style={{ color: "var(--text-700)" }} />
                     </button>
 
                     <span style={{
                       fontFamily: "var(--font-ui)", fontSize: 17, fontWeight: 900,
                       color: isSaved ? "#10B981" : "var(--text-950)",
-                      width: 36, textAlign: "center", transition: "color 200ms",
+                      width: 32, textAlign: "center", transition: "color 200ms",
                     }}>
                       {isSaving ? "…" : isSaved ? "✓" : qty}
                     </span>
@@ -864,14 +873,14 @@ export function EstoqueClient({ products: initial }: Props) {
                       onClick={() => adjustQty(product, 1)}
                       disabled={isSaving}
                       style={{
-                        width: 30, height: 30, borderRadius: 8,
+                        width: 44, height: 44, borderRadius: 8,
                         background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
                         border: "none", cursor: isSaving ? "not-allowed" : "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         opacity: isSaving ? 0.4 : 1, transition: "opacity 200ms",
                       }}
                     >
-                      <Plus size={13} strokeWidth={2.5} style={{ color: "#fff" }} />
+                      <Plus size={14} strokeWidth={2.5} style={{ color: "#fff" }} />
                     </button>
                   </div>
                 </div>

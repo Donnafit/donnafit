@@ -3,23 +3,16 @@ import { useState } from "react"
 import type { CSSProperties } from "react"
 import { Search, Package, LayoutGrid, List } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
+import { getStatusPill, KANBAN_COLUMNS } from "@/lib/orderStatus"
+import { useIsMobile } from "@/hooks/useIsMobile"
 import type { OrderWithItems } from "@/types"
 
-type Tab = "all" | "pending" | "production" | "ready"
+type Tab = "all" | (typeof KANBAN_COLUMNS)[number]["key"]
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "all",        label: "Todos" },
-  { key: "pending",    label: "Pendentes" },
-  { key: "production", label: "Em Produção" },
-  { key: "ready",      label: "Prontos" },
+  { key: "all", label: "Todos" },
+  ...KANBAN_COLUMNS.map((c) => ({ key: c.key as Tab, label: c.label })),
 ]
-
-const STATUS_PILLS: Record<string, { bg: string; color: string; pip: string; label: string }> = {
-  pending:    { bg: "#FEF3C7", color: "#B45309", pip: "#F59E0B", label: "Pendente" },
-  production: { bg: "#DBEAFE", color: "#1E40AF", pip: "#3B82F6", label: "Em Produção" },
-  ready:      { bg: "#D1FAE5", color: "#065F46", pip: "#10B981", label: "Pronto" },
-  delivered:  { bg: "#F3F4F6", color: "#6B7280", pip: "#9CA3AF", label: "Entregue" },
-}
 
 function formatTime(dateString: string) {
   return new Date(dateString).toLocaleTimeString("pt-BR", {
@@ -38,13 +31,11 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("all")
   const [search, setSearch] = useState("")
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list")
+  const isMobile = useIsMobile()
 
   const filtered = orders.filter((o) => {
-    const matchTab =
-      activeTab === "all" ||
-      (activeTab === "pending"    && o.status === "pending") ||
-      (activeTab === "production" && o.status === "production") ||
-      (activeTab === "ready"      && o.status === "ready")
+    const column = KANBAN_COLUMNS.find((c) => c.key === activeTab)
+    const matchTab = activeTab === "all" || (column?.match(o) ?? false)
     const q = search.toLowerCase()
     const matchSearch =
       !q ||
@@ -55,7 +46,8 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
 
   function countFor(tab: Tab) {
     if (tab === "all") return orders.length
-    return orders.filter((o) => o.status === tab).length
+    const column = KANBAN_COLUMNS.find((c) => c.key === tab)
+    return column ? orders.filter(column.match).length : 0
   }
 
   return (
@@ -66,16 +58,17 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
         style={{
           background: "var(--surface-100)",
           borderBottom: "1px solid rgba(0,0,0,0.07)",
-          padding: "0 32px",
+          padding: "8px 16px",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
           flexShrink: 0,
-          height: 52,
+          flexWrap: "wrap",
+          rowGap: 8,
         }}
       >
-        <div style={{ display: "flex", gap: 4 }}>
-          {TABS.map(({ key, label }) => {
+        <div className="tabs-scroll-wrap" style={{ position: "relative", minWidth: 0 }}>
+          <div className="scrollbar-hidden" style={{ display: "flex", gap: 2, overflowX: "auto" }}>
+            {TABS.map(({ key, label }) => {
             const isActive = activeTab === key
             const count    = countFor(key)
             return (
@@ -83,7 +76,7 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
                 key={key}
                 onClick={() => setActiveTab(key)}
                 style={{
-                  padding: "0 14px",
+                  padding: "0 10px",
                   height: 52,
                   fontFamily: "var(--font-ui)",
                   fontSize: 12,
@@ -115,7 +108,16 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
                 </span>
               </button>
             )
-          })}
+            })}
+          </div>
+          <div
+            aria-hidden
+            style={{
+              position: "absolute", top: 0, right: 0, bottom: 0, width: 16,
+              background: "linear-gradient(to right, transparent, var(--surface-100))",
+              pointerEvents: "none",
+            }}
+          />
         </div>
 
         <div
@@ -127,6 +129,7 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
             border: "1px solid var(--surface-200)",
             borderRadius: 9,
             padding: "7px 14px",
+            marginLeft: 16,
           }}
         >
           <Search size={13} strokeWidth={1.8} style={{ color: "var(--text-300)", flexShrink: 0 }} />
@@ -141,16 +144,18 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
               background: "transparent",
               border: "none",
               outline: "none",
-              width: 150,
+              width: "100%",
+              minWidth: 90,
+              maxWidth: 280,
             }}
           />
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", background: "var(--surface-50)", border: "1px solid var(--surface-200)", borderRadius: 9, padding: 3 }}>
+        <div style={{ display: "flex", alignItems: "center", background: "var(--surface-50)", border: "1px solid var(--surface-200)", borderRadius: 9, padding: 3, marginLeft: "auto" }}>
           <button
             onClick={() => setViewMode("list")}
             style={{
-              padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer",
+              padding: "0 14px", height: 40, borderRadius: 6, border: "none", cursor: "pointer",
               background: viewMode === "list" ? "#fff" : "transparent",
               color: viewMode === "list" ? "var(--text-950)" : "var(--text-300)",
               boxShadow: viewMode === "list" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
@@ -163,7 +168,7 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
           <button
             onClick={() => setViewMode("kanban")}
             style={{
-              padding: "6px 12px", borderRadius: 6, border: "none", cursor: "pointer",
+              padding: "0 14px", height: 40, borderRadius: 6, border: "none", cursor: "pointer",
               background: viewMode === "kanban" ? "#fff" : "transparent",
               color: viewMode === "kanban" ? "var(--text-950)" : "var(--text-300)",
               boxShadow: viewMode === "kanban" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
@@ -199,17 +204,15 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
             </p>
           </div>
         ) : viewMode === "kanban" ? (
-          <div style={{ display: "flex", gap: 16, padding: 24, minHeight: "100%", overflowX: "auto" }}>
-            {(["pending", "production", "ready"] as const).map((statusKey) => {
-              const colOrders = filtered.filter(o => o.status === statusKey)
-              const pillInfo = STATUS_PILLS[statusKey]
+          <div className="scrollbar-hidden" style={{ display: "flex", gap: 16, padding: 24, minHeight: "100%", overflowX: "auto", scrollSnapType: "x proximity" }}>
+            {KANBAN_COLUMNS.map((column) => {
+              const colOrders = filtered.filter(column.match)
               return (
-                <div key={statusKey} style={{ flex: "0 0 320px", display: "flex", flexDirection: "column", gap: 12 }}>
+                <div key={column.key} style={{ flex: "0 0 320px", display: "flex", flexDirection: "column", gap: 12, scrollSnapAlign: "start" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: pillInfo?.pip || "#000" }} />
                       <h3 style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700, color: "var(--text-950)", margin: 0 }}>
-                        {pillInfo?.label || statusKey}
+                        {column.label}
                       </h3>
                     </div>
                     <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 700, color: "var(--text-400)", background: "rgba(0,0,0,0.05)", padding: "2px 8px", borderRadius: 12 }}>
@@ -219,6 +222,7 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
                   {colOrders.map(order => {
                     const isSelected = order.id === selectedId
                     const itemNames = order.order_items?.map((i) => i.product_name).join(", ") ?? ""
+                    const cardPill = getStatusPill(order)
                     return (
                       <div
                         key={order.id}
@@ -246,6 +250,20 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
                             {formatTime(order.created_at)}
                           </span>
                         </div>
+                        {column.key === "rota" && (
+                          <span
+                            style={{
+                              alignSelf: "flex-start",
+                              display: "inline-flex", alignItems: "center", gap: 5,
+                              background: cardPill.bg, color: cardPill.color, padding: "3px 9px",
+                              borderRadius: 9999, fontFamily: "var(--font-ui)",
+                              fontSize: 10, fontWeight: 600, whiteSpace: "nowrap",
+                            }}
+                          >
+                            <span style={{ width: 5, height: 5, borderRadius: "50%", background: cardPill.pip, flexShrink: 0 }} />
+                            {cardPill.label}
+                          </span>
+                        )}
                         <div>
                           <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--text-950)", margin: "0 0 2px", lineHeight: 1.3 }}>
                             {order.customer_name}
@@ -269,6 +287,57 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
               )
             })}
           </div>
+        ) : isMobile ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16 }}>
+            {filtered.map((order) => {
+              const isSelected = order.id === selectedId
+              const pill = getStatusPill(order)
+              const itemNames = order.order_items?.map((i) => i.product_name).join(", ") ?? ""
+              return (
+                <div
+                  key={order.id}
+                  onClick={() => onSelect(order)}
+                  style={{
+                    background: isSelected ? "rgba(200,155,60,0.07)" : "#fff",
+                    border: `1px solid ${isSelected ? "var(--gold-500)" : "var(--surface-200)"}`,
+                    borderRadius: 12, padding: 14, cursor: "pointer",
+                    display: "flex", flexDirection: "column", gap: 8,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700, color: "var(--gold-500)" }}>
+                      #{order.order_number}
+                    </span>
+                    <span
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                        background: pill.bg, color: pill.color, padding: "4px 10px",
+                        borderRadius: 9999, fontFamily: "var(--font-ui)",
+                        fontSize: 10, fontWeight: 600, whiteSpace: "nowrap",
+                      }}
+                    >
+                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: pill.pip, flexShrink: 0 }} />
+                      {pill.label}
+                    </span>
+                  </div>
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--text-950)", margin: 0 }}>
+                    {order.customer_name}
+                  </p>
+                  <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-400)", margin: 0, lineHeight: 1.4 }}>
+                    {itemNames}
+                  </p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--surface-200)", paddingTop: 8 }}>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-400)" }}>
+                      {formatTime(order.created_at)} · {order.order_items?.length ?? 0} {(order.order_items?.length ?? 0) === 1 ? "item" : "itens"}
+                    </span>
+                    <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 800, color: "var(--text-950)" }}>
+                      {formatCurrency(Number(order.total))}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -284,7 +353,7 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
             <tbody>
               {filtered.map((order) => {
                 const isSelected = order.id === selectedId
-                const pill = STATUS_PILLS[order.status] ?? STATUS_PILLS.delivered
+                const pill = getStatusPill(order)
                 const itemNames = order.order_items?.map((i) => i.product_name).join(", ") ?? ""
 
                 return (

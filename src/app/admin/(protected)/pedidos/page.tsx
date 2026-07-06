@@ -5,15 +5,19 @@ import { AdminHero } from "@/components/admin/AdminHero"
 import { OrderTable } from "@/components/admin/OrderTable"
 import { OrderDetailPanel } from "@/components/admin/OrderDetailPanel"
 import { Skeleton } from "@/components/ui/skeleton"
+import { KANBAN_COLUMNS } from "@/lib/orderStatus"
 import type { OrderWithItems } from "@/types"
 
 export default function PedidosPage() {
   const { orders, loading, updateStatus } = useRealtimeOrders()
   const [selected, setSelected] = useState<OrderWithItems | null>(null)
 
+  const balcao = KANBAN_COLUMNS.find((c) => c.key === "balcao")!
+  const rota   = KANBAN_COLUMNS.find((c) => c.key === "rota")!
+
   const pending    = orders.filter((o) => o.status === "pending").length
   const production = orders.filter((o) => o.status === "production").length
-  const ready      = orders.filter((o) => o.status === "ready").length
+  const ready      = orders.filter((o) => balcao.match(o) || rota.match(o)).length
 
   const todayOrders = orders.filter((o) => {
     const d = new Date(o.created_at)
