@@ -51,9 +51,35 @@ export async function POST(req: Request) {
   // Remover máscara do telefone antes de salvar
   const cleanPhone = body.customerPhone.replace(/\D/g, "")
 
-  // Recalcular totais no servidor — nunca confiar nos valores enviados pelo cliente
+  // Busca os produtos reais no banco — nunca confiar no preço/estoque que o
+  // cliente enviou. Também serve pra confirmar que os produtos ainda existem
+  // e estão ativos antes de criar o pedido.
+  const productIds = [...new Set(body.items.map((item) => item.product.id))]
+  const { data: freshProducts, error: productsErr } = await supabase
+    .from("products")
+    .select("id, name, sku, price, stock_type, is_active")
+    .in("id", productIds)
+
+  if (productsErr) {
+    return NextResponse.json({ error: "Erro ao validar produtos", detail: productsErr.message }, { status: 500 })
+  }
+
+  const freshById = new Map<string, any>((freshProducts ?? []).map((p: any) => [p.id, p]))
+  const unavailable = body.items.filter((item) => {
+    const fresh = freshById.get(item.product.id)
+    return !fresh || !fresh.is_active
+  })
+  if (unavailable.length > 0) {
+    return NextResponse.json(
+      { error: `Produto(s) indisponível(is): ${unavailable.map((i) => i.product.name).join(", ")}` },
+      { status: 409 }
+    )
+  }
+
+  // Recalcular totais no servidor a partir do preço REAL do banco — nunca
+  // confiar nos valores enviados pelo cliente.
   const calculatedSubtotal = body.items.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
+    (sum, item) => sum + freshById.get(item.product.id).price * item.quantity,
     0
   )
   const pixDiscount = body.paymentMethod === "pix" ? calculatedSubtotal * 0.05 : 0
@@ -114,14 +140,52 @@ export async function POST(req: Request) {
     )
   }
 
-  const itemsPayload: OrderItemInsert[] = body.items.map((item) => ({
-    order_id: order.id,
-    product_id: item.product.id,
-    product_name: item.product.name,
-    product_sku: item.product.sku,
-    quantity: item.quantity,
-    unit_price: item.product.price,
-  }))
+  // Reserva o estoque de TODOS os itens (antes só "combo" era checado — "avulso"
+  // podia vender infinitamente além do estoque real). Atômico no banco: se duas
+  // requisições concorrentes disputam a última unidade, só uma consegue.
+  const reserveResults = await Promise.allSettled(
+    body.items.map((item) =>
+      supabase.rpc("reserve_stock", {
+        p_product_id: item.product.id,
+        p_quantity: item.quantity,
+        p_order_id: order.id,
+      })
+    )
+  )
+  const failedReservations = reserveResults
+    .map((r, i) => ({ r, item: body.items[i] }))
+    .filter(({ r }) => r.status === "rejected" || (r as PromiseFulfilledResult<any>).value?.error)
+
+  if (failedReservations.length > 0) {
+    // Desfaz as reservas que deram certo, pra não vazar estoque, e cancela o pedido.
+    const succeeded = body.items.filter((_, i) => {
+      const r = reserveResults[i]
+      return r.status === "fulfilled" && !(r as PromiseFulfilledResult<any>).value?.error
+    })
+    await Promise.allSettled(
+      succeeded.map((item) =>
+        supabase.rpc("reserve_stock", { p_product_id: item.product.id, p_quantity: -item.quantity, p_order_id: order.id })
+      )
+    )
+    await supabase.from("orders").delete().eq("id", order.id)
+
+    return NextResponse.json(
+      { error: `Estoque insuficiente para: ${failedReservations.map(({ item }) => item.product.name).join(", ")}` },
+      { status: 409 }
+    )
+  }
+
+  const itemsPayload: OrderItemInsert[] = body.items.map((item) => {
+    const fresh = freshById.get(item.product.id)
+    return {
+      order_id: order.id,
+      product_id: item.product.id,
+      product_name: fresh.name,
+      product_sku: fresh.sku,
+      quantity: item.quantity,
+      unit_price: fresh.price,
+    }
+  })
 
   const { error: itemsErr } = await supabase
     .from("order_items")
@@ -194,20 +258,6 @@ export async function POST(req: Request) {
     console.error("Customer profile upsert error:", profileErr)
   }
   // ────────────────────────────────────────────────────────────────────
-
-  // Reserve stock for combo items
-  const comboItems = body.items.filter((i) => i.product.stock_type === "combo")
-  if (comboItems.length > 0) {
-    await Promise.allSettled(
-      comboItems.map((item) =>
-        supabase.rpc("reserve_stock", {
-          p_product_id: item.product.id,
-          p_quantity: item.quantity,
-          p_order_id: order.id,
-        })
-      )
-    )
-  }
 
   return NextResponse.json({
     orderId: order.id,

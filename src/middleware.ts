@@ -29,12 +29,12 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isAdminRoute = request.nextUrl.pathname.startsWith("/admin") && !request.nextUrl.pathname.startsWith("/admin/login")
+  const isAdminRoute = request.nextUrl.pathname.startsWith("/admin")
 
   if (isAdminRoute) {
     if (!user) {
       const url = request.nextUrl.clone()
-      url.pathname = "/admin/login"
+      url.pathname = "/acessoadmin"
       return NextResponse.redirect(url)
     }
 
@@ -46,7 +46,7 @@ export async function middleware(request: NextRequest) {
 
     if (!profile || !["admin", "kitchen"].includes(profile.role)) {
       const url = request.nextUrl.clone()
-      url.pathname = "/admin/login"
+      url.pathname = "/acessoadmin"
       return NextResponse.redirect(url)
     }
   }

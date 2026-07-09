@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { Database } from "@/lib/supabase/database.types"
 import type { OrderWithItems } from "@/types"
@@ -9,8 +9,10 @@ type OrderStatus = Database["public"]["Tables"]["orders"]["Update"]["status"]
 export function useRealtimeOrders() {
   const [orders, setOrders] = useState<OrderWithItems[]>([])
   const [loading, setLoading] = useState(true)
+  const latestFetchId = useRef(0)
 
   const fetchOrders = useCallback(async () => {
+    const fetchId = ++latestFetchId.current
     const supabase = createClient()
     const { data } = await supabase
       .from("orders")
@@ -18,6 +20,11 @@ export function useRealtimeOrders() {
       .not("status", "eq", "cancelled")
       .order("created_at", { ascending: false })
       .limit(100)
+
+    // Descarta fetches antigos que resolvem depois de um mais recente
+    // (evita que um refetch disparado por um evento realtime anterior
+    // sobrescreva um update otimista mais novo).
+    if (fetchId !== latestFetchId.current) return
 
     setOrders((data as OrderWithItems[]) ?? [])
     setLoading(false)
