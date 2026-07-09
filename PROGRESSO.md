@@ -48,7 +48,7 @@
 
 | Artefato | Arquivo | Status |
 |---|---|---|
-| Login admin (Supabase Auth) | `src/app/admin/login/page.tsx` | ✅ |
+| Login admin (Supabase Auth) | `src/app/acessoadmin/page.tsx` | ✅ |
 | Layout protegido + sidebar + bottom nav | `src/app/admin/layout.tsx` | ✅ |
 | Kanban real-time (4 colunas) | `src/components/admin/OrderKanban.tsx` | ✅ |
 | Hook Supabase Realtime — pedidos ao vivo | `src/hooks/useRealtimeOrders.ts` | ✅ |

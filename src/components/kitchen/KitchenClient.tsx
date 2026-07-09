@@ -154,36 +154,35 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
         </div>
       </div>
 
-      <div style={{ padding: "24px 28px", maxWidth: 900, margin: "0 auto" }}>
+      <div className="px-4 md:px-7" style={{ paddingTop: 24, paddingBottom: 24, maxWidth: 900, margin: "0 auto" }}>
 
-        {/* Métricas de alerta */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        {/* Métricas de alerta — mesmo padrão visual dos cards do Estoque (ícone em cima) */}
+        <div className="grid grid-cols-3" style={{ gap: 10, marginBottom: 24 }}>
           {[
-            { label: "Esgotados",    value: empty.length, Icon: XCircle,      accent: "#EF4444", dim: "rgba(239,68,68,0.08)" },
-            { label: "Estoque baixo",value: low.length,   Icon: AlertTriangle, accent: "#F59E0B", dim: "rgba(245,158,11,0.08)" },
-            { label: "Produzidos hoje", value: restockLog.reduce((s, r) => s + r.quantity, 0), Icon: CheckCircle2, accent: "#10B981", dim: "rgba(16,185,129,0.08)" },
+            { label: "Esgotados",    value: empty.length, Icon: XCircle,      accent: "#EF4444", dim: "rgba(239,68,68,0.1)" },
+            { label: "Estoque baixo",value: low.length,   Icon: AlertTriangle, accent: "#F59E0B", dim: "rgba(245,158,11,0.1)" },
+            { label: "Produzidos hoje", value: restockLog.reduce((s, r) => s + r.quantity, 0), Icon: CheckCircle2, accent: "#10B981", dim: "rgba(16,185,129,0.1)" },
           ].map(({ label, value, Icon, accent, dim }) => (
             <div key={label} style={{
               background: "var(--surface-100)",
               border: "1px solid var(--surface-200)",
-              borderRadius: 14, padding: "18px 20px",
-              display: "flex", alignItems: "center", gap: 14,
+              borderRadius: 14, padding: "14px 12px",
+              minWidth: 0,
             }}>
               <div style={{
-                width: 40, height: 40, borderRadius: 11,
-                background: dim, flexShrink: 0,
+                width: 32, height: 32, borderRadius: 9,
+                background: dim,
                 display: "flex", alignItems: "center", justifyContent: "center",
+                marginBottom: 10,
               }}>
-                <Icon size={18} strokeWidth={1.8} style={{ color: accent }} />
+                <Icon size={15} strokeWidth={1.8} style={{ color: accent }} />
               </div>
-              <div>
-                <p style={{ fontFamily: "var(--font-ui)", fontSize: 26, fontWeight: 900, color: "var(--text-950)", lineHeight: 1 }}>
-                  {value}
-                </p>
-                <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 3 }}>
-                  {label}
-                </p>
-              </div>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 20, fontWeight: 900, color: "var(--text-950)", lineHeight: 1 }}>
+                {value}
+              </p>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, color: "var(--text-300)", marginTop: 4, lineHeight: 1.25 }}>
+                {label}
+              </p>
             </div>
           ))}
         </div>

@@ -7,6 +7,9 @@ import { useAuth } from "@/hooks/useAuth"
 import { useCart } from "@/hooks/useCart"
 import { formatCurrency } from "@/lib/utils"
 import type { Product } from "@/types"
+import {
+  IconEmail, IconLock, ErrorMsg, SuccessMsg, Field, EyeBtn, PrimaryBtn, BrandHeader,
+} from "@/components/ui/AuthFormKit"
 
 type View = "login" | "register" | "forgot" | "profile" | "orders" | "editProfile"
 
@@ -33,11 +36,21 @@ interface Props {
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-  pending:    { label: "Aguardando",  color: "#B87B10", bg: "#FFF3D4" },
-  production: { label: "Preparando", color: "#1A56A0", bg: "#DBEAFE" },
-  ready:      { label: "Pronto",     color: "#186A3B", bg: "#D1FAE5" },
-  delivered:  { label: "Entregue",   color: "#555",    bg: "#F0F0F0" },
-  cancelled:  { label: "Cancelado",  color: "#B91C1C", bg: "#FEE2E2" },
+  pending:          { label: "Aguardando",     color: "#B87B10", bg: "#FFF3D4" },
+  production:       { label: "Preparando",     color: "#1A56A0", bg: "#DBEAFE" },
+  ready:            { label: "Pronto",         color: "#186A3B", bg: "#D1FAE5" },
+  out_for_delivery: { label: "Saiu para entrega", color: "#B45309", bg: "#FFEDD5" },
+  delivered:        { label: "Entregue",       color: "#555",    bg: "#F0F0F0" },
+  cancelled:        { label: "Cancelado",      color: "#B91C1C", bg: "#FEE2E2" },
+}
+
+const HIDDEN_ORDERS_KEY = "donna-fit-hidden-orders"
+function getHiddenOrderIds(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(HIDDEN_ORDERS_KEY) ?? "[]")
+  } catch {
+    return []
+  }
 }
 
 const AVATAR_COLORS = ["#5A6B2A", "#C89B3C", "#7B8E3D", "#8B6914", "#4A5B1A"]
@@ -58,20 +71,6 @@ function formatDate(iso: string) {
 
 // ── Ícones SVG (module-level) ────────────────────────────────────────────────
 
-function IconEmail() {
-  return (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-    </svg>
-  )
-}
-function IconLock() {
-  return (
-    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-    </svg>
-  )
-}
 function IconPerson() {
   return (
     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -86,137 +85,7 @@ function IconPhone() {
     </svg>
   )
 }
-function IconEyeOff() {
-  return (
-    <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-    </svg>
-  )
-}
-function IconEye() {
-  return (
-    <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      <path strokeLinecap="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-    </svg>
-  )
-}
-
 // ── Sub-components (module-level — evita remount a cada keystroke) ────────────
-
-function ErrorMsg({ error }: { error: string | null }) {
-  if (!error) return null
-  return (
-    <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 12, padding: "11px 14px", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
-      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#B91C1C" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }}>
-        <path strokeLinecap="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-      </svg>
-      <p style={{ fontFamily: "var(--font-switzer), sans-serif", fontSize: 12.5, color: "#B91C1C", margin: 0, lineHeight: 1.5 }}>{error}</p>
-    </div>
-  )
-}
-
-function SuccessMsg({ success }: { success: string | null }) {
-  if (!success) return null
-  return (
-    <div style={{ background: "#D1FAE5", border: "1px solid #A7F3D0", borderRadius: 12, padding: "11px 14px", marginBottom: 16 }}>
-      <p style={{ fontFamily: "var(--font-switzer), sans-serif", fontSize: 12.5, color: "#065F46", margin: 0 }}>{success}</p>
-    </div>
-  )
-}
-
-function Field({
-  label, type = "text", value, onChange, placeholder, autoComplete, icon, rightEl,
-}: {
-  label: string
-  type?: string
-  value: string
-  onChange: (v: string) => void
-  placeholder?: string
-  autoComplete?: string
-  icon?: React.ReactNode
-  rightEl?: React.ReactNode
-}) {
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <label style={{
-        fontFamily: "var(--font-switzer), sans-serif", fontSize: 10.5, fontWeight: 700,
-        color: "#5A6B2A", letterSpacing: "0.1em", textTransform: "uppercase",
-        display: "block", marginBottom: 6,
-      }}>
-        {label}
-      </label>
-      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-        {icon && (
-          <div style={{ position: "absolute", left: 13, color: "#B0A898", display: "flex", alignItems: "center", pointerEvents: "none" }}>
-            {icon}
-          </div>
-        )}
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          style={{
-            width: "100%",
-            border: "1.5px solid #E8E3DA",
-            borderRadius: 12,
-            padding: icon
-              ? (rightEl ? "13px 44px 13px 42px" : "13px 16px 13px 42px")
-              : (rightEl ? "13px 44px 13px 16px" : "13px 16px"),
-            fontSize: 14,
-            outline: "none",
-            background: "#FAFAF8",
-            color: "#1A1A1A",
-            fontFamily: "var(--font-switzer), sans-serif",
-            boxSizing: "border-box",
-            transition: "border-color 0.2s, background 0.2s",
-          }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "#C89B3C"; e.currentTarget.style.background = "#fff" }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "#E8E3DA"; e.currentTarget.style.background = "#FAFAF8" }}
-        />
-        {rightEl && (
-          <div style={{ position: "absolute", right: 13, color: "#B0A898", display: "flex", alignItems: "center" }}>
-            {rightEl}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function EyeBtn({ show, toggle }: { show: boolean; toggle: () => void }) {
-  return (
-    <button type="button" onClick={toggle} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", color: "#B0A898" }}>
-      {show ? <IconEyeOff /> : <IconEye />}
-    </button>
-  )
-}
-
-function PrimaryBtn({ label, loading: l }: { label: string; loading: boolean }) {
-  return (
-    <button
-      type="submit"
-      disabled={l}
-      style={{
-        width: "100%", padding: "15px",
-        background: l ? "#9DB08A" : "linear-gradient(135deg, #5A6B2A 0%, #7B9238 100%)",
-        color: "#fff", border: "none", borderRadius: 13,
-        fontFamily: "var(--font-switzer), sans-serif", fontWeight: 700, fontSize: 15,
-        cursor: l ? "not-allowed" : "pointer",
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-        marginTop: 6, boxShadow: l ? "none" : "0 6px 20px rgba(90,107,42,0.3)",
-        transition: "all 0.2s", letterSpacing: "0.3px",
-      }}
-    >
-      {l
-        ? <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2.5px solid rgba(255,255,255,0.35)", borderTopColor: "#fff", animation: "spin 0.6s linear infinite" }} />
-        : label
-      }
-    </button>
-  )
-}
 
 function AuthTabs({ active, onSwitch }: { active: "login" | "register"; onSwitch: (v: "login" | "register") => void }) {
   return (
@@ -247,43 +116,6 @@ function AuthTabs({ active, onSwitch }: { active: "login" | "register"; onSwitch
   )
 }
 
-function BrandHeader({ onClose }: { onClose: () => void }) {
-  return (
-    <div style={{
-      background: "linear-gradient(135deg, #1A1A1A 0%, #2D3D14 50%, #3D5018 100%)",
-      padding: "22px 24px 18px",
-      borderRadius: "24px 24px 0 0",
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      flexShrink: 0,
-    }}>
-      <div>
-        <div style={{ fontFamily: "var(--font-switzer), sans-serif", fontWeight: 900, fontSize: 18, color: "#C89B3C", letterSpacing: "0.5px" }}>
-          Donna FIT
-        </div>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2, fontFamily: "var(--font-switzer), sans-serif" }}>
-          Alimentação Saudável
-        </div>
-      </div>
-      <button
-        onClick={onClose}
-        style={{
-          width: 32, height: 32, borderRadius: 10,
-          background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.12)",
-          cursor: "pointer", display: "flex", alignItems: "center",
-          justifyContent: "center", color: "rgba(255,255,255,0.7)",
-          transition: "background 0.15s",
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.18)" }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)" }}
-      >
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
-  )
-}
-
 function ModalHeader({ title, onClose, onBack }: { title: string; onClose: () => void; onBack?: () => void }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px 18px", borderBottom: "1px solid #F0EDE8", flexShrink: 0 }}>
@@ -299,6 +131,7 @@ function ModalHeader({ title, onClose, onBack }: { title: string; onClose: () =>
       </div>
       <button
         onClick={onClose}
+        aria-label="Fechar"
         style={{ width: 34, height: 34, borderRadius: 10, background: "#F5F0E8", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#666" }}
       >
         <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -421,7 +254,8 @@ export function ProfileModal({ open, onClose }: Props) {
       .eq("customer_phone", phone.replace(/\D/g, ""))
       .order("created_at", { ascending: false })
       .limit(12)
-    setOrders((data as OrderSummary[]) ?? [])
+    const hidden = getHiddenOrderIds()
+    setOrders(((data as OrderSummary[]) ?? []).filter((o) => !hidden.includes(o.id)))
     setOrdersLoading(false)
   }
 
@@ -447,6 +281,12 @@ export function ProfileModal({ open, onClose }: Props) {
 
   function handleDeleteOrder(id: string) {
     setOrders(prev => prev.filter(o => o.id !== id))
+    try {
+      const hidden = getHiddenOrderIds()
+      if (!hidden.includes(id)) {
+        localStorage.setItem(HIDDEN_ORDERS_KEY, JSON.stringify([...hidden, id]))
+      }
+    } catch {}
   }
 
   async function handleLogin(e: React.FormEvent) {

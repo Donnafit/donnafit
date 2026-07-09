@@ -7,12 +7,24 @@ export default async function CozinhaPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = (await createClient()) as any
 
-  // Todos os produtos ativos com dados de estoque
-  const { data: productsRaw } = await supabase
-    .from("products")
-    .select("id, name, sku, stock_quantity, min_stock_alert, categories(name)")
-    .eq("is_active", true)
-    .order("stock_quantity", { ascending: true }) // mais urgentes primeiro
+  // Reposições registradas hoje
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
+  // Produtos e reposições são independentes — busca em paralelo em vez de sequencial
+  const [{ data: productsRaw }, { data: restocksRaw }] = await Promise.all([
+    supabase
+      .from("products")
+      .select("id, name, sku, stock_quantity, min_stock_alert, categories(name)")
+      .eq("is_active", true)
+      .order("stock_quantity", { ascending: true }), // mais urgentes primeiro
+    supabase
+      .from("stock_movements")
+      .select("id, product_id, quantity, notes, created_at, product:products(name, sku)")
+      .eq("type", "restock")
+      .gte("created_at", todayStart.toISOString())
+      .order("created_at", { ascending: false }),
+  ])
 
   const products = (productsRaw ?? []) as {
     id: string
@@ -22,17 +34,6 @@ export default async function CozinhaPage() {
     min_stock_alert: number
     categories: { name: string } | null
   }[]
-
-  // Reposições registradas hoje
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
-
-  const { data: restocksRaw } = await supabase
-    .from("stock_movements")
-    .select("id, product_id, quantity, notes, created_at, product:products(name, sku)")
-    .eq("type", "restock")
-    .gte("created_at", todayStart.toISOString())
-    .order("created_at", { ascending: false })
 
   const todayRestocks = (restocksRaw ?? []) as {
     id: string

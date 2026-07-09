@@ -67,24 +67,6 @@ function ConfirmacaoContent() {
         style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 9999, overflow: "hidden" }}
       />
 
-      {/* Header mínimo */}
-      <header style={{
-        position: "sticky", top: 0, zIndex: 50,
-        background: "white",
-        borderBottom: "1px solid #F0EDE8",
-        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-      }}>
-        <div style={{
-          maxWidth: 640, margin: "0 auto", width: "100%",
-          padding: "0 20px", height: 64,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <span style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 900, fontSize: 18, color: "#1A1A1A" }}>
-            Donna FIT
-          </span>
-        </div>
-      </header>
-
       <div style={{ maxWidth: 540, margin: "0 auto", width: "100%", padding: "48px 20px 80px", textAlign: "center" }}>
 
         {/* Ícone sucesso */}

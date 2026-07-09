@@ -14,7 +14,7 @@ const switzer = localFont({
 
 const montserrat = Montserrat({
   subsets: ["latin"],
-  weight: ["700", "800", "900"],
+  weight: ["500", "700", "800", "900"],
   variable: "--font-montserrat",
   display: "swap",
 });

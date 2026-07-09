@@ -1925,6 +1925,19 @@ function novosPedido() {
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', () => {
   renderProdutos('todos');
+
+  // ponytail: atalho só pra pré-visualizar a tela de confirmação sem passar pelo fluxo inteiro
+  if (new URLSearchParams(location.search).get('view') === 'confirmacao') {
+    carrinho = [
+      { ...produtos[0], quantidade: 2 },
+      { ...produtos[1], quantidade: 1 },
+    ];
+    ultimoPedidoId = '#DF' + Math.floor(1000 + Math.random() * 9000);
+    const total = calcularSubtotal() + calcularFrete() - calcularDesconto(calcularSubtotal());
+    renderConfirmacao(total);
+    showView('view-confirmacao');
+    criarConfetti();
+  }
 });
 </script>
 

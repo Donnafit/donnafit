@@ -366,7 +366,7 @@ body {
   from { transform: translateY(100%); }
   to   { transform: translateY(0); }
 }
-@keyframes scaleIn {
+@keyframes modalScaleIn {
   from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
   to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
@@ -394,7 +394,7 @@ body {
     right: auto;
     width: 440px;
     border-radius: 24px;
-    animation: scaleIn 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+    animation: modalScaleIn 0.22s cubic-bezier(0.32, 0.72, 0, 1);
     transform: translate(-50%, -50%);
     max-height: 88vh;
   }

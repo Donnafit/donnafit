@@ -120,64 +120,70 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
           />
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-            background: "var(--surface-50)",
-            border: "1px solid var(--surface-200)",
-            borderRadius: 9,
-            padding: "7px 14px",
-            marginLeft: 16,
-          }}
-        >
-          <Search size={13} strokeWidth={1.8} style={{ color: "var(--text-300)", flexShrink: 0 }} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar pedido..."
+        {/* Busca + toggle Lista/Kanban — linha própria e cheia no mobile, busca à esquerda / toggle à direita */}
+        <div className="w-full md:w-auto md:ml-4" style={{ display: "flex", alignItems: "center", gap: 8, flex: "1 1 auto", minWidth: 0 }}>
+          <div
             style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 12,
-              color: "var(--text-700)",
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              width: "100%",
-              minWidth: 90,
-              maxWidth: 280,
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              background: "var(--surface-50)",
+              border: "1px solid var(--surface-200)",
+              borderRadius: 9,
+              padding: "0 14px",
+              height: 40,
+              boxSizing: "border-box",
+              flex: 1,
+              minWidth: 0,
             }}
-          />
-        </div>
+          >
+            <Search size={13} strokeWidth={1.8} style={{ color: "var(--text-300)", flexShrink: 0 }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar pedido..."
+              style={{
+                fontFamily: "var(--font-ui)",
+                fontSize: 12,
+                color: "var(--text-700)",
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                width: "100%",
+                minWidth: 0,
+                maxWidth: 280,
+              }}
+            />
+          </div>
 
-        <div style={{ display: "flex", alignItems: "center", background: "var(--surface-50)", border: "1px solid var(--surface-200)", borderRadius: 9, padding: 3, marginLeft: "auto" }}>
-          <button
-            onClick={() => setViewMode("list")}
-            style={{
-              padding: "0 14px", height: 40, borderRadius: 6, border: "none", cursor: "pointer",
-              background: viewMode === "list" ? "#fff" : "transparent",
-              color: viewMode === "list" ? "var(--text-950)" : "var(--text-300)",
-              boxShadow: viewMode === "list" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-              transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6,
-              fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 600,
-            }}
-          >
-            <List size={14} /> Lista
-          </button>
-          <button
-            onClick={() => setViewMode("kanban")}
-            style={{
-              padding: "0 14px", height: 40, borderRadius: 6, border: "none", cursor: "pointer",
-              background: viewMode === "kanban" ? "#fff" : "transparent",
-              color: viewMode === "kanban" ? "var(--text-950)" : "var(--text-300)",
-              boxShadow: viewMode === "kanban" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-              transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6,
-              fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 600,
-            }}
-          >
-            <LayoutGrid size={14} /> Kanban
-          </button>
+          <div style={{ display: "flex", alignItems: "center", background: "var(--surface-50)", border: "1px solid var(--surface-200)", borderRadius: 9, padding: 3, height: 40, boxSizing: "border-box", marginLeft: "auto", flexShrink: 0 }}>
+            <button
+              onClick={() => setViewMode("list")}
+              style={{
+                padding: "0 14px", height: "100%", borderRadius: 6, border: "none", cursor: "pointer",
+                background: viewMode === "list" ? "#fff" : "transparent",
+                color: viewMode === "list" ? "var(--text-950)" : "var(--text-300)",
+                boxShadow: viewMode === "list" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6,
+                fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 600,
+              }}
+            >
+              <List size={14} /> Lista
+            </button>
+            <button
+              onClick={() => setViewMode("kanban")}
+              style={{
+                padding: "0 14px", height: "100%", borderRadius: 6, border: "none", cursor: "pointer",
+                background: viewMode === "kanban" ? "#fff" : "transparent",
+                color: viewMode === "kanban" ? "var(--text-950)" : "var(--text-300)",
+                boxShadow: viewMode === "kanban" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6,
+                fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 600,
+              }}
+            >
+              <LayoutGrid size={14} /> Kanban
+            </button>
+          </div>
         </div>
       </div>
 

@@ -17,6 +17,8 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
   // Keep content rendered during close animation (250ms)
   const [displayOrder, setDisplayOrder] = useState<OrderWithItems | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [advancing, setAdvancing] = useState(false)
+  const [advanceError, setAdvanceError] = useState<string | null>(null)
 
   useEffect(() => {
     if (order) {
@@ -31,12 +33,17 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
   const pill      = displayOrder ? getStatusPill(displayOrder) : null
 
   async function handleAdvance() {
-    if (!displayOrder || !nextStep) return
+    if (!displayOrder || !nextStep || advancing) return
+    setAdvancing(true)
+    setAdvanceError(null)
     try {
       await onUpdateStatus(displayOrder.id, nextStep.status)
       onClose()
     } catch (err) {
       console.error("Erro ao atualizar status:", err)
+      setAdvanceError("Não foi possível atualizar o status. Tente novamente.")
+    } finally {
+      setAdvancing(false)
     }
   }
 
@@ -289,9 +296,19 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
 
           {/* Actions */}
           <div style={{ padding: "12px 20px", borderTop: "1px solid var(--surface-200)", flexShrink: 0 }}>
+            {advanceError && (
+              <p style={{
+                fontFamily: "var(--font-ui)", fontSize: 11, color: "#DC2626",
+                background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8,
+                padding: "8px 10px", marginBottom: 8,
+              }}>
+                {advanceError}
+              </p>
+            )}
             {nextStep && (
               <button
                 onClick={handleAdvance}
+                disabled={advancing}
                 style={{
                   width: "100%",
                   fontFamily: "var(--font-ui)",
@@ -302,12 +319,13 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
                   background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
                   color: "#fff",
                   border: "none",
-                  cursor: "pointer",
+                  cursor: advancing ? "wait" : "pointer",
+                  opacity: advancing ? 0.6 : 1,
                   boxShadow: "0 2px 12px rgba(200,155,60,0.25)",
                   marginBottom: 8,
                 }}
               >
-                {nextStep.label}
+                {advancing ? "Atualizando..." : nextStep.label}
               </button>
             )}
             {displayOrder.status === "delivered" && (

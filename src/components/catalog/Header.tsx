@@ -62,7 +62,8 @@ export function Header({ activeCategory }: Props) {
   const avatarUrl = user?.user_metadata?.avatar_url ?? null
 
   function handleNav(slug: string) {
-    router.push(`/?cat=${slug}`, { scroll: false })
+    window.dispatchEvent(new CustomEvent("selectCategoryBySlug", { detail: slug }))
+    window.history.replaceState(null, "", `/?cat=${slug}`)
     setMobileOpen(false)
     setTimeout(() => {
       document.getElementById("produtos")?.scrollIntoView({ behavior: "smooth" })

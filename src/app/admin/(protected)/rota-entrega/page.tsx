@@ -1,5 +1,6 @@
 "use client"
-import { MapPin, Phone, Truck, Package, CheckCircle2 } from "lucide-react"
+import { useState } from "react"
+import { MapPin, Phone, Truck, Package, CheckCircle2, AlertCircle } from "lucide-react"
 import { useRealtimeOrders } from "@/hooks/useRealtimeOrders"
 import { formatCurrency } from "@/lib/utils"
 import { getNextStep, getStatusPill } from "@/lib/orderStatus"
@@ -11,6 +12,8 @@ function mapsUrl(address: string) {
 
 export default function RotaEntregaPage() {
   const { orders, loading, updateStatus } = useRealtimeOrders()
+  const [advancingId, setAdvancingId] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const deliveries = orders.filter((o) => o.delivery_type === "delivery" && o.delivery_address)
   const active = deliveries.filter((o) => o.status === "ready" || o.status === "out_for_delivery")
@@ -22,10 +25,16 @@ export default function RotaEntregaPage() {
   ]
 
   async function handleAdvance(id: string, status: string) {
+    if (advancingId) return
+    setAdvancingId(id)
+    setErrorMsg(null)
     try {
       await updateStatus(id, status)
     } catch (err) {
       console.error("Erro ao atualizar status da entrega:", err)
+      setErrorMsg("Não foi possível atualizar o status. Tente novamente.")
+    } finally {
+      setAdvancingId(null)
     }
   }
 
@@ -57,6 +66,17 @@ export default function RotaEntregaPage() {
       </div>
 
       <div className="px-4 sm:px-7" style={{ paddingTop: 22, paddingBottom: 90 }}>
+        {errorMsg && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626",
+            borderRadius: 10, padding: "10px 14px", marginBottom: 16,
+            fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 500,
+          }}>
+            <AlertCircle size={14} strokeWidth={2} />
+            {errorMsg}
+          </div>
+        )}
         {/* Métricas */}
         <div className="grid grid-cols-2" style={{ gap: 12, marginBottom: 24, maxWidth: 480 }}>
           {metrics.map(({ label, value, Icon, accent, dim }) => (
@@ -86,7 +106,7 @@ export default function RotaEntregaPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gap: 12 }}>
               {active.map((order) => (
-                <DeliveryCard key={order.id} order={order} onAdvance={handleAdvance} />
+                <DeliveryCard key={order.id} order={order} onAdvance={handleAdvance} advancing={advancingId === order.id} />
               ))}
             </div>
           )}
@@ -149,16 +169,19 @@ function DeliveryCard({
   order,
   onAdvance,
   inactive,
+  advancing,
 }: {
   order: OrderWithItems
   onAdvance?: (id: string, status: string) => void
   inactive?: boolean
+  advancing?: boolean
 }) {
   const pill = getStatusPill(order)
   const nextStep = getNextStep(order)
 
   return (
     <div
+      data-testid="delivery-card"
       style={{
         background: inactive ? "var(--surface-50)" : "#fff",
         border: "1px solid var(--surface-200)",
@@ -234,15 +257,17 @@ function DeliveryCard({
       {!inactive && nextStep && onAdvance && (
         <button
           onClick={() => onAdvance(order.id, nextStep.status)}
+          disabled={advancing}
           style={{
             display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600,
             padding: "9px 12px", borderRadius: 9,
             background: "transparent", border: "1px solid var(--surface-200)",
-            color: "var(--text-700)", cursor: "pointer",
+            color: "var(--text-700)", cursor: advancing ? "wait" : "pointer",
+            opacity: advancing ? 0.5 : 1,
           }}
         >
-          {nextStep.label}
+          {advancing ? "Atualizando..." : nextStep.label}
         </button>
       )}
     </div>

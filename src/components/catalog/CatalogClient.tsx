@@ -37,6 +37,15 @@ export function CatalogClient({ categories, products, initialCategory }: Props) 
     })
   }
 
+  useEffect(() => {
+    function handleExternalSelect(e: Event) {
+      handleSelect(resolveId((e as CustomEvent<string>).detail))
+    }
+    window.addEventListener("selectCategoryBySlug", handleExternalSelect)
+    return () => window.removeEventListener("selectCategoryBySlug", handleExternalSelect)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories])
+
   function handleSearch(q: string) {
     setSearchQuery(q)
     if (q) setActiveCategory(null)

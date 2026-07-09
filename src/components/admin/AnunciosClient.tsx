@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Megaphone, Plus, Trash2, Eye, EyeOff, GripVertical } from "lucide-react"
+import { Megaphone, Plus, Trash2, Eye, EyeOff, ChevronUp, ChevronDown } from "lucide-react"
 import type { Database } from "@/lib/supabase/database.types"
 
 type Announcement = Database["public"]["Tables"]["announcements"]["Row"]
@@ -29,7 +29,9 @@ export function AnunciosClient({ announcements: initial }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: newText, sort_order: items.length + 1 }),
       })
-      if (!res.ok) throw new Error((await res.json()).error)
+      const created = await res.json()
+      if (!res.ok) throw new Error(created.error)
+      setItems((prev) => [...prev, created as Announcement])
       setNewText("")
       startTransition(() => router.refresh())
     } catch (e) {
@@ -50,12 +52,39 @@ export function AnunciosClient({ announcements: initial }: Props) {
   }
 
   async function handleDelete(id: string) {
+    if (!window.confirm("Remover este aviso? Essa ação não pode ser desfeita.")) return
     setItems((prev) => prev.filter((a) => a.id !== id))
     await fetch("/api/announcements", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     })
+    startTransition(() => router.refresh())
+  }
+
+  async function handleMove(index: number, direction: -1 | 1) {
+    const target = index + direction
+    if (target < 0 || target >= items.length) return
+    const a = items[index]
+    const b = items[target]
+
+    const next = [...items]
+    next[index] = { ...b, sort_order: a.sort_order }
+    next[target] = { ...a, sort_order: b.sort_order }
+    setItems(next)
+
+    await Promise.all([
+      fetch("/api/announcements", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: a.id, sort_order: b.sort_order }),
+      }),
+      fetch("/api/announcements", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: b.id, sort_order: a.sort_order }),
+      }),
+    ])
     startTransition(() => router.refresh())
   }
 
@@ -171,9 +200,10 @@ export function AnunciosClient({ announcements: initial }: Props) {
             </div>
           )}
 
-          {items.map((item) => (
+          {items.map((item, index) => (
             <div
               key={item.id}
+              data-testid="announcement-row"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -186,7 +216,34 @@ export function AnunciosClient({ announcements: initial }: Props) {
                 transition: "opacity 200ms",
               }}
             >
-              <GripVertical size={15} strokeWidth={1.5} style={{ color: "var(--text-300)", flexShrink: 0, cursor: "grab" }} />
+              <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
+                <button
+                  onClick={() => handleMove(index, -1)}
+                  disabled={index === 0}
+                  title="Mover para cima"
+                  style={{
+                    width: 20, height: 16, border: "none", background: "transparent",
+                    cursor: index === 0 ? "default" : "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    opacity: index === 0 ? 0.25 : 1,
+                  }}
+                >
+                  <ChevronUp size={13} strokeWidth={2} style={{ color: "var(--text-300)" }} />
+                </button>
+                <button
+                  onClick={() => handleMove(index, 1)}
+                  disabled={index === items.length - 1}
+                  title="Mover para baixo"
+                  style={{
+                    width: 20, height: 16, border: "none", background: "transparent",
+                    cursor: index === items.length - 1 ? "default" : "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    opacity: index === items.length - 1 ? 0.25 : 1,
+                  }}
+                >
+                  <ChevronDown size={13} strokeWidth={2} style={{ color: "var(--text-300)" }} />
+                </button>
+              </div>
 
               <span style={{
                 flex: 1,

@@ -170,12 +170,12 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
 }
 
 // ─── Upload de Imagem (Supabase Storage) ───────────────────────────────────────
-interface ImageUploaderProps {
+export interface ImageUploaderProps {
   value: string
   onChange: (url: string) => void
 }
 
-function ImageUploader({ value, onChange }: ImageUploaderProps) {
+export function ImageUploader({ value, onChange }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false)
   const [urlError, setUrlError]   = useState(false)
   const [dragging, setDragging]   = useState(false)
@@ -778,110 +778,159 @@ export function EstoqueClient({ products: initial }: Props) {
               const isSaving = saving[product.id]
               const isSaved  = saved[product.id]
 
+              const editButton = (
+                <button
+                  onClick={() => setEditingProduct(product)}
+                  style={{
+                    width: 44, height: 44, background: "transparent", border: "none",
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "var(--text-300)", flexShrink: 0, transition: "color 150ms",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = "var(--gold-500)"}
+                  onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-300)"}
+                >
+                  <Edit3 size={14} strokeWidth={2} />
+                </button>
+              )
+
+              const stepper = (
+                <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
+                  <button
+                    onClick={() => adjustQty(product, -1)}
+                    disabled={qty === 0 || isSaving}
+                    aria-label={`Diminuir estoque de ${product.name}`}
+                    style={{
+                      width: 44, height: 44, borderRadius: 8,
+                      background: "var(--surface-200)", border: "none",
+                      cursor: qty === 0 || isSaving ? "not-allowed" : "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      opacity: qty === 0 || isSaving ? 0.35 : 1, transition: "opacity 200ms",
+                    }}
+                  >
+                    <Minus size={14} strokeWidth={2.5} style={{ color: "var(--text-700)" }} />
+                  </button>
+
+                  <span style={{
+                    fontFamily: "var(--font-ui)", fontSize: 17, fontWeight: 900,
+                    color: isSaved ? "#10B981" : "var(--text-950)",
+                    width: 32, textAlign: "center", transition: "color 200ms",
+                  }}>
+                    {isSaving ? "…" : isSaved ? "✓" : qty}
+                  </span>
+
+                  <button
+                    onClick={() => adjustQty(product, 1)}
+                    disabled={isSaving}
+                    aria-label={`Aumentar estoque de ${product.name}`}
+                    style={{
+                      width: 44, height: 44, borderRadius: 8,
+                      background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
+                      border: "none", cursor: isSaving ? "not-allowed" : "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      opacity: isSaving ? 0.4 : 1, transition: "opacity 200ms",
+                    }}
+                  >
+                    <Plus size={14} strokeWidth={2.5} style={{ color: "#fff" }} />
+                  </button>
+                </div>
+              )
+
+              const thumbnail = (
+                <div style={{
+                  width: 44, height: 44, borderRadius: 10, overflow: "hidden", flexShrink: 0,
+                  background: "var(--surface-200)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <ProductThumb src={product.image_url} alt={product.name} />
+                </div>
+              )
+
+              const statusPill = (
+                <span style={{
+                  fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700,
+                  padding: "2px 8px", borderRadius: 99,
+                  background: pill.bg, color: pill.color, flexShrink: 0,
+                }}>
+                  {pill.label}
+                </span>
+              )
+
+              const comboTag = product.stock_type === "combo" && (
+                <span style={{
+                  fontFamily: "var(--font-ui)", fontSize: 9, fontWeight: 700,
+                  padding: "2px 7px", borderRadius: 99,
+                  background: "rgba(200,155,60,0.10)", color: "var(--gold-500)",
+                  textTransform: "uppercase", letterSpacing: "0.5px", flexShrink: 0,
+                }}>
+                  Combo
+                </span>
+              )
+
               return (
                 <div key={product.id} style={{
                   background: "var(--surface-100)",
                   border: `1px solid ${isEmpty ? "rgba(239,68,68,0.2)" : isLow ? "rgba(245,158,11,0.2)" : "var(--surface-200)"}`,
-                  borderRadius: 12, padding: "14px 18px",
-                  display: "flex", alignItems: "center", gap: 14,
+                  borderRadius: 12,
                   transition: "border-color 200ms",
                 }}>
-                  {/* Thumbnail */}
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 10, overflow: "hidden", flexShrink: 0,
-                    background: "var(--surface-200)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <ProductThumb src={product.image_url} alt={product.name} />
-                  </div>
+                  {/* ── Desktop: uma linha só ─────────────────────────── */}
+                  <div className="hidden md:flex" style={{ padding: "14px 18px", alignItems: "center", gap: 14 }}>
+                    {thumbnail}
 
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                      <p style={{
-                        fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--text-950)", lineHeight: 1.2,
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        flex: "1 1 auto", minWidth: "60px",
-                      }}>
-                        {product.name}
-                      </p>
-                      <span style={{
-                        fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700,
-                        padding: "2px 8px", borderRadius: 99,
-                        background: pill.bg, color: pill.color, flexShrink: 0,
-                      }}>
-                        {pill.label}
-                      </span>
-                      {product.stock_type === "combo" && (
-                        <span style={{
-                          fontFamily: "var(--font-ui)", fontSize: 9, fontWeight: 700,
-                          padding: "2px 7px", borderRadius: 99,
-                          background: "rgba(200,155,60,0.10)", color: "var(--gold-500)",
-                          textTransform: "uppercase", letterSpacing: "0.5px", flexShrink: 0,
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                        <p style={{
+                          fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--text-950)", lineHeight: 1.2,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          flex: "0 1 auto", minWidth: "60px", maxWidth: "70%",
                         }}>
-                          Combo
-                        </span>
-                      )}
+                          {product.name}
+                        </p>
+                        {statusPill}
+                        {comboTag}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <StockBar qty={qty} min={product.min_stock_alert} />
+                        {product.sku && (
+                          <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, color: "var(--text-300)", flexShrink: 0 }}>
+                            {product.sku}
+                          </span>
+                        )}
+                        {editButton}
+                      </div>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <StockBar qty={qty} min={product.min_stock_alert} />
-                      {product.sku && (
-                        <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, color: "var(--text-300)", flexShrink: 0 }}>
-                          {product.sku}
-                        </span>
-                      )}
-                      <button
-                        onClick={() => setEditingProduct(product)}
-                        style={{
-                          width: 44, height: 44, background: "transparent", border: "none",
-                          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                          color: "var(--text-300)", flexShrink: 0, transition: "color 150ms",
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = "var(--gold-500)"}
-                        onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-300)"}
-                      >
-                        <Edit3 size={14} strokeWidth={2} />
-                      </button>
-                    </div>
+
+                    {stepper}
                   </div>
 
-                  {/* Stepper */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
-                    <button
-                      onClick={() => adjustQty(product, -1)}
-                      disabled={qty === 0 || isSaving}
-                      style={{
-                        width: 44, height: 44, borderRadius: 8,
-                        background: "var(--surface-200)", border: "none",
-                        cursor: qty === 0 || isSaving ? "not-allowed" : "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        opacity: qty === 0 || isSaving ? 0.35 : 1, transition: "opacity 200ms",
-                      }}
-                    >
-                      <Minus size={14} strokeWidth={2.5} style={{ color: "var(--text-700)" }} />
-                    </button>
+                  {/* ── Mobile: duas linhas ───────────────────────────── */}
+                  <div className="flex md:hidden" style={{ flexDirection: "column", padding: "12px 14px", gap: 10 }}>
+                    {/* Linha 1: status + barra de estoque esticada + editar */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {statusPill}
+                      {comboTag}
+                      <StockBar qty={qty} min={product.min_stock_alert} />
+                      {editButton}
+                    </div>
 
-                    <span style={{
-                      fontFamily: "var(--font-ui)", fontSize: 17, fontWeight: 900,
-                      color: isSaved ? "#10B981" : "var(--text-950)",
-                      width: 32, textAlign: "center", transition: "color 200ms",
-                    }}>
-                      {isSaving ? "…" : isSaved ? "✓" : qty}
-                    </span>
-
-                    <button
-                      onClick={() => adjustQty(product, 1)}
-                      disabled={isSaving}
-                      style={{
-                        width: 44, height: 44, borderRadius: 8,
-                        background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
-                        border: "none", cursor: isSaving ? "not-allowed" : "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        opacity: isSaving ? 0.4 : 1, transition: "opacity 200ms",
-                      }}
-                    >
-                      <Plus size={14} strokeWidth={2.5} style={{ color: "#fff" }} />
-                    </button>
+                    {/* Linha 2: foto + nome/código + stepper */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      {thumbnail}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{
+                          fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--text-950)", lineHeight: 1.25,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {product.name}
+                        </p>
+                        {product.sku && (
+                          <p style={{ fontFamily: "var(--font-ui)", fontSize: 10, color: "var(--text-300)", marginTop: 2 }}>
+                            {product.sku}
+                          </p>
+                        )}
+                      </div>
+                      {stepper}
+                    </div>
                   </div>
                 </div>
               )

@@ -1,14 +1,16 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { User, Settings, LogOut, ChevronLeft, Camera, Sun, Moon } from "lucide-react"
+import { User, Settings, LogOut, ChevronLeft, Camera, Sun, Moon, Megaphone, QrCode } from "lucide-react"
 import Image from "next/image"
 
 interface Props {
   name: string
   photo: string | null
+  email?: string
   sidebarWidth?: number
-  onSave: (name: string, photo: string | null) => void
+  topAnchored?: boolean
+  onSave: (name: string, photo: string | null) => void | Promise<void>
   onClose: () => void
   onLogout: () => void
 }
@@ -45,16 +47,19 @@ const MENU_STYLE: React.CSSProperties = {
   textDecoration: "none",
 }
 
-export function ProfileModal({ name, photo, sidebarWidth = 232, onSave, onClose, onLogout }: Props) {
+export function ProfileModal({ name, photo, email = "", sidebarWidth = 232, topAnchored = false, onSave, onClose, onLogout }: Props) {
   const [view, setView] = useState<"menu" | "profile">("menu")
   const [localName, setLocalName] = useState(name)
   const [localPhoto, setLocalPhoto] = useState<string | null>(photo)
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const { dark, toggle: toggleDark } = useDarkMode()
 
-  function handleSave() {
-    onSave(localName, localPhoto)
+  async function handleSave() {
+    setSaving(true)
+    await onSave(localName, localPhoto)
+    setSaving(false)
     setSaved(true)
     setTimeout(() => { setSaved(false); setView("menu") }, 1800)
   }
@@ -77,9 +82,11 @@ export function ProfileModal({ name, photo, sidebarWidth = 232, onSave, onClose,
       <div
         style={{
           position: "fixed",
-          left: sidebarWidth + 12,
-          bottom: 12,
+          ...(topAnchored
+            ? { top: 76, left: "50%", transform: "translateX(-50%)" }
+            : { left: sidebarWidth + 12, bottom: 12 }),
           width: 256,
+          maxWidth: "calc(100vw - 24px)",
           borderRadius: 14,
           background: "#1C2128",
           border: "1px solid rgba(255,255,255,0.08)",
@@ -165,6 +172,31 @@ export function ProfileModal({ name, photo, sidebarWidth = 232, onSave, onClose,
               >
                 <Settings size={15} strokeWidth={1.8} style={{ color: "rgba(255,255,255,0.45)", flexShrink: 0 }} />
                 Configurações
+              </Link>
+
+              {/* Anúncios/QR Code — só mobile; no desktop já tem no menu lateral */}
+              <Link
+                href="/admin/anuncios"
+                onClick={onClose}
+                className="admin-menu-mobile-only"
+                style={{ ...MENU_STYLE, display: undefined }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)" }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent" }}
+              >
+                <Megaphone size={15} strokeWidth={1.8} style={{ color: "rgba(255,255,255,0.45)", flexShrink: 0 }} />
+                Anúncios
+              </Link>
+
+              <Link
+                href="/admin/qrcode"
+                onClick={onClose}
+                className="admin-menu-mobile-only"
+                style={{ ...MENU_STYLE, display: undefined }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)" }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent" }}
+              >
+                <QrCode size={15} strokeWidth={1.8} style={{ color: "rgba(255,255,255,0.45)", flexShrink: 0 }} />
+                QR Code
               </Link>
             </div>
 
@@ -268,7 +300,8 @@ export function ProfileModal({ name, photo, sidebarWidth = 232, onSave, onClose,
                   E-mail
                 </label>
                 <input
-                  defaultValue="admin@donnafit.com.br"
+                  value={email}
+                  readOnly
                   style={{
                     width: "100%", boxSizing: "border-box",
                     fontFamily: "var(--font-ui)", fontSize: 13,
@@ -284,6 +317,7 @@ export function ProfileModal({ name, photo, sidebarWidth = 232, onSave, onClose,
 
               <button
                 onClick={handleSave}
+                disabled={saving}
                 style={{
                   width: "100%",
                   fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700,
@@ -291,10 +325,11 @@ export function ProfileModal({ name, photo, sidebarWidth = 232, onSave, onClose,
                   background: saved ? "rgba(52,211,153,0.15)" : "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
                   color: saved ? "#34D399" : "#fff",
                   border: saved ? "1px solid rgba(52,211,153,0.25)" : "none",
-                  cursor: "pointer", transition: "all 200ms",
+                  cursor: saving ? "wait" : "pointer", transition: "all 200ms",
+                  opacity: saving ? 0.7 : 1,
                 }}
               >
-                {saved ? "Salvo!" : "Salvar"}
+                {saved ? "Salvo!" : saving ? "Salvando..." : "Salvar"}
               </button>
             </div>
           </>
@@ -305,6 +340,9 @@ export function ProfileModal({ name, photo, sidebarWidth = 232, onSave, onClose,
         @keyframes popIn {
           from { opacity: 0; transform: translateX(-8px) scale(0.97); }
           to   { opacity: 1; transform: translateX(0)  scale(1); }
+        }
+        @media (min-width: 768px) {
+          .admin-menu-mobile-only { display: none; }
         }
       `}</style>
     </>

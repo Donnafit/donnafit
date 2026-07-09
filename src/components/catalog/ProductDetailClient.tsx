@@ -85,7 +85,7 @@ export function ProductDetailClient({ product }: { product: ProductWithCategory 
         >
           Esgotado no momento
         </div>
-      ) : qty === 0 ? (
+      ) : qty === 0 || added ? (
         <button
           onClick={handleAdd}
           style={{

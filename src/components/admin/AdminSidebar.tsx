@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
@@ -9,6 +9,8 @@ import {
   PanelLeftClose, PanelLeftOpen,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { useStaffName } from "@/hooks/useStaffName"
+import { useAuth } from "@/hooks/useAuth"
 import { ProfileModal } from "./ProfileModal"
 
 const NAV_GROUPS = [
@@ -43,16 +45,27 @@ export function AdminSidebar({ pendingCount = 0 }: Props) {
   const router   = useRouter()
   const [collapsed,    setCollapsed]    = useState(false)
   const [showProfile,  setShowProfile]  = useState(false)
-  const [profileName,  setProfileName]  = useState("Everson")
+  const staffName = useStaffName()
+  const { user } = useAuth()
+  const [profileName,  setProfileName]  = useState("")
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (staffName) setProfileName(staffName)
+  }, [staffName])
 
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push("/admin/login")
+    router.push("/acessoadmin")
   }
 
-  function handleSaveProfile(name: string, photo: string | null) {
+  async function handleSaveProfile(name: string, photo: string | null) {
+    if (user) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const supabase = createClient() as any
+      await supabase.from("profiles").update({ full_name: name }).eq("id", user.id)
+    }
     setProfileName(name)
     setProfilePhoto(photo)
   }
@@ -265,6 +278,7 @@ export function AdminSidebar({ pendingCount = 0 }: Props) {
         <ProfileModal
           name={profileName}
           photo={profilePhoto}
+          email={user?.email ?? ""}
           sidebarWidth={w}
           onSave={handleSaveProfile}
           onClose={() => setShowProfile(false)}

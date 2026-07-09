@@ -184,9 +184,6 @@ export function CategoryFilter({ categories, activeCategory, onSelect, onSearch 
   return (
     <div
       style={{
-        position: "sticky",
-        top: 64,
-        zIndex: 40,
         background: "#FAF8F5",
         borderBottom: "1px solid #EDE8E0",
       }}

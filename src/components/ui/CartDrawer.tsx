@@ -31,7 +31,8 @@ export function CartDrawer({ open, onClose }: Props) {
   const [mounted, setMounted] = useState(false)
 
   function handleFinalize() {
-    if (!user && !loading) {
+    if (loading) return // aguarda useAuth resolver antes de decidir o destino
+    if (!user) {
       try { localStorage.setItem("donna-fit-checkout-intent", "1") } catch {}
       onClose()
       window.dispatchEvent(new CustomEvent("openProfileModal"))
@@ -70,6 +71,7 @@ export function CartDrawer({ open, onClose }: Props) {
 
       {/* Drawer */}
       <div
+        data-testid="cart-drawer"
         style={{
           position: "fixed",
           top: 0, right: 0, bottom: 0,
@@ -200,6 +202,7 @@ export function CartDrawer({ open, onClose }: Props) {
                       <div style={{ display: "inline-flex", background: "#F5F2EE", borderRadius: 100, padding: 2 }}>
                         <button
                           onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                          aria-label="Remover um"
                           style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.10)" }}
                         >
                           <svg width="10" height="2" viewBox="0 0 10 2" fill="none"><rect x="0" y="0.5" width="10" height="1" rx="0.5" fill="#1A1A1A"/></svg>
@@ -209,6 +212,7 @@ export function CartDrawer({ open, onClose }: Props) {
                         </span>
                         <button
                           onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          aria-label="Adicionar mais um"
                           style={{ width: 26, height: 26, borderRadius: "50%", border: "none", background: "linear-gradient(135deg, #5A6B2A, #7B9238)", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(90,107,42,0.35)" }}
                         >
                           <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1v8M1 5h8" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>

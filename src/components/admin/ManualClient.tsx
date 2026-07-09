@@ -1,7 +1,9 @@
 "use client"
 import { useState } from "react"
-import { BookOpen, Search, ChefHat, Tag, ChevronDown } from "lucide-react"
+import { BookOpen, Search, ChefHat, Tag, ChevronDown, ArrowLeft, Pencil, X, Loader2 } from "lucide-react"
 import { resolveImageSrc } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
+import { ImageUploader } from "./EstoqueClient"
 
 interface ProductWithCategory {
   id: string
@@ -48,9 +50,59 @@ function ProductImage({ src, alt }: { src: string | null; alt: string }) {
   )
 }
 
-export function ManualClient({ products }: Props) {
+export function ManualClient({ products: initialProducts }: Props) {
+  const [products, setProducts] = useState(initialProducts)
   const [selected, setSelected] = useState<ProductWithCategory | null>(products[0] ?? null)
   const [search,   setSearch]   = useState("")
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
+
+  const [editing, setEditing] = useState(false)
+  const [editImageUrl, setEditImageUrl] = useState("")
+  const [editPrep, setEditPrep] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  function selectProduct(p: ProductWithCategory) {
+    setSelected(p)
+    setMobileDetailOpen(true)
+    setEditing(false)
+  }
+
+  function startEditing() {
+    if (!selected) return
+    setEditImageUrl(selected.image_url ?? "")
+    setEditPrep(selected.prep_instructions ?? "")
+    setSaveError(null)
+    setEditing(true)
+  }
+
+  async function handleSave() {
+    if (!selected) return
+    setSaving(true)
+    setSaveError(null)
+    const supabase = createClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+    const { data, error } = await sb
+      .from("products")
+      .update({
+        image_url: editImageUrl.trim() || null,
+        prep_instructions: editPrep.trim() || null,
+      })
+      .eq("id", selected.id)
+      .select("*, categories(name, slug)")
+      .single()
+
+    if (error) {
+      setSaveError(error.message ?? "Erro ao salvar. Tente novamente.")
+      setSaving(false)
+      return
+    }
+    setProducts((prev) => prev.map((p) => (p.id === selected.id ? data : p)))
+    setSelected(data)
+    setEditing(false)
+    setSaving(false)
+  }
 
   const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -101,6 +153,12 @@ export function ManualClient({ products }: Props) {
         .cat-chevron { transition: transform 200ms; }
         .cat-chevron.open { transform: rotate(180deg); }
         .sidebar-item:hover { background: rgba(200,155,60,0.04) !important; }
+        .manual-back-btn { display: none; }
+        @media (max-width: 767px) {
+          .manual-sidebar-pane, .manual-detail-pane { width: 100% !important; border-right: none !important; }
+          .manual-sidebar-pane.mobile-hidden, .manual-detail-pane.mobile-hidden { display: none !important; }
+          .manual-back-btn { display: flex; }
+        }
       `}</style>
 
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
@@ -133,13 +191,16 @@ export function ManualClient({ products }: Props) {
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
 
           {/* Sidebar */}
-          <div style={{
-            width: 280, flexShrink: 0,
-            display: "flex", flexDirection: "column",
-            background: "var(--surface-100)",
-            borderRight: "1px solid var(--surface-200)",
-            overflow: "hidden",
-          }}>
+          <div
+            className={`manual-sidebar-pane${mobileDetailOpen ? " mobile-hidden" : ""}`}
+            style={{
+              width: 280, flexShrink: 0,
+              display: "flex", flexDirection: "column",
+              background: "var(--surface-100)",
+              borderRight: "1px solid var(--surface-200)",
+              overflow: "hidden",
+            }}
+          >
             {/* Search */}
             <div style={{ padding: "12px", borderBottom: "1px solid var(--surface-200)", flexShrink: 0 }}>
               <div style={{
@@ -214,7 +275,7 @@ export function ManualClient({ products }: Props) {
                         <button
                           key={p.id}
                           className="sidebar-item"
-                          onClick={() => setSelected(p)}
+                          onClick={() => selectProduct(p)}
                           style={{
                             width: "100%", textAlign: "left",
                             display: "flex", alignItems: "center", gap: 10,
@@ -272,14 +333,50 @@ export function ManualClient({ products }: Props) {
 
           {/* Detail panel */}
           <div
-            className="manual-detail"
+            className={`manual-detail manual-detail-pane${mobileDetailOpen ? "" : " mobile-hidden"}`}
             style={{ flex: 1, overflowY: "auto", background: "var(--surface-50)" }}
           >
             {selected ? (
               <div style={{ maxWidth: 680, margin: "0 auto", padding: "28px 32px" }}>
 
+                {/* Voltar (mobile) + Editar */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                  <button
+                    className="manual-back-btn"
+                    onClick={() => setMobileDetailOpen(false)}
+                    style={{
+                      alignItems: "center", gap: 6,
+                      background: "var(--surface-100)", border: "1px solid var(--surface-200)",
+                      borderRadius: 9, padding: "8px 12px", cursor: "pointer",
+                      fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: "var(--text-700)",
+                    }}
+                  >
+                    <ArrowLeft size={14} strokeWidth={2} />
+                    Voltar
+                  </button>
+                  {!editing && (
+                    <button
+                      onClick={startEditing}
+                      style={{
+                        marginLeft: "auto",
+                        display: "flex", alignItems: "center", gap: 6,
+                        background: "rgba(200,155,60,0.10)", border: "1px solid rgba(200,155,60,0.25)",
+                        borderRadius: 9, padding: "8px 14px", cursor: "pointer",
+                        fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700, color: "var(--gold-500)",
+                      }}
+                    >
+                      <Pencil size={13} strokeWidth={2} />
+                      Editar
+                    </button>
+                  )}
+                </div>
+
                 {/* Image */}
-                {selected.image_url && (
+                {editing ? (
+                  <div style={{ marginBottom: 20 }}>
+                    <ImageUploader value={editImageUrl} onChange={setEditImageUrl} />
+                  </div>
+                ) : selected.image_url && (
                   <div style={{
                     width: "100%", borderRadius: 16, overflow: "hidden",
                     aspectRatio: "16/7", marginBottom: 20,
@@ -322,7 +419,76 @@ export function ManualClient({ products }: Props) {
                 </div>
 
                 {/* Modo de preparo */}
-                {selected.prep_instructions ? (
+                {editing ? (
+                  <div style={{
+                    background: "var(--surface-100)",
+                    border: "1px solid var(--surface-200)",
+                    borderRadius: 14, padding: "20px 24px", marginBottom: 12,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                      <div style={{
+                        width: 30, height: 30, borderRadius: 8,
+                        background: "rgba(200,155,60,0.10)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <ChefHat size={14} strokeWidth={1.8} style={{ color: "var(--gold-500)" }} />
+                      </div>
+                      <p style={{
+                        fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 700,
+                        textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-300)",
+                      }}>
+                        Modo de Preparo
+                      </p>
+                    </div>
+                    <textarea
+                      value={editPrep}
+                      onChange={(e) => setEditPrep(e.target.value)}
+                      placeholder="Descreva o passo a passo de preparo..."
+                      rows={6}
+                      style={{
+                        width: "100%", fontFamily: "var(--font-ui)", fontSize: 14,
+                        color: "var(--text-950)", background: "var(--surface-50)",
+                        border: "1px solid var(--surface-200)", borderRadius: 9,
+                        padding: "10px 12px", outline: "none", resize: "vertical",
+                        lineHeight: 1.6, boxSizing: "border-box",
+                      }}
+                    />
+                    {saveError && (
+                      <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#DC2626", marginTop: 8 }}>
+                        {saveError}
+                      </p>
+                    )}
+                    <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                      <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 6,
+                          background: "var(--gold-500)", border: "none",
+                          borderRadius: 9, padding: "9px 16px", cursor: saving ? "wait" : "pointer",
+                          fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700, color: "#fff",
+                        }}
+                      >
+                        {saving && <Loader2 size={13} style={{ animation: "spin 0.8s linear infinite" }} />}
+                        {saving ? "Salvando..." : "Salvar"}
+                      </button>
+                      <button
+                        onClick={() => setEditing(false)}
+                        disabled={saving}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 6,
+                          background: "transparent", border: "1px solid var(--surface-200)",
+                          borderRadius: 9, padding: "9px 16px", cursor: "pointer",
+                          fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: "var(--text-700)",
+                        }}
+                      >
+                        <X size={13} strokeWidth={2} />
+                        Cancelar
+                      </button>
+                    </div>
+                    <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+                  </div>
+                ) : selected.prep_instructions ? (
                   <div style={{
                     background: "var(--surface-100)",
                     border: "1px solid var(--surface-200)",

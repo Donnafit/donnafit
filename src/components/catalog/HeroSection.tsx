@@ -1,10 +1,10 @@
-import { Leaf, Utensils, Truck, Check } from "lucide-react"
+import { Leaf, Utensils, Truck } from "lucide-react"
 
 export default function HeroSection() {
   return (
     <div style={{ background: 'linear-gradient(to bottom, #ffffff 0%, #FAF8F5 100%)', padding: '1em' }}>
     <section
-      style={{ position: 'relative', overflow: 'hidden', minHeight: 580, display: 'flex', alignItems: 'center', borderRadius: 25 }}
+      style={{ position: 'relative', overflow: 'hidden', minHeight: 460, display: 'flex', alignItems: 'center', borderRadius: 25 }}
       className="hero-section"
     >
       {/* Imagem de fundo */}
@@ -28,8 +28,8 @@ export default function HeroSection() {
       {/* Conteúdo */}
       <div style={{
         position: 'relative', zIndex: 10,
-        width: '100%', maxWidth: 700, margin: '0 auto',
-        padding: '72px 24px',
+        width: '100%', maxWidth: 860, margin: '0 auto',
+        padding: '48px 24px',
         textAlign: 'center', color: 'white',
       }}>
         {/* Badge pill */}
@@ -47,8 +47,8 @@ export default function HeroSection() {
 
         <h1 style={{
           fontFamily: 'var(--font-montserrat), Montserrat, sans-serif',
-          fontWeight: 900,
-          fontSize: 'clamp(46px, 10vw, 58px)',
+          fontWeight: 700,
+          fontSize: 'clamp(27px, 7vw, 66px)',
           lineHeight: 1.15,
           marginBottom: 14,
           color: '#fff',
@@ -63,7 +63,7 @@ export default function HeroSection() {
           marginBottom: 32,
           maxWidth: 400, marginLeft: 'auto', marginRight: 'auto',
         }}>
-          Peça online, retire ou receba em casa
+          Peça online e receba no conforto da sua casa.
         </p>
 
         {/* Feature pills */}
@@ -75,7 +75,6 @@ export default function HeroSection() {
           {[
             { icon: <Utensils className="h-4 w-4 text-[#C89B3C]" />, label: 'Comida Fresca' },
             { icon: <Truck className="h-4 w-4 text-[#C89B3C]" />, label: 'Entrega Rápida' },
-            { icon: <Check className="h-4 w-4 text-[#C89B3C]" />, label: 'Pedido Fácil' },
           ].map(f => (
             <div key={f.label} style={{
               background: 'rgba(255,255,255,0.1)', borderRadius: 100,

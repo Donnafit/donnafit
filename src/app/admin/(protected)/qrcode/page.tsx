@@ -72,6 +72,7 @@ export default function QRCodePage() {
 
         {/* QR Card */}
         <div
+          className="qr-print-card"
           style={{
             background: "var(--surface-100)",
             borderRadius: 20,
@@ -148,6 +149,21 @@ export default function QRCodePage() {
           Imprimir QR Code
         </button>
       </div>
+
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          .qr-print-card, .qr-print-card * { visibility: visible; }
+          .qr-print-card {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: none !important;
+            border: none !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

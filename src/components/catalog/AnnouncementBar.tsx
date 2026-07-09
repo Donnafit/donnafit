@@ -45,6 +45,7 @@ export function AnnouncementBar({ phrases }: Props) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        overflow: "hidden",
       }}
     >
       <span
@@ -53,21 +54,16 @@ export function AnnouncementBar({ phrases }: Props) {
           opacity: visible ? 1 : 0,
           transform: visible ? "translateY(0)" : "translateY(-6px)",
           transition: "opacity 0.4s ease, transform 0.4s ease",
-          display: "inline-block",
-          fontSize: 12,
+          display: "block",
+          fontSize: "clamp(10.5px, 3.4vw, 13px)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          maxWidth: "100%",
         }}
       >
         {items[current]}
       </span>
-      <style>{`
-        @media (max-width: 640px) {
-          .announcement-text {
-            font-size: 14px !important;
-            text-wrap: balance;
-            max-width: 300px;
-          }
-        }
-      `}</style>
     </div>
   )
 }

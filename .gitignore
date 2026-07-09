@@ -31,3 +31,8 @@ out/
 Thumbs.db
 Desktop.ini
 *.log
+
+# Playwright E2E
+test-results/
+playwright-report/
+e2e/.fixtures.json
