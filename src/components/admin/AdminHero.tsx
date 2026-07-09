@@ -1,9 +1,26 @@
 "use client"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Clock, Flame, CheckCircle2, TrendingUp } from "lucide-react"
+import { useStaffName } from "@/hooks/useStaffName"
+import { useAuth } from "@/hooks/useAuth"
+import { createClient } from "@/lib/supabase/client"
+import { ProfileModal } from "./ProfileModal"
 
 const OPEN_HOUR  = 10
 const CLOSE_HOUR = 22
+
+async function getStoreHours() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = createClient() as any
+    const { data } = await supabase.from("store_settings").select("open_hour, close_hour").eq("id", "default").single()
+    if (!data) return { open: OPEN_HOUR, close: CLOSE_HOUR }
+    return { open: Number(data.open_hour), close: Number(data.close_hour) }
+  } catch {
+    return { open: OPEN_HOUR, close: CLOSE_HOUR }
+  }
+}
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -22,8 +39,21 @@ function getTodayLabel() {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-function formatCurrencyShort(value: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
+const currencyFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
+
+function CurrencyValue({ value }: { value: number }) {
+  const parts = currencyFormatter.formatToParts(value)
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.type === "currency" ? (
+          <span key={i} style={{ fontSize: 16 }}>{part.value}</span>
+        ) : (
+          part.value
+        )
+      )}
+    </>
+  )
 }
 
 interface Props {
@@ -42,11 +72,38 @@ export function AdminHero({
   todayOrdersCount,
 }: Props) {
   const [isOpen, setIsOpen] = useState<boolean | null>(null)
+  const staffName = useStaffName()
+  const router = useRouter()
+  const { user } = useAuth()
+  const [showProfile, setShowProfile] = useState(false)
+  const [profileName, setProfileName] = useState("")
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
 
   useEffect(() => {
-    function check() {
+    if (staffName) setProfileName(staffName)
+  }, [staffName])
+
+  async function handleSaveProfile(newName: string, photo: string | null) {
+    if (user) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const supabase = createClient() as any
+      await supabase.from("profiles").update({ full_name: newName }).eq("id", user.id)
+    }
+    setProfileName(newName)
+    setProfilePhoto(photo)
+  }
+
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/acessoadmin")
+  }
+
+  useEffect(() => {
+    async function check() {
       const h = new Date().getHours()
-      setIsOpen(h >= OPEN_HOUR && h < CLOSE_HOUR)
+      const { open, close } = await getStoreHours()
+      setIsOpen(h >= open && h < close)
     }
     check()
     const t = setInterval(check, 60_000)
@@ -82,7 +139,7 @@ export function AdminHero({
       isString: false,
     },
     {
-      value: formatCurrencyShort(todayRevenue),
+      value: todayRevenue,
       label: "Faturamento",
       sub: `${todayOrdersCount} pedido${todayOrdersCount !== 1 ? "s" : ""} hoje`,
       accent: "var(--gold-500)",
@@ -93,6 +150,7 @@ export function AdminHero({
   ]
 
   return (
+    <>
     <div
       style={{
         background: "linear-gradient(135deg, var(--forest-850, #0F1A0F) 0%, var(--forest-700, #1A2F1A) 60%, var(--forest-600, #142414) 100%)",
@@ -115,6 +173,30 @@ export function AdminHero({
         }}
       />
 
+      {/* Acesso ao menu — só mobile, sidebar já cobre isso no desktop */}
+      <button
+        onClick={() => setShowProfile(true)}
+        className="admin-hero-mobile-avatar"
+        aria-label="Abrir menu de configurações"
+        style={{
+          position: "relative", zIndex: 1,
+          width: 44, height: 44, borderRadius: "50%",
+          background: profilePhoto ? "transparent" : "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
+          border: "2px solid rgba(255,255,255,0.15)",
+          alignItems: "center", justifyContent: "center",
+          margin: "0 auto 12px", cursor: "pointer", overflow: "hidden", padding: 0,
+        }}
+      >
+        {profilePhoto ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={profilePhoto} alt="Perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <span style={{ fontFamily: "var(--font-ui)", fontSize: 16, fontWeight: 800, color: "#fff" }}>
+            {(profileName || "A").charAt(0).toUpperCase()}
+          </span>
+        )}
+      </button>
+
       {/* Greeting row */}
       <div
         className="flex flex-col items-center text-center gap-3 mb-6 sm:flex-row sm:items-start sm:justify-between sm:text-left"
@@ -132,7 +214,7 @@ export function AdminHero({
               marginBottom: 4,
             }}
           >
-            {getGreeting()}, Everson
+            {getGreeting()}{staffName ? `, ${staffName}` : ""}
           </h2>
           <p
             suppressHydrationWarning
@@ -188,6 +270,7 @@ export function AdminHero({
         {stats.map((stat, i) => (
           <div
             key={i}
+            className={i < 2 ? "admin-hero-stat-fade" : undefined}
             style={{
               background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.07)",
@@ -229,13 +312,13 @@ export function AdminHero({
             {/* Value */}
             <p style={{
               fontFamily: "var(--font-ui)",
-              fontSize: stat.isString ? 17 : 30,
+              fontSize: 30,
               fontWeight: 900,
               color: stat.isString ? stat.accent : "#fff",
               lineHeight: 1,
               marginBottom: 5,
             }}>
-              {stat.value}
+              {stat.isString ? <CurrencyValue value={stat.value as number} /> : stat.value}
             </p>
 
             {/* Sub-label */}
@@ -250,6 +333,32 @@ export function AdminHero({
           </div>
         ))}
       </div>
+
+      <style>{`
+        @media (max-width: 767px) {
+          .admin-hero-stat-fade {
+            -webkit-mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);
+            mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);
+          }
+        }
+        .admin-hero-mobile-avatar { display: flex; }
+        @media (min-width: 768px) {
+          .admin-hero-mobile-avatar { display: none; }
+        }
+      `}</style>
     </div>
+
+    {showProfile && (
+      <ProfileModal
+        name={profileName}
+        photo={profilePhoto}
+        email={user?.email ?? ""}
+        topAnchored
+        onSave={handleSaveProfile}
+        onClose={() => setShowProfile(false)}
+        onLogout={handleLogout}
+      />
+    )}
+    </>
   )
 }

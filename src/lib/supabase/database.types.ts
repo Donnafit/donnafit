@@ -32,6 +32,35 @@ export type Database = {
           created_at?: string
         }
       }
+      store_settings: {
+        Row: {
+          id: string
+          store_name: string
+          whatsapp: string | null
+          open_hour: number
+          close_hour: number
+          order_sound: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          store_name?: string
+          whatsapp?: string | null
+          open_hour?: number
+          close_hour?: number
+          order_sound?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          store_name?: string
+          whatsapp?: string | null
+          open_hour?: number
+          close_hour?: number
+          order_sound?: boolean
+          updated_at?: string
+        }
+      }
       categories: {
         Row: {
           id: string

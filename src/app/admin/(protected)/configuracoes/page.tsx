@@ -1,6 +1,37 @@
 "use client"
-import { useState } from "react"
-import { User, Clock, Store, Bell } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Clock, Store, Bell } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+
+interface StoreSettings {
+  storeName: string
+  whatsapp: string
+  openHour: string
+  closeHour: string
+  orderSound: boolean
+}
+
+const DEFAULT_SETTINGS: StoreSettings = {
+  storeName: "Donna FIT",
+  whatsapp: "",
+  openHour: "10",
+  closeHour: "22",
+  orderSound: true,
+}
+
+async function loadSettings(): Promise<StoreSettings> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createClient() as any
+  const { data } = await supabase.from("store_settings").select("*").eq("id", "default").single()
+  if (!data) return DEFAULT_SETTINGS
+  return {
+    storeName: data.store_name,
+    whatsapp: data.whatsapp ?? "",
+    openHour: String(data.open_hour),
+    closeHour: String(data.close_hour),
+    orderSound: data.order_sound,
+  }
+}
 
 function Section({ title, description, icon: Icon, children }: {
   title: string
@@ -80,16 +111,42 @@ const inputStyle: React.CSSProperties = {
 }
 
 export default function ConfiguracoesPage() {
-  const [adminName, setAdminName] = useState("Everson")
-  const [storeName, setStoreName] = useState("Donna FIT")
-  const [whatsapp,  setWhatsapp]  = useState("")
-  const [openHour,  setOpenHour]  = useState("10")
-  const [closeHour, setCloseHour] = useState("22")
+  const [settings, setSettings] = useState<StoreSettings>(DEFAULT_SETTINGS)
+  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function handleSave() {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+  useEffect(() => {
+    loadSettings().then(setSettings)
+  }, [])
+
+  function update<K extends keyof StoreSettings>(key: K, value: StoreSettings[K]) {
+    setSettings((prev) => ({ ...prev, [key]: value }))
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeName: settings.storeName,
+          whatsapp: settings.whatsapp,
+          openHour: Number(settings.openHour),
+          closeHour: Number(settings.closeHour),
+          orderSound: settings.orderSound,
+        }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao salvar")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -111,11 +168,12 @@ export default function ConfiguracoesPage() {
             Configurações
           </h1>
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-300)", marginTop: 2 }}>
-            Gerencie perfil, horários e preferências do sistema
+            Gerencie horários e preferências do sistema
           </p>
         </div>
         <button
           onClick={handleSave}
+          disabled={saving}
           style={{
             fontFamily: "var(--font-ui)",
             fontSize: 12,
@@ -125,31 +183,37 @@ export default function ConfiguracoesPage() {
             background: saved ? "rgba(52,211,153,0.12)" : "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
             color: saved ? "#34D399" : "#fff",
             border: saved ? "1px solid rgba(52,211,153,0.25)" : "none",
-            cursor: "pointer",
+            cursor: saving ? "wait" : "pointer",
+            opacity: saving ? 0.7 : 1,
             transition: "all 250ms",
           }}
         >
-          {saved ? "Salvo!" : "Salvar alterações"}
+          {saved ? "Salvo!" : saving ? "Salvando..." : "Salvar alterações"}
         </button>
       </div>
+      {error && (
+        <div style={{ maxWidth: 680, margin: "16px auto 0", padding: "0 32px" }}>
+          <p style={{
+            fontFamily: "var(--font-ui)", fontSize: 12, color: "#DC2626",
+            background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 9,
+            padding: "10px 14px",
+          }}>
+            {error}
+          </p>
+        </div>
+      )}
 
       {/* Content */}
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "28px 32px" }}>
 
-        <Section title="Perfil do administrador" description="Nome exibido no painel" icon={User}>
-          <Field label="Nome">
-            <input value={adminName} onChange={(e) => setAdminName(e.target.value)} style={inputStyle} />
-          </Field>
-        </Section>
-
         <Section title="Dados do restaurante" description="Informações exibidas para os clientes" icon={Store}>
           <Field label="Nome do restaurante">
-            <input value={storeName} onChange={(e) => setStoreName(e.target.value)} style={inputStyle} />
+            <input value={settings.storeName} onChange={(e) => update("storeName", e.target.value)} style={inputStyle} />
           </Field>
           <Field label="WhatsApp (com DDD)">
             <input
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
+              value={settings.whatsapp}
+              onChange={(e) => update("whatsapp", e.target.value)}
               placeholder="(11) 99999-9999"
               style={inputStyle}
             />
@@ -159,14 +223,14 @@ export default function ConfiguracoesPage() {
         <Section title="Horário de atendimento" description="Define quando o restaurante aparece como Online no painel" icon={Clock}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <Field label="Abertura">
-              <select value={openHour} onChange={(e) => setOpenHour(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+              <select value={settings.openHour} onChange={(e) => update("openHour", e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
                 {Array.from({ length: 24 }, (_, i) => (
                   <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
                 ))}
               </select>
             </Field>
             <Field label="Fechamento">
-              <select value={closeHour} onChange={(e) => setCloseHour(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+              <select value={settings.closeHour} onChange={(e) => update("closeHour", e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
                 {Array.from({ length: 24 }, (_, i) => (
                   <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
                 ))}
@@ -174,7 +238,7 @@ export default function ConfiguracoesPage() {
             </Field>
           </div>
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 4 }}>
-            Atualmente: {openHour}h às {closeHour}h — o badge no painel reflete esse horário automaticamente
+            Atualmente: {settings.openHour}h às {settings.closeHour}h — o badge no painel reflete esse horário automaticamente
           </p>
         </Section>
 
@@ -188,17 +252,26 @@ export default function ConfiguracoesPage() {
                 Toca um alerta sonoro quando um novo pedido chegar
               </p>
             </div>
-            <div style={{
-              width: 40, height: 22, borderRadius: 11,
-              background: "var(--gold-500)",
-              position: "relative", cursor: "pointer", flexShrink: 0,
-            }}>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={settings.orderSound}
+              aria-label="Som ao receber pedido"
+              onClick={() => update("orderSound", !settings.orderSound)}
+              style={{
+                width: 40, height: 22, borderRadius: 11, border: "none", padding: 0,
+                background: settings.orderSound ? "var(--gold-500)" : "var(--surface-200)",
+                position: "relative", cursor: "pointer", flexShrink: 0,
+                transition: "background 150ms",
+              }}
+            >
               <div style={{
-                position: "absolute", right: 3, top: 3,
+                position: "absolute", left: settings.orderSound ? 21 : 3, top: 3,
                 width: 16, height: 16, borderRadius: "50%",
-                background: "var(--surface-100)",
+                background: settings.orderSound ? "var(--surface-100)" : "var(--text-300)",
+                transition: "left 150ms",
               }} />
-            </div>
+            </button>
           </div>
         </Section>
 
