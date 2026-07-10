@@ -879,7 +879,7 @@ export function EstoqueClient({ products: initial }: Props) {
                     {thumbnail}
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginBottom: 2 }}>
                         <p style={{
                           fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--text-950)", lineHeight: 1.2,
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
