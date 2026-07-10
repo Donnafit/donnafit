@@ -10,6 +10,7 @@ interface OrderPayload {
   items: CartItem[]
   total: number
   riceChoices?: Record<string, "integral" | "branco">
+  pixDiscountPercentLabel?: string
 }
 
 export function buildWhatsAppMessage(order: OrderPayload): string {
@@ -47,7 +48,9 @@ export function buildWhatsAppMessage(order: OrderPayload): string {
       : ""
 
   const paymentLabel =
-    order.paymentMethod === "pix" ? "PIX _(desconto de 5% já incluído no total)_" : "Maquininha"
+    order.paymentMethod === "pix"
+      ? `PIX _(desconto de ${order.pixDiscountPercentLabel ?? "2%"} já incluído no total)_`
+      : "Maquininha"
 
   const totalFormatted = `R$ ${order.total.toFixed(2).replace(".", ",")}`
 

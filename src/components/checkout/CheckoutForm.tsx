@@ -86,6 +86,8 @@ export function CheckoutForm() {
   const [addressState, setAddressState] = useState<"idle" | "valid" | "invalid">("idle")
   const [zones, setZones] = useState<{ name: string; fee: number }[]>([])
   const [pixDiscountRate, setPixDiscountRate] = useState(DEFAULT_PIX_DISCOUNT_RATE)
+  const [geocodedZone, setGeocodedZone] = useState<{ name: string; fee: number } | null>(null)
+  const [geocoding, setGeocoding] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -104,6 +106,35 @@ export function CheckoutForm() {
         if (data) setPixDiscountRate(Number(data.pix_discount_rate))
       })
   }, [])
+
+  // Fallback pra endereço sem o nome do bairro escrito: só dispara depois de
+  // uma pausa na digitação, e só quando o reconhecimento gratuito por texto
+  // já falhou (evita bater no Nominatim a cada tecla).
+  useEffect(() => {
+    setGeocodedZone(null)
+    if (delivery !== "delivery" || address.trim().length < 10) return
+    if (matchDeliveryZone(address, zones)) return
+
+    const timer = setTimeout(async () => {
+      setGeocoding(true)
+      try {
+        const res = await fetch("/api/geocode-address", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address }),
+        })
+        const data = await res.json()
+        if (data.zone) setGeocodedZone(data.zone)
+      } catch {
+        // silencioso — cai na mensagem de "não conseguimos identificar"
+      } finally {
+        setGeocoding(false)
+      }
+    }, 900)
+
+    return () => clearTimeout(timer)
+  }, [address, delivery, zones])
+
   const [payment, setPayment] = useState<"pix" | "card">("pix")
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState("")
@@ -117,8 +148,12 @@ export function CheckoutForm() {
     item.product.description?.toLowerCase().includes("arroz")
   )
   // Alguns pratos só servem arroz branco — não faz sentido perguntar.
-  const riceItems = allRiceItems.filter(item => item.product.rice_integral_available)
-  const autoBrancoRiceItems = allRiceItems.filter(item => !item.product.rice_integral_available)
+  // !== false (em vez de checar truthy) é proposital: carrinho é persistido em
+  // localStorage, então um item adicionado antes desse campo existir chega aqui
+  // com rice_integral_available undefined — precisa continuar perguntando (padrão
+  // seguro), só pular a pergunta quando o banco confirmar explicitamente que é false.
+  const riceItems = allRiceItems.filter(item => item.product.rice_integral_available !== false)
+  const autoBrancoRiceItems = allRiceItems.filter(item => item.product.rice_integral_available === false)
   const allRiceChosen = riceMode === "same"
     ? sameRiceType !== null
     : riceItems.every(item => !!riceChoices[item.product.id])
@@ -142,7 +177,10 @@ export function CheckoutForm() {
     return { ...chosen, ...auto }
   }
   const subtotal = mounted ? total() : 0
-  const matchedZone = delivery === "delivery" ? matchDeliveryZone(address, zones) : null
+  const localMatchedZone = delivery === "delivery" ? matchDeliveryZone(address, zones) : null
+  // Se o texto não tem o nome do bairro, cai pro geocoding (Nominatim) como
+  // fallback — só chamado quando o reconhecimento gratuito falhou (ver useEffect abaixo).
+  const matchedZone = localMatchedZone ?? geocodedZone
   const deliveryFee = matchedZone ? matchedZone.fee : 0
   const pixDiscount = payment === "pix" ? subtotal * pixDiscountRate : 0
   const pixDiscountPercentLabel = `${(pixDiscountRate * 100).toFixed(pixDiscountRate * 100 % 1 === 0 ? 0 : 1)}%`
@@ -215,6 +253,7 @@ export function CheckoutForm() {
         items: cartItems,
         total: finalTotal,
         riceChoices: activeRiceChoices,
+        pixDiscountPercentLabel,
       })
 
       const waUrl = buildWhatsAppURL(msg)
@@ -430,6 +469,10 @@ export function CheckoutForm() {
               matchedZone ? (
                 <p style={{ fontSize: 12, color: "#5A6B2A", fontWeight: 600, marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
                   <Check size={13} /> Bairro identificado: {matchedZone.name} — frete {formatCurrency(matchedZone.fee)}
+                </p>
+              ) : geocoding ? (
+                <p style={{ fontSize: 12, color: "#888", fontWeight: 600, marginTop: 8 }}>
+                  Identificando o bairro pelo endereço...
                 </p>
               ) : (
                 <p style={{ fontSize: 12, color: "#B45309", fontWeight: 600, marginTop: 8 }}>

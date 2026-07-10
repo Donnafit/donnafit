@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { matchDeliveryZone } from "@/lib/deliveryZones"
+import { geocodeToBairro } from "@/lib/geocoding"
 import type { Database } from "@/lib/supabase/database.types"
 import type { CartItem } from "@/types"
 
@@ -88,7 +89,13 @@ export async function POST(req: Request) {
       .from("delivery_zones")
       .select("name, fee")
       .eq("active", true)
-    const zone = matchDeliveryZone(body.deliveryAddress!, activeZones ?? [])
+    let zone = matchDeliveryZone(body.deliveryAddress!, activeZones ?? [])
+    if (!zone) {
+      // Endereço sem o nome do bairro escrito — tenta resolver via geocoding
+      // (mesmo fallback usado no checkout) antes de recusar o pedido.
+      const geocodedBairro = await geocodeToBairro(body.deliveryAddress!)
+      if (geocodedBairro) zone = matchDeliveryZone(geocodedBairro, activeZones ?? [])
+    }
     if (!zone) {
       return NextResponse.json({ error: "Não foi possível identificar o bairro no endereço informado" }, { status: 400 })
     }
