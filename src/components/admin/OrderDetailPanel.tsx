@@ -60,12 +60,8 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
 
   return (
     <div
-      className="w-full sm:w-[300px]"
+      className="w-full sm:w-[300px] fixed sm:absolute inset-0 sm:inset-auto sm:top-0 sm:right-0 sm:bottom-0"
       style={{
-        position: "absolute",
-        right: 0,
-        top: 0,
-        bottom: 0,
         background: "var(--surface-100)",
         borderLeft: "1px solid var(--surface-200)",
         display: "flex",
@@ -73,7 +69,7 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
         transform: order ? "translateX(0)" : "translateX(100%)",
         transition: `transform var(--duration-panel) var(--ease-out)`,
         overflow: "hidden",
-        zIndex: 10,
+        zIndex: 50,
         boxShadow: order ? "-8px 0 24px rgba(0,0,0,0.07)" : "none",
       }}
     >

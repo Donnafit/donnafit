@@ -115,4 +115,34 @@ test.describe("Admin — Pedidos", () => {
     // Comportamento correto: avançou uma única vez, mostrando "Liberar Pedido" agora.
     await expect(page.getByRole("button", { name: "Liberar Pedido" })).toBeVisible({ timeout: 5000 })
   })
+
+  test("Kanban em tela estreita: colunas cabem numa área com scroll horizontal habilitado para touch", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await loginAdmin(page)
+    await page.getByRole("button", { name: /kanban/i }).click()
+    await page.waitForTimeout(400)
+
+    const info = await page.evaluate(() => {
+      const candidates = Array.from(document.querySelectorAll("div")).filter((d) =>
+        getComputedStyle(d).overflowX === "auto" &&
+        d.children.length >= 2 &&
+        Array.from(d.children).every((c) => c.getBoundingClientRect().width > 250)
+      )
+      const el = candidates[0]
+      if (!el) return null
+      const cs = getComputedStyle(el)
+      return {
+        scrollWidth: el.scrollWidth,
+        clientWidth: el.clientWidth,
+        webkitOverflowScrolling: (cs as any).webkitOverflowScrolling,
+        overscrollBehaviorX: cs.overscrollBehaviorX,
+      }
+    })
+
+    expect(info).not.toBeNull()
+    // Precisa ter mais conteúdo do que cabe na tela (senão não haveria nada pra rolar)...
+    expect(info!.scrollWidth).toBeGreaterThan(info!.clientWidth)
+    // ...e o scroll precisa funcionar bem em touch (regressão: faltava isso, travava em mobile).
+    expect(info!.overscrollBehaviorX).toBe("contain")
+  })
 })

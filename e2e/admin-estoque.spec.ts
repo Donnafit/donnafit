@@ -61,4 +61,16 @@ test.describe("Admin — Estoque", () => {
     // sempre display:none via CSS) — .first() evita a violação de strict mode
     await expect(page.getByText(newProductName).first()).toBeVisible({ timeout: 5000 })
   })
+
+  test("botão de editar não infla a altura da linha (nome/OK não ficam descolados da foto)", async ({ page }) => {
+    await loginAdmin(page)
+    await page.getByPlaceholder("Buscar por nome ou SKU…").fill(fx.product.name)
+
+    const editBtn = page.getByRole("button", { name: `Editar ${fx.product.name}` }).first()
+    const box = await editBtn.boundingBox()
+    // Regressão: chegou a ficar 44x44 (tamanho do stepper), empurrando o nome
+    // pra cima e a barra de estoque pra baixo dentro da linha.
+    expect(box?.height ?? 0).toBeLessThanOrEqual(32)
+    expect(box?.width ?? 0).toBeLessThanOrEqual(32)
+  })
 })

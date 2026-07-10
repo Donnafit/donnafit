@@ -781,8 +781,9 @@ export function EstoqueClient({ products: initial }: Props) {
               const editButton = (
                 <button
                   onClick={() => setEditingProduct(product)}
+                  aria-label={`Editar ${product.name}`}
                   style={{
-                    width: 44, height: 44, background: "transparent", border: "none",
+                    width: 28, height: 28, background: "transparent", border: "none",
                     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                     color: "var(--text-300)", flexShrink: 0, transition: "color 150ms",
                   }}

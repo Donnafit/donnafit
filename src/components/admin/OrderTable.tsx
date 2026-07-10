@@ -210,7 +210,14 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
             </p>
           </div>
         ) : viewMode === "kanban" ? (
-          <div className="scrollbar-hidden" style={{ display: "flex", gap: 16, padding: 24, minHeight: "100%", overflowX: "auto", scrollSnapType: "x proximity" }}>
+          <div
+            className="scrollbar-hidden"
+            style={{
+              display: "flex", gap: 16, padding: 24, minHeight: "100%",
+              overflowX: "auto", scrollSnapType: "x proximity",
+              WebkitOverflowScrolling: "touch", overscrollBehaviorX: "contain", touchAction: "pan-x",
+            }}
+          >
             {KANBAN_COLUMNS.map((column) => {
               const colOrders = filtered.filter(column.match)
               return (
