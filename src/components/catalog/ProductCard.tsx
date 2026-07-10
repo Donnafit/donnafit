@@ -213,10 +213,10 @@ export function ProductCard({ product, index }: Props) {
         >
           {/* Preço */}
           <span
+            className="text-[15px] md:text-[19px]"
             style={{
               fontFamily: "var(--font-switzer), sans-serif",
               fontWeight: 900,
-              fontSize: 15,
               color: "#C89B3C",
               lineHeight: 1,
               minWidth: 0,

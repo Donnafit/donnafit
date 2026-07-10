@@ -95,52 +95,64 @@ export default function CarrinhoPage() {
                     onError={(e) => { (e.target as HTMLImageElement).src = '/marmita.jpg' }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontFamily: 'var(--font-montserrat, Montserrat)', fontWeight: 700, fontSize: 14,
-                      color: '#1A1A1A', marginBottom: 3,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
-                      {item.product.name}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <div style={{
+                        fontFamily: 'var(--font-montserrat, Montserrat)', fontWeight: 700, fontSize: 14,
+                        color: '#1A1A1A', flex: 1, minWidth: 0,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {item.product.name}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', border: '1.5px solid #E5E0D8', borderRadius: 8, overflow: 'hidden' }}>
+                          <button
+                            onClick={() =>
+                              item.quantity > 1
+                                ? updateQuantity(item.product.id, item.quantity - 1)
+                                : removeItem(item.product.id)
+                            }
+                            style={{
+                              width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 14, background: '#F0EDE8', color: '#1A1A1A', border: 'none', cursor: 'pointer',
+                            }}
+                          >
+                            −
+                          </button>
+                          <span style={{ minWidth: 20, textAlign: 'center', fontWeight: 700, fontSize: 12, padding: '0 2px' }}>
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                            style={{
+                              width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 14, background: '#F0EDE8', color: '#1A1A1A', border: 'none', cursor: 'pointer',
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={() => removeItem(item.product.id)}
+                          aria-label={`Remover ${item.product.name}`}
+                          style={{
+                            width: 28, height: 28,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            borderRadius: 8, background: '#FEF2F2', border: 'none', cursor: 'pointer', flexShrink: 0,
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#DC2626" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#C89B3C', marginBottom: 8 }}>
+
+                    <div className="text-[15px] md:text-[19px]" style={{ fontWeight: 900, color: '#C89B3C', marginTop: 6 }}>
                       {formatCurrency(item.product.price * item.quantity)}
                     </div>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', border: '1.5px solid #E5E0D8', borderRadius: 10, overflow: 'hidden' }}>
-                      <button
-                        onClick={() =>
-                          item.quantity > 1
-                            ? updateQuantity(item.product.id, item.quantity - 1)
-                            : removeItem(item.product.id)
-                        }
-                        className="qty-btn"
-                        style={{ borderRadius: 0 }}
-                      >
-                        −
-                      </button>
-                      <span style={{ minWidth: 36, textAlign: 'center', fontWeight: 700, fontSize: 14, padding: '0 4px' }}>
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                        className="qty-btn"
-                        style={{ borderRadius: 0 }}
-                      >
-                        +
-                      </button>
-                    </div>
                   </div>
-                  <button
-                    onClick={() => removeItem(item.product.id)}
-                    style={{
-                      width: 44, height: 44,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      borderRadius: 10, background: '#FEF2F2', border: 'none', cursor: 'pointer', flexShrink: 0,
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#DC2626" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                  </button>
                 </div>
               ))}
             </div>
