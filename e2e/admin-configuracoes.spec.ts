@@ -35,4 +35,41 @@ test.describe("Admin — Configurações", () => {
     const after = await toggle.getAttribute("aria-checked")
     expect(after).not.toBe(before)
   })
+
+  test("desconto PIX é editável e persiste após recarregar", async ({ page }) => {
+    await loginAdmin(page)
+    const pixInput = page.locator('input[type="number"]').first()
+    await expect(pixInput).toBeVisible()
+
+    await pixInput.fill("3")
+    await page.getByRole("button", { name: "Salvar alterações" }).click()
+    await expect(page.getByText("Salvo!")).toBeVisible()
+
+    await page.reload()
+    await expect(page.locator('input[type="number"]').first()).toHaveValue("3")
+
+    // restaura pra não deixar a taxa real do restaurante alterada pelo teste
+    await page.locator('input[type="number"]').first().fill("2")
+    await page.getByRole("button", { name: "Salvar alterações" }).click()
+    await expect(page.getByText("Salvo!")).toBeVisible()
+  })
+
+  test("gestão de taxas por bairro mora em Configurações (não mais em Rota de Entrega)", async ({ page }) => {
+    await loginAdmin(page)
+    await page.getByRole("button", { name: /gerenciar taxas por bairro/i }).click()
+    await expect(page.getByText("Taxas de entrega por bairro")).toBeVisible()
+    await expect(page.getByText(/bairros cadastrados/i)).toBeVisible()
+
+    const modal = page.getByTestId("delivery-zones-modal")
+    await modal.getByPlaceholder(/buscar bairro/i).fill("Batel")
+    const feeInput = modal.locator('input[type="number"]').first()
+    await expect(feeInput).toHaveValue("12")
+
+    await page.getByRole("button", { name: "Fechar" }).click()
+    await expect(page.getByText("Taxas de entrega por bairro")).not.toBeVisible()
+
+    // Negativo: não deve mais existir em Rota de Entrega.
+    await page.goto("/admin/rota-entrega")
+    await expect(page.getByRole("button", { name: /taxas por bairro/i })).not.toBeVisible()
+  })
 })

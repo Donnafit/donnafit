@@ -40,6 +40,7 @@ export type Database = {
           open_hour: number
           close_hour: number
           order_sound: boolean
+          pix_discount_rate: number
           updated_at: string
         }
         Insert: {
@@ -49,6 +50,7 @@ export type Database = {
           open_hour?: number
           close_hour?: number
           order_sound?: boolean
+          pix_discount_rate?: number
           updated_at?: string
         }
         Update: {
@@ -58,7 +60,25 @@ export type Database = {
           open_hour?: number
           close_hour?: number
           order_sound?: boolean
+          pix_discount_rate?: number
           updated_at?: string
+        }
+      }
+      delivery_zones: {
+        Row: {
+          name: string
+          fee: number
+          active: boolean
+        }
+        Insert: {
+          name: string
+          fee: number
+          active?: boolean
+        }
+        Update: {
+          name?: string
+          fee?: number
+          active?: boolean
         }
       }
       categories: {
@@ -143,6 +163,7 @@ export type Database = {
           min_stock_alert: number
           is_active: boolean
           sort_order: number
+          rice_integral_available: boolean
           created_at: string
           updated_at: string
         }
@@ -160,6 +181,7 @@ export type Database = {
           min_stock_alert?: number
           is_active?: boolean
           sort_order?: number
+          rice_integral_available?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -177,6 +199,7 @@ export type Database = {
           min_stock_alert?: number
           is_active?: boolean
           sort_order?: number
+          rice_integral_available?: boolean
           created_at?: string
           updated_at?: string
         }

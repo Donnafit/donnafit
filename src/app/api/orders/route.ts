@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { matchDeliveryZone } from "@/lib/deliveryZones"
 import type { Database } from "@/lib/supabase/database.types"
 import type { CartItem } from "@/types"
 
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
   const productIds = [...new Set(body.items.map((item) => item.product.id))]
   const { data: freshProducts, error: productsErr } = await supabase
     .from("products")
-    .select("id, name, sku, price, stock_type, is_active")
+    .select("id, name, sku, price, stock_type, is_active, rice_integral_available")
     .in("id", productIds)
 
   if (productsErr) {
@@ -76,24 +77,55 @@ export async function POST(req: Request) {
     )
   }
 
+  // Frete real por bairro — reconhecido a partir do texto do endereço, nunca
+  // confiando no valor que o cliente envia (mesmo padrão de integridade já
+  // usado para preço/estoque de produto). O cliente nunca escolhe o bairro
+  // manualmente, então isso também é a única fonte de verdade, não só uma
+  // checagem contra manipulação.
+  let deliveryFee = 0
+  if (body.deliveryType === "delivery") {
+    const { data: activeZones } = await supabase
+      .from("delivery_zones")
+      .select("name, fee")
+      .eq("active", true)
+    const zone = matchDeliveryZone(body.deliveryAddress!, activeZones ?? [])
+    if (!zone) {
+      return NextResponse.json({ error: "Não foi possível identificar o bairro no endereço informado" }, { status: 400 })
+    }
+    deliveryFee = Number(zone.fee)
+  }
+
   // Recalcular totais no servidor a partir do preço REAL do banco — nunca
   // confiar nos valores enviados pelo cliente.
   const calculatedSubtotal = body.items.reduce(
     (sum, item) => sum + freshById.get(item.product.id).price * item.quantity,
     0
   )
-  const pixDiscount = body.paymentMethod === "pix" ? calculatedSubtotal * 0.05 : 0
-  const deliveryFee = body.deliveryType === "delivery" ? (body.deliveryFee ?? 0) : 0
+  let pixDiscountRate = 0
+  if (body.paymentMethod === "pix") {
+    const { data: settings } = await supabase
+      .from("store_settings")
+      .select("pix_discount_rate")
+      .eq("id", "default")
+      .single()
+    pixDiscountRate = Number(settings?.pix_discount_rate ?? 0.02)
+  }
+  const pixDiscount = calculatedSubtotal * pixDiscountRate
   const calculatedTotal = calculatedSubtotal - pixDiscount + deliveryFee
 
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
   const deliveryDate = tomorrow.toISOString().split("T")[0]
 
+  // Força "Branco" pra pratos sem opção integral, mesmo que o cliente
+  // tenha mandado "integral" — mesmo princípio de nunca confiar em
+  // escolha que devia ser travada no servidor.
   const riceNotes = Object.entries(body.riceChoices ?? {})
     .map(([productId, choice]) => {
       const item = body.items.find(i => i.product.id === productId)
-      return `${item?.product.name ?? productId}: Arroz ${choice === "integral" ? "Integral" : "Branco"}`
+      const fresh = freshById.get(productId)
+      const finalChoice = fresh && !fresh.rice_integral_available ? "branco" : choice
+      return `${item?.product.name ?? productId}: Arroz ${finalChoice === "integral" ? "Integral" : "Branco"}`
     })
     .join(" | ")
 

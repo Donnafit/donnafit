@@ -5,11 +5,11 @@ import { useCart } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import { createClient } from "@/lib/supabase/client"
 import { buildWhatsAppMessage, buildWhatsAppURL } from "@/lib/whatsapp"
+import { matchDeliveryZone } from "@/lib/deliveryZones"
 import { formatCurrency } from "@/lib/utils"
 import { Store, Truck, QrCode, CreditCard, Check } from "lucide-react"
 
-const DELIVERY_FEE = 15
-const PIX_DISCOUNT_RATE = 0.05
+const DEFAULT_PIX_DISCOUNT_RATE = 0.02
 
 function maskPhone(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 11)
@@ -84,20 +84,68 @@ export function CheckoutForm() {
   const [delivery, setDelivery] = useState<"pickup" | "delivery">("pickup")
   const [address, setAddress] = useState("")
   const [addressState, setAddressState] = useState<"idle" | "valid" | "invalid">("idle")
+  const [zones, setZones] = useState<{ name: string; fee: number }[]>([])
+  const [pixDiscountRate, setPixDiscountRate] = useState(DEFAULT_PIX_DISCOUNT_RATE)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from("delivery_zones")
+      .select("name, fee")
+      .order("name")
+      .then(({ data }) => setZones(data ?? []))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(supabase as any)
+      .from("store_settings")
+      .select("pix_discount_rate")
+      .eq("id", "default")
+      .single()
+      .then(({ data }: { data: { pix_discount_rate: number } | null }) => {
+        if (data) setPixDiscountRate(Number(data.pix_discount_rate))
+      })
+  }, [])
   const [payment, setPayment] = useState<"pix" | "card">("pix")
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState("")
   const [riceChoices, setRiceChoices] = useState<Record<string, "integral" | "branco">>({})
+  const [riceMode, setRiceMode] = useState<"same" | "individual">("same")
+  const [sameRiceType, setSameRiceType] = useState<"integral" | "branco" | null>(null)
   const [showRiceModal, setShowRiceModal] = useState(false)
 
   const cartItems = mounted ? items : []
-  const riceItems = cartItems.filter(item =>
+  const allRiceItems = cartItems.filter(item =>
     item.product.description?.toLowerCase().includes("arroz")
   )
-  const allRiceChosen = riceItems.every(item => !!riceChoices[item.product.id])
+  // Alguns pratos só servem arroz branco — não faz sentido perguntar.
+  const riceItems = allRiceItems.filter(item => item.product.rice_integral_available)
+  const autoBrancoRiceItems = allRiceItems.filter(item => !item.product.rice_integral_available)
+  const allRiceChosen = riceMode === "same"
+    ? sameRiceType !== null
+    : riceItems.every(item => !!riceChoices[item.product.id])
+
+  function switchToIndividualRice() {
+    if (sameRiceType) {
+      setRiceChoices(prev => {
+        const next = { ...prev }
+        riceItems.forEach(item => { if (!next[item.product.id]) next[item.product.id] = sameRiceType })
+        return next
+      })
+    }
+    setRiceMode("individual")
+  }
+
+  function finalRiceChoices(): Record<string, "integral" | "branco"> {
+    const chosen = riceMode === "same" && sameRiceType
+      ? Object.fromEntries(riceItems.map(item => [item.product.id, sameRiceType]))
+      : riceChoices
+    const auto = Object.fromEntries(autoBrancoRiceItems.map(item => [item.product.id, "branco" as const]))
+    return { ...chosen, ...auto }
+  }
   const subtotal = mounted ? total() : 0
-  const deliveryFee = delivery === "delivery" ? DELIVERY_FEE : 0
-  const pixDiscount = payment === "pix" ? subtotal * PIX_DISCOUNT_RATE : 0
+  const matchedZone = delivery === "delivery" ? matchDeliveryZone(address, zones) : null
+  const deliveryFee = matchedZone ? matchedZone.fee : 0
+  const pixDiscount = payment === "pix" ? subtotal * pixDiscountRate : 0
+  const pixDiscountPercentLabel = `${(pixDiscountRate * 100).toFixed(pixDiscountRate * 100 % 1 === 0 ? 0 : 1)}%`
   const finalTotal = subtotal + deliveryFee - pixDiscount
 
   function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -124,15 +172,22 @@ export function CheckoutForm() {
   function isFormValid(): boolean {
     const nameOk = validateName(name)
     const phoneOk = validatePhone(phone)
-    const addressOk = delivery === "pickup" || address.trim().length >= 10
+    const addressOk = delivery === "pickup" || (address.trim().length >= 10 && !!matchedZone)
     return nameOk && phoneOk && addressOk
   }
 
   async function doSubmit() {
+    // Precisa abrir a aba AGORA, ainda dentro do clique síncrono do usuário —
+    // se abrir só depois do await fetch(), navegadores mobile (principalmente
+    // iOS Safari) bloqueiam o popup silenciosamente por perder a associação
+    // com o gesto do usuário, e o cliente vê a tela "travar" sem o WhatsApp abrir.
+    const waWindow = window.open("", "_blank")
     setLoading(true)
     setSubmitError("")
     try {
-      const activeRiceChoices = Object.keys(riceChoices).length > 0 ? riceChoices : undefined
+      const computedRiceChoices = finalRiceChoices()
+      const activeRiceChoices = Object.keys(computedRiceChoices).length > 0 ? computedRiceChoices : undefined
+      const fullAddress = delivery === "delivery" ? address.trim() : undefined
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -140,7 +195,7 @@ export function CheckoutForm() {
           customerName: name.trim(),
           customerPhone: phone.trim(),
           deliveryType: delivery,
-          deliveryAddress: delivery === "delivery" ? address.trim() : undefined,
+          deliveryAddress: fullAddress,
           paymentMethod: payment,
           items: cartItems,
           total: finalTotal,
@@ -155,7 +210,7 @@ export function CheckoutForm() {
         customerName: name.trim(),
         customerPhone: phone.trim(),
         deliveryType: delivery,
-        deliveryAddress: delivery === "delivery" ? address.trim() : undefined,
+        deliveryAddress: fullAddress,
         paymentMethod: payment,
         items: cartItems,
         total: finalTotal,
@@ -176,7 +231,7 @@ export function CheckoutForm() {
           localStorage.setItem("donna-fit-guest", JSON.stringify({
             name: name.trim(),
             phone: phone.trim(),
-            address: delivery === "delivery" ? address.trim() : "",
+            address: fullAddress ?? "",
           }))
         }
       } catch {}
@@ -185,8 +240,8 @@ export function CheckoutForm() {
         try {
           const supabase = createClient()
           const updateData: Record<string, string> = {}
-          if (delivery === "delivery" && address.trim()) {
-            updateData.delivery_address = address.trim()
+          if (delivery === "delivery" && fullAddress) {
+            updateData.delivery_address = fullAddress
           }
           if (Object.keys(updateData).length > 0) {
             await supabase.auth.updateUser({ data: updateData })
@@ -195,9 +250,11 @@ export function CheckoutForm() {
       }
 
       clearCart()
-      window.open(waUrl, "_blank")
+      if (waWindow) waWindow.location.href = waUrl
+      else window.open(waUrl, "_blank")
       router.push(`/confirmacao?order=${data.orderNumber}&wa=${encodedWa}`)
     } catch (err) {
+      waWindow?.close()
       setSubmitError(err instanceof Error ? err.message : "Erro ao enviar pedido. Tente novamente.")
     } finally {
       setLoading(false)
@@ -207,7 +264,7 @@ export function CheckoutForm() {
   function handleSubmit() {
     const nameOk = validateName(name)
     const phoneOk = validatePhone(phone)
-    const addressOk = delivery === "pickup" || address.trim().length >= 10
+    const addressOk = delivery === "pickup" || (address.trim().length >= 10 && !!matchedZone)
 
     setNameState(nameOk ? "valid" : "invalid")
     setPhoneState(phoneOk ? "valid" : "invalid")
@@ -332,7 +389,9 @@ export function CheckoutForm() {
               <Truck size={28} style={{ color: "#C89B3C" }} />
             </div>
             <div style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 700, fontSize: 14, color: "#1A1A1A", marginBottom: 4 }}>Entrega</div>
-            <div style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>+ {formatCurrency(DELIVERY_FEE)}</div>
+            <div style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>
+              {matchedZone ? `+ ${formatCurrency(matchedZone.fee)}` : "Varia por bairro"}
+            </div>
             <div className="option-check">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="3">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
@@ -367,6 +426,21 @@ export function CheckoutForm() {
             <p className={`error-msg ${addressState === "invalid" ? "show" : ""}`}>
               Informe o endereço completo para entrega
             </p>
+            {addressState === "valid" && (
+              matchedZone ? (
+                <p style={{ fontSize: 12, color: "#5A6B2A", fontWeight: 600, marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                  <Check size={13} /> Bairro identificado: {matchedZone.name} — frete {formatCurrency(matchedZone.fee)}
+                </p>
+              ) : (
+                <p style={{ fontSize: 12, color: "#B45309", fontWeight: 600, marginTop: 8 }}>
+                  Não conseguimos identificar o bairro no endereço. Inclua o nome do bairro
+                  ou fale pelo{" "}
+                  <a href="https://wa.me/5541999154720" target="_blank" rel="noopener noreferrer" style={{ color: "#5A6B2A", textDecoration: "underline" }}>
+                    WhatsApp
+                  </a>.
+                </p>
+              )
+            )}
           </div>
         )}
       </div>
@@ -398,7 +472,7 @@ export function CheckoutForm() {
               <QrCode size={28} style={{ color: "#C89B3C" }} />
             </div>
             <div style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 700, fontSize: 14, color: "#1A1A1A", marginBottom: 4 }}>PIX</div>
-            <div style={{ fontSize: 11, color: "#5A6B2A", fontWeight: 700, marginBottom: 2 }}>5% de desconto</div>
+            <div style={{ fontSize: 11, color: "#5A6B2A", fontWeight: 700, marginBottom: 2 }}>{pixDiscountPercentLabel} de desconto</div>
             <div style={{ fontSize: 11, color: "#888", fontWeight: 500 }}>Chave: 41999154720</div>
             <div className="option-check">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="3">
@@ -451,7 +525,7 @@ export function CheckoutForm() {
             marginBottom: 16,
           }}>
             <Check size={16} style={{ color: "#5A6B2A" }} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#5A6B2A" }}>Desconto de 5% aplicado!</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#5A6B2A" }}>Desconto de {pixDiscountPercentLabel} aplicado!</span>
           </div>
         )}
 
@@ -478,12 +552,12 @@ export function CheckoutForm() {
           {delivery === "delivery" && (
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#666" }}>
               <span>Frete</span>
-              <span style={{ fontWeight: 600, color: "#1A1A1A" }}>+ {formatCurrency(DELIVERY_FEE)}</span>
+              <span style={{ fontWeight: 600, color: "#1A1A1A" }}>+ {formatCurrency(deliveryFee)}</span>
             </div>
           )}
           {payment === "pix" && (
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#5A6B2A" }}>
-              <span>Desconto PIX (5%)</span>
+              <span>Desconto PIX ({pixDiscountPercentLabel})</span>
               <span style={{ fontWeight: 700 }}>- {formatCurrency(pixDiscount)}</span>
             </div>
           )}
@@ -564,7 +638,7 @@ export function CheckoutForm() {
             padding: "20px",
             pointerEvents: "none",
           }}>
-            <div style={{
+            <div data-testid="rice-modal" style={{
               background: "#fff", borderRadius: 24,
               padding: "28px 24px",
               width: "100%", maxWidth: 440,
@@ -590,54 +664,107 @@ export function CheckoutForm() {
                   Tipo de Arroz
                 </h2>
                 <p style={{ fontSize: 13, color: "#888", margin: 0, fontFamily: "var(--font-switzer), sans-serif" }}>
-                  Escolha para cada item com arroz
+                  {riceMode === "same" ? "Vale para todas as marmitas do pedido" : "Escolha para cada item com arroz"}
                 </p>
               </div>
 
               {/* Items */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 24 }}>
-                {riceItems.map(item => (
-                  <div
-                    key={item.product.id}
+              {riceMode === "same" ? (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    {(["integral", "branco"] as const).map(type => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setSameRiceType(type)}
+                        style={{
+                          padding: "16px 8px",
+                          borderRadius: 12,
+                          border: `2px solid ${sameRiceType === type ? "#5A6B2A" : "transparent"}`,
+                          background: sameRiceType === type ? "#5A6B2A" : "#F0EDE8",
+                          color: sameRiceType === type ? "#fff" : "#666",
+                          fontFamily: "var(--font-switzer), sans-serif",
+                          fontWeight: 700, fontSize: 14,
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {type === "integral" ? "Integral" : "Branco"}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={switchToIndividualRice}
                     style={{
-                      background: "#FAFAF8", borderRadius: 14,
-                      padding: "14px 16px",
-                      border: `1.5px solid ${riceChoices[item.product.id] ? "#5A6B2A" : "#E5E0D8"}`,
-                      transition: "border-color 0.15s ease",
+                      display: "block", width: "100%", textAlign: "center",
+                      background: "none", border: "none", marginTop: 14,
+                      color: "#5A6B2A", fontSize: 12.5, fontWeight: 700,
+                      cursor: "pointer", padding: "4px", textDecoration: "underline",
+                      fontFamily: "var(--font-switzer), sans-serif",
                     }}
                   >
-                    <p style={{
-                      fontFamily: "var(--font-switzer), sans-serif",
-                      fontWeight: 700, fontSize: 14, color: "#1A1A1A",
-                      margin: "0 0 10px",
-                    }}>
-                      {item.quantity}x {item.product.name}
-                    </p>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                      {(["integral", "branco"] as const).map(type => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => setRiceChoices(prev => ({ ...prev, [item.product.id]: type }))}
-                          style={{
-                            padding: "10px 8px",
-                            borderRadius: 10,
-                            border: `2px solid ${riceChoices[item.product.id] === type ? "#5A6B2A" : "transparent"}`,
-                            background: riceChoices[item.product.id] === type ? "#5A6B2A" : "#F0EDE8",
-                            color: riceChoices[item.product.id] === type ? "#fff" : "#666",
-                            fontFamily: "var(--font-switzer), sans-serif",
-                            fontWeight: 700, fontSize: 13,
-                            cursor: "pointer",
-                            transition: "all 0.15s ease",
-                          }}
-                        >
-                          {type === "integral" ? "Integral" : "Branco"}
-                        </button>
-                      ))}
+                    Prefiro escolher item por item
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 16 }}>
+                  {riceItems.map(item => (
+                    <div
+                      key={item.product.id}
+                      style={{
+                        background: "#FAFAF8", borderRadius: 14,
+                        padding: "14px 16px",
+                        border: `1.5px solid ${riceChoices[item.product.id] ? "#5A6B2A" : "#E5E0D8"}`,
+                        transition: "border-color 0.15s ease",
+                      }}
+                    >
+                      <p style={{
+                        fontFamily: "var(--font-switzer), sans-serif",
+                        fontWeight: 700, fontSize: 14, color: "#1A1A1A",
+                        margin: "0 0 10px",
+                      }}>
+                        {item.quantity}x {item.product.name}
+                      </p>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        {(["integral", "branco"] as const).map(type => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => setRiceChoices(prev => ({ ...prev, [item.product.id]: type }))}
+                            style={{
+                              padding: "10px 8px",
+                              borderRadius: 10,
+                              border: `2px solid ${riceChoices[item.product.id] === type ? "#5A6B2A" : "transparent"}`,
+                              background: riceChoices[item.product.id] === type ? "#5A6B2A" : "#F0EDE8",
+                              color: riceChoices[item.product.id] === type ? "#fff" : "#666",
+                              fontFamily: "var(--font-switzer), sans-serif",
+                              fontWeight: 700, fontSize: 13,
+                              cursor: "pointer",
+                              transition: "all 0.15s ease",
+                            }}
+                          >
+                            {type === "integral" ? "Integral" : "Branco"}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setRiceMode("same")}
+                    style={{
+                      display: "block", width: "100%", textAlign: "center",
+                      background: "none", border: "none", marginTop: 2,
+                      color: "#999", fontSize: 12.5, fontWeight: 600,
+                      cursor: "pointer", padding: "4px", textDecoration: "underline",
+                      fontFamily: "var(--font-switzer), sans-serif",
+                    }}
+                  >
+                    Voltar para escolha única
+                  </button>
+                </div>
+              )}
 
               {/* Botões */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

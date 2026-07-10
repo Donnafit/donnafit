@@ -32,8 +32,8 @@ async function createReadyDeliveryOrder(request: import("@playwright/test").APIR
       customerName,
       customerPhone: `4199998${Math.floor(Math.random() * 9000 + 1000)}`,
       deliveryType: "delivery",
-      deliveryAddress: "Rua de Teste E2E, 123, Bairro Teste",
-      deliveryFee: 15,
+      deliveryAddress: "Rua de Teste E2E, 123, Cachoeira",
+      deliveryFee: 10,
       paymentMethod: "card",
       items: [{
         product: {
@@ -42,7 +42,7 @@ async function createReadyDeliveryOrder(request: import("@playwright/test").APIR
         },
         quantity: 1,
       }],
-      total: fx.product.price + 15,
+      total: fx.product.price + 10,
     },
   })
   expect(res.ok(), await res.text()).toBeTruthy()

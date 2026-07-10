@@ -1,27 +1,21 @@
+import { createClient } from "@/lib/supabase/server"
 import { InfoPageLayout } from "@/components/layout/InfoPageLayout"
 
 export const metadata = { title: "Área de Entrega — Donna FIT" }
+export const dynamic = "force-dynamic"
 
-const ZONAS = [
-  {
-    titulo: "Zona Sul",
-    bairros: ["Água Verde", "Boqueirão", "Capão Raso", "Fazendinha", "Hauer", "Lindóia", "Novo Mundo", "Parolin", "Portão", "Pinheirinho", "Santa Quitéria", "Sítio Cercado", "Uberaba", "Xaxim"],
-  },
-  {
-    titulo: "Centro / Centro-Sul",
-    bairros: ["Batel", "Bigorrilho", "Cabral", "Centro", "Cristo Rei", "Guaíra", "Jardim Social", "Juvevê", "Mercês", "Prado Velho", "Rebouças", "São Francisco"],
-  },
-  {
-    titulo: "Zona Norte",
-    bairros: ["Ahú", "Alto da XV", "Bacacheri", "Barreirinha", "Boa Vista", "Bom Retiro", "Cachoeira", "Cajuru", "Hugo Lange", "Jardim Botânico", "Jardim das Américas", "Tarumã"],
-  },
-  {
-    titulo: "CIC / Oeste",
-    bairros: ["Campo Comprido", "Cascatinha", "CIC", "Mossunguê", "Orleans", "Santa Felicidade", "Santo Inácio", "São Braz"],
-  },
-]
+export default async function AreaDeEntregaPage() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = (await createClient()) as any
+  const { data: zones } = await supabase
+    .from("delivery_zones")
+    .select("name, fee")
+    .eq("active", true)
+    .order("name")
 
-export default function AreaDeEntregaPage() {
+  const bairros: { name: string; fee: number }[] = zones ?? []
+  const menorTaxa = bairros.length ? Math.min(...bairros.map((z) => Number(z.fee))) : null
+
   return (
     <InfoPageLayout
       title="Área de Entrega"
@@ -44,7 +38,7 @@ export default function AreaDeEntregaPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
               </svg>
             ),
-            label: "Frete fixo", sub: "Consulte pelo WhatsApp",
+            label: "Frete por bairro", sub: menorTaxa != null ? `A partir de R$ ${menorTaxa.toFixed(2).replace(".", ",")}` : "Consulte pelo WhatsApp",
           },
           {
             icon: (
@@ -67,34 +61,30 @@ export default function AreaDeEntregaPage() {
         ))}
       </div>
 
-      {/* Bairros por zona */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20, marginBottom: 40 }}>
-        {ZONAS.map((zona) => (
-          <div key={zona.titulo} style={{
-            background: "#fff", borderRadius: 16, padding: "24px",
-            border: "1px solid #EDE8E0",
-          }}>
-            <h2 style={{
-              fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 800, fontSize: 13,
-              color: "#5A6B2A", textTransform: "uppercase", letterSpacing: "0.08em",
-              marginBottom: 14, display: "flex", alignItems: "center", gap: 8,
+      {/* Bairros e taxas */}
+      <div style={{
+        background: "#fff", borderRadius: 16, padding: "24px",
+        border: "1px solid #EDE8E0", marginBottom: 40,
+      }}>
+        <h2 style={{
+          fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 800, fontSize: 13,
+          color: "#5A6B2A", textTransform: "uppercase", letterSpacing: "0.08em",
+          marginBottom: 14, display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#C89B3C", display: "inline-block" }} />
+          Bairros atendidos
+        </h2>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {bairros.map((z) => (
+            <span key={z.name} style={{
+              fontSize: 12, color: "#5A6B2A",
+              background: "#F2F7EC", borderRadius: 6,
+              padding: "3px 9px", fontWeight: 500,
             }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#C89B3C", display: "inline-block" }} />
-              {zona.titulo}
-            </h2>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {zona.bairros.map((b) => (
-                <span key={b} style={{
-                  fontSize: 12, color: "#5A6B2A",
-                  background: "#F2F7EC", borderRadius: 6,
-                  padding: "3px 9px", fontWeight: 500,
-                }}>
-                  {b}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
+              {z.name} — R$ {Number(z.fee).toFixed(2).replace(".", ",")}
+            </span>
+          ))}
+        </div>
       </div>
 
       {/* Não encontrou */}

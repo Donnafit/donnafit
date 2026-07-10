@@ -1,7 +1,8 @@
 "use client"
 import { useEffect, useState } from "react"
-import { Clock, Store, Bell } from "lucide-react"
+import { Clock, Store, Bell, Percent, MapPin } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { DeliveryZonesModal } from "@/components/admin/DeliveryZonesModal"
 
 interface StoreSettings {
   storeName: string
@@ -9,6 +10,7 @@ interface StoreSettings {
   openHour: string
   closeHour: string
   orderSound: boolean
+  pixDiscountPercent: string
 }
 
 const DEFAULT_SETTINGS: StoreSettings = {
@@ -17,6 +19,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   openHour: "10",
   closeHour: "22",
   orderSound: true,
+  pixDiscountPercent: "2",
 }
 
 async function loadSettings(): Promise<StoreSettings> {
@@ -30,6 +33,7 @@ async function loadSettings(): Promise<StoreSettings> {
     openHour: String(data.open_hour),
     closeHour: String(data.close_hour),
     orderSound: data.order_sound,
+    pixDiscountPercent: String(Number(data.pix_discount_rate ?? 0.02) * 100),
   }
 }
 
@@ -115,6 +119,7 @@ export default function ConfiguracoesPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showZonesModal, setShowZonesModal] = useState(false)
 
   useEffect(() => {
     loadSettings().then(setSettings)
@@ -137,6 +142,7 @@ export default function ConfiguracoesPage() {
           openHour: Number(settings.openHour),
           closeHour: Number(settings.closeHour),
           orderSound: settings.orderSound,
+          pixDiscountRate: Number(settings.pixDiscountPercent) / 100,
         }),
       })
       if (!res.ok) throw new Error((await res.json()).error)
@@ -275,7 +281,38 @@ export default function ConfiguracoesPage() {
           </div>
         </Section>
 
+        <Section title="Desconto PIX" description="Percentual aplicado no checkout quando o cliente paga via PIX" icon={Percent}>
+          <Field label="Desconto (%)">
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.5"
+              value={settings.pixDiscountPercent}
+              onChange={(e) => update("pixDiscountPercent", e.target.value)}
+              style={inputStyle}
+            />
+          </Field>
+        </Section>
+
+        <Section title="Frete por bairro" description="Taxas de entrega usadas pelo reconhecimento automático de endereço" icon={MapPin}>
+          <button
+            type="button"
+            onClick={() => setShowZonesModal(true)}
+            style={{
+              display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 10,
+              border: "1px solid var(--surface-200)", background: "var(--surface-50)",
+              fontFamily: "var(--font-ui)", fontWeight: 700, fontSize: 13, color: "var(--text-700)",
+              cursor: "pointer",
+            }}
+          >
+            <MapPin size={14} /> Gerenciar taxas por bairro
+          </button>
+        </Section>
+
       </div>
+
+      {showZonesModal && <DeliveryZonesModal onClose={() => setShowZonesModal(false)} />}
     </div>
   )
 }
