@@ -51,9 +51,10 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
   }
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: isMobile ? "visible" : "hidden", minWidth: 0 }}>
 
-      {/* Topbar: tabs + search */}
+      {/* Topbar: tabs + search — fixo no topo ao rolar a página no mobile, já
+          que ali é o único jeito de manter uma área de scroll boa (ver abaixo) */}
       <div
         style={{
           background: "var(--surface-100)",
@@ -64,6 +65,9 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
           flexShrink: 0,
           flexWrap: "wrap",
           rowGap: 8,
+          position: isMobile ? "sticky" : "static",
+          top: isMobile ? 0 : undefined,
+          zIndex: isMobile ? 10 : undefined,
         }}
       >
         <div className="tabs-scroll-wrap" style={{ position: "relative", minWidth: 0 }}>
@@ -187,8 +191,12 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
         </div>
       </div>
 
-      {/* Content area */}
-      <div style={{ flex: 1, overflow: "auto", background: "var(--surface-100)" }}>
+      {/* Content area — no mobile em modo Lista, a página inteira rola (ver
+          pedidos/page.tsx), então aqui não pode ter overflow:auto próprio,
+          senão volta a ficar uma área minúscula de scroll dentro do espaço
+          que sobra do AdminHero. O Kanban continua com overflow:auto sempre
+          — precisa da própria área com scroll horizontal independente. */}
+      <div style={{ flex: 1, overflow: isMobile && viewMode !== "kanban" ? "visible" : "auto", background: "var(--surface-100)" }}>
         {filtered.length === 0 ? (
           <div
             style={{
@@ -214,14 +222,14 @@ export function OrderTable({ orders, selectedId, onSelect }: Props) {
             className="scrollbar-hidden"
             style={{
               display: "flex", gap: 16, padding: 24, minHeight: "100%",
-              overflowX: "auto", scrollSnapType: "x proximity",
+              overflowX: "auto",
               WebkitOverflowScrolling: "touch", overscrollBehaviorX: "contain", touchAction: "pan-x",
             }}
           >
             {KANBAN_COLUMNS.map((column) => {
               const colOrders = filtered.filter(column.match)
               return (
-                <div key={column.key} style={{ flex: "0 0 320px", display: "flex", flexDirection: "column", gap: 12, scrollSnapAlign: "start" }}>
+                <div key={column.key} style={{ flex: "0 0 320px", display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <h3 style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700, color: "var(--text-950)", margin: 0 }}>

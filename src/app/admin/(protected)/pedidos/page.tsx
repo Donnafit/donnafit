@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
 import { useRealtimeOrders } from "@/hooks/useRealtimeOrders"
+import { useIsMobile } from "@/hooks/useIsMobile"
 import { AdminHero } from "@/components/admin/AdminHero"
 import { OrderTable } from "@/components/admin/OrderTable"
 import { OrderDetailPanel } from "@/components/admin/OrderDetailPanel"
@@ -11,6 +12,7 @@ import type { OrderWithItems } from "@/types"
 export default function PedidosPage() {
   const { orders, loading, updateStatus } = useRealtimeOrders()
   const [selected, setSelected] = useState<OrderWithItems | null>(null)
+  const isMobile = useIsMobile()
 
   const balcao = KANBAN_COLUMNS.find((c) => c.key === "balcao")!
   const rota   = KANBAN_COLUMNS.find((c) => c.key === "rota")!
@@ -57,7 +59,7 @@ export default function PedidosPage() {
   }
 
   return (
-    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", overflowY: isMobile ? "auto" : "hidden", overflowX: "hidden" }}>
       <AdminHero
         pendingCount={pending}
         productionCount={production}
@@ -66,7 +68,7 @@ export default function PedidosPage() {
         todayOrdersCount={todayOrders.length}
       />
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+      <div style={{ flex: 1, display: "flex", overflow: isMobile ? "visible" : "hidden", position: "relative" }}>
         <OrderTable
           orders={orders}
           selectedId={selected?.id ?? null}
