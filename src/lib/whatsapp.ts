@@ -7,8 +7,10 @@ interface OrderPayload {
   deliveryType: "delivery" | "pickup"
   paymentMethod: "pix" | "card"
   deliveryAddress?: string
+  pickupAddress?: string
   items: CartItem[]
   total: number
+  deliveryFee?: number
   riceChoices?: Record<string, "integral" | "branco">
   pixDiscountPercentLabel?: string
 }
@@ -45,6 +47,13 @@ export function buildWhatsAppMessage(order: OrderPayload): string {
   const addressLine =
     order.deliveryType === "delivery" && order.deliveryAddress
       ? `\n📍 *Endereço:* ${order.deliveryAddress}`
+      : order.deliveryType === "pickup" && order.pickupAddress
+        ? `\n📍 *Endereço para retirada:* ${order.pickupAddress}`
+        : ""
+
+  const deliveryFeeLine =
+    order.deliveryType === "delivery" && order.deliveryFee
+      ? `\n🛵 *Taxa de entrega:* R$ ${order.deliveryFee.toFixed(2).replace(".", ",")}`
       : ""
 
   const paymentLabel =
@@ -65,7 +74,7 @@ export function buildWhatsAppMessage(order: OrderPayload): string {
     `👤 *Cliente:* ${order.customerName}\n` +
     `📱 *Telefone:* ${order.customerPhone}\n\n` +
     `*Itens:*\n${itemLines}${riceSection}\n\n` +
-    `${entregaTexto}${addressLine}\n` +
+    `${entregaTexto}${addressLine}${deliveryFeeLine}\n` +
     `💳 *Forma de pagamento:* ${paymentLabel}\n\n` +
     `💰 *Total a pagar: ${totalFormatted}*${pixPendingLine}\n\n` +
     `_Pedido registrado em ${dataHora}_`

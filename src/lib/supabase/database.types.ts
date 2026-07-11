@@ -41,6 +41,7 @@ export type Database = {
           close_hour: number
           order_sound: boolean
           pix_discount_rate: number
+          pickup_address: string | null
           updated_at: string
         }
         Insert: {
@@ -51,6 +52,7 @@ export type Database = {
           close_hour?: number
           order_sound?: boolean
           pix_discount_rate?: number
+          pickup_address?: string | null
           updated_at?: string
         }
         Update: {
@@ -61,6 +63,7 @@ export type Database = {
           close_hour?: number
           order_sound?: boolean
           pix_discount_rate?: number
+          pickup_address?: string | null
           updated_at?: string
         }
       }

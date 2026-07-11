@@ -11,6 +11,7 @@ interface StoreSettings {
   closeHour: string
   orderSound: boolean
   pixDiscountPercent: string
+  pickupAddress: string
 }
 
 const DEFAULT_SETTINGS: StoreSettings = {
@@ -20,6 +21,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   closeHour: "22",
   orderSound: true,
   pixDiscountPercent: "2",
+  pickupAddress: "",
 }
 
 async function loadSettings(): Promise<StoreSettings> {
@@ -34,6 +36,7 @@ async function loadSettings(): Promise<StoreSettings> {
     closeHour: String(data.close_hour),
     orderSound: data.order_sound,
     pixDiscountPercent: String(Number(data.pix_discount_rate ?? 0.02) * 100),
+    pickupAddress: data.pickup_address ?? "",
   }
 }
 
@@ -143,6 +146,7 @@ export default function ConfiguracoesPage() {
           closeHour: Number(settings.closeHour),
           orderSound: settings.orderSound,
           pixDiscountRate: Number(settings.pixDiscountPercent) / 100,
+          pickupAddress: settings.pickupAddress,
         }),
       })
       if (!res.ok) throw new Error((await res.json()).error)
@@ -221,6 +225,14 @@ export default function ConfiguracoesPage() {
               value={settings.whatsapp}
               onChange={(e) => update("whatsapp", e.target.value)}
               placeholder="(11) 99999-9999"
+              style={inputStyle}
+            />
+          </Field>
+          <Field label="Endereço de retirada">
+            <input
+              value={settings.pickupAddress}
+              onChange={(e) => update("pickupAddress", e.target.value)}
+              placeholder="Rua, número, bairro, cidade - UF, CEP"
               style={inputStyle}
             />
           </Field>

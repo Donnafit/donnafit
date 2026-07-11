@@ -86,6 +86,7 @@ export function CheckoutForm() {
   const [addressState, setAddressState] = useState<"idle" | "valid" | "invalid">("idle")
   const [zones, setZones] = useState<{ name: string; fee: number }[]>([])
   const [pixDiscountRate, setPixDiscountRate] = useState(DEFAULT_PIX_DISCOUNT_RATE)
+  const [pickupAddress, setPickupAddress] = useState("")
   const [geocodedZone, setGeocodedZone] = useState<{ name: string; fee: number } | null>(null)
   const [geocoding, setGeocoding] = useState(false)
 
@@ -99,11 +100,14 @@ export function CheckoutForm() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(supabase as any)
       .from("store_settings")
-      .select("pix_discount_rate")
+      .select("pix_discount_rate, pickup_address")
       .eq("id", "default")
       .single()
-      .then(({ data }: { data: { pix_discount_rate: number } | null }) => {
-        if (data) setPixDiscountRate(Number(data.pix_discount_rate))
+      .then(({ data }: { data: { pix_discount_rate: number; pickup_address: string | null } | null }) => {
+        if (data) {
+          setPixDiscountRate(Number(data.pix_discount_rate))
+          setPickupAddress(data.pickup_address ?? "")
+        }
       })
   }, [])
 
@@ -249,9 +253,11 @@ export function CheckoutForm() {
         customerPhone: phone.trim(),
         deliveryType: delivery,
         deliveryAddress: fullAddress,
+        pickupAddress,
         paymentMethod: payment,
         items: cartItems,
         total: finalTotal,
+        deliveryFee,
         riceChoices: activeRiceChoices,
         pixDiscountPercentLabel,
       })
@@ -263,7 +269,9 @@ export function CheckoutForm() {
         localStorage.setItem("donna-fit-order-summary", JSON.stringify({
           items: cartItems.map(i => ({ name: i.product.name, qty: i.quantity, price: i.product.price * i.quantity })),
           deliveryType: delivery,
+          deliveryFee,
           paymentMethod: payment,
+          pixDiscountPercentLabel,
           total: finalTotal,
         }))
         if (!user) {

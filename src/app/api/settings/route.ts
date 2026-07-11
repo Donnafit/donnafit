@@ -18,6 +18,7 @@ export async function PATCH(req: Request) {
   if (body.closeHour !== undefined) update.close_hour = body.closeHour
   if (body.orderSound !== undefined) update.order_sound = body.orderSound
   if (body.pixDiscountRate !== undefined) update.pix_discount_rate = body.pixDiscountRate
+  if (body.pickupAddress !== undefined) update.pickup_address = body.pickupAddress
 
   const { error } = await supabase.from("store_settings").update(update).eq("id", "default")
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

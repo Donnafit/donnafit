@@ -7,7 +7,9 @@ import { formatCurrency } from "@/lib/utils"
 type OrderSummary = {
   items: { name: string; qty: number; price: number }[]
   deliveryType: "pickup" | "delivery"
+  deliveryFee?: number
   paymentMethod: "pix" | "card"
+  pixDiscountPercentLabel?: string
   total: number
 }
 
@@ -165,13 +167,17 @@ function ConfirmacaoContent() {
               <div style={{ display: "flex", justifyContent: "space-between", color: "#666" }}>
                 <span>Entrega</span>
                 <span style={{ fontWeight: 600, color: "#1A1A1A" }}>
-                  {summary.deliveryType === "pickup" ? "Retirada na loja" : "Entrega (R$ 15,00)"}
+                  {summary.deliveryType === "pickup"
+                    ? "Retirada na loja"
+                    : `Entrega (${formatCurrency(summary.deliveryFee ?? 0)})`}
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", color: "#666" }}>
                 <span>Pagamento</span>
                 <span style={{ fontWeight: 600, color: "#1A1A1A" }}>
-                  {summary.paymentMethod === "pix" ? "PIX (5% desconto)" : "Maquininha"}
+                  {summary.paymentMethod === "pix"
+                    ? `PIX (${summary.pixDiscountPercentLabel ?? "2%"} desconto)`
+                    : "Maquininha"}
                 </span>
               </div>
               <div style={{ borderTop: "1.5px dashed #E5E0D8", paddingTop: 12, marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
