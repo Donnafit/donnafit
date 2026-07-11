@@ -33,4 +33,17 @@ test.describe("Admin — login e controle de acesso", () => {
     await page.getByRole("button", { name: "Entrar" }).click()
     await expect(page).toHaveURL(/\/admin\/pedidos/, { timeout: 10_000 })
   })
+
+  test("sessão de equipe já ativa pula o formulário ao reabrir /acessoadmin", async ({ page }) => {
+    await page.goto("/acessoadmin")
+    await page.getByPlaceholder("seu@email.com").fill(fx.admin.email)
+    await page.getByPlaceholder("••••••••").fill(fx.admin.password)
+    await page.getByRole("button", { name: "Entrar" }).click()
+    await expect(page).toHaveURL(/\/admin\/pedidos/, { timeout: 10_000 })
+
+    // Comportamento correto (antes pedia login de novo sempre): reabrir a
+    // tela de login com sessão ainda ativa redireciona sozinho pro painel.
+    await page.goto("/acessoadmin")
+    await expect(page).toHaveURL(/\/admin\/pedidos/, { timeout: 10_000 })
+  })
 })

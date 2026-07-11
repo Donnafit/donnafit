@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { ErrorMsg, Field, PrimaryBtn, BrandHeader, IconEmail, IconLock, EyeBtn } from "@/components/ui/AuthFormKit"
@@ -10,7 +10,32 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
   const router = useRouter()
+
+  // Se já existe uma sessão válida de equipe, pula o formulário e vai direto
+  // pro painel — antes disso, essa tela sempre pedia login de novo mesmo com
+  // sessão ativa, porque nunca checava se já tinha usuário logado.
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = createClient() as any
+    supabase.auth.getUser().then(async ({ data }: any) => {
+      if (!data.user) {
+        setCheckingSession(false)
+        return
+      }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .single()
+      if (profile && ["admin", "kitchen"].includes(profile.role)) {
+        router.replace("/admin/pedidos")
+      } else {
+        setCheckingSession(false)
+      }
+    })
+  }, [router])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -41,6 +66,19 @@ export default function LoginPage() {
 
     router.push("/admin/pedidos")
     router.refresh()
+  }
+
+  if (checkingSession) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #1A1A1A 0%, #2D3D14 50%, #3D5018 100%)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", border: "3px solid rgba(255,255,255,0.25)", borderTopColor: "#C89B3C", animation: "spin 0.8s linear infinite" }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
   }
 
   return (
