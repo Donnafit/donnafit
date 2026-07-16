@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useCart } from "@/hooks/useCart"
+import { useCart, MIN_DELIVERY_ITEMS } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import { createClient } from "@/lib/supabase/client"
 import { buildWhatsAppMessage, buildWhatsAppURL } from "@/lib/whatsapp"
@@ -180,6 +180,25 @@ export function CheckoutForm() {
     const auto = Object.fromEntries(autoBrancoRiceItems.map(item => [item.product.id, "branco" as const]))
     return { ...chosen, ...auto }
   }
+  const totalQty = cartItems.reduce((sum, item) => sum + item.quantity, 0)
+  const deliveryLocked = totalQty < MIN_DELIVERY_ITEMS
+
+  // Se o carrinho cair abaixo do mínimo (item removido, ou auto-preenchimento
+  // de endereço salvo de pedido anterior tiver marcado "delivery" por engano),
+  // força de volta pra retirada — nunca deixa "delivery" selecionado sem
+  // atingir o mínimo de marmitas.
+  // Nota de adaptação (plano dizia pra colocar este useEffect logo após o
+  // useEffect de fetch de zones/store_settings — mas naquele ponto do
+  // componente `deliveryLocked` ainda não existia, o que gera
+  // "Cannot access 'deliveryLocked' before initialization" a cada render.
+  // Movido pra depois da declaração de `deliveryLocked` para eliminar o TDZ.
+  useEffect(() => {
+    if (deliveryLocked && delivery === "delivery") {
+      setDelivery("pickup")
+      setAddressState("idle")
+    }
+  }, [deliveryLocked, delivery])
+
   const subtotal = mounted ? total() : 0
   const localMatchedZone = delivery === "delivery" ? matchDeliveryZone(address, zones) : null
   // Se o texto não tem o nome do bairro, cai pro geocoding (Nominatim) como
@@ -428,16 +447,19 @@ export function CheckoutForm() {
           {/* Entrega */}
           <button
             type="button"
-            onClick={() => setDelivery("delivery")}
+            onClick={() => { if (!deliveryLocked) setDelivery("delivery") }}
+            disabled={deliveryLocked}
             className={`option-card ${delivery === "delivery" ? "selected" : ""}`}
+            style={deliveryLocked ? { opacity: 0.45, cursor: "not-allowed" } : undefined}
           >
-
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
               <Truck size={28} style={{ color: "#C89B3C" }} />
             </div>
             <div style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 700, fontSize: 14, color: "#1A1A1A", marginBottom: 4 }}>Entrega</div>
             <div style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>
-              {matchedZone ? `+ ${formatCurrency(matchedZone.fee)}` : "Varia por bairro"}
+              {deliveryLocked
+                ? `Mínimo ${MIN_DELIVERY_ITEMS} marmitas`
+                : matchedZone ? `+ ${formatCurrency(matchedZone.fee)}` : "Varia por bairro"}
             </div>
             <div className="option-check">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="3">
@@ -446,6 +468,22 @@ export function CheckoutForm() {
             </div>
           </button>
         </div>
+
+        {deliveryLocked && (
+          <div style={{
+            marginTop: 14, background: "#FFF7E6", border: "1.5px solid #F5D98B",
+            borderRadius: 12, padding: "12px 14px",
+            display: "flex", alignItems: "flex-start", gap: 10,
+          }}>
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#B45309" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+            <p style={{ fontSize: 12.5, color: "#92400E", fontWeight: 600, margin: 0, lineHeight: 1.5 }}>
+              Frete disponível a partir de {MIN_DELIVERY_ITEMS} marmitas — faltam{" "}
+              {MIN_DELIVERY_ITEMS - totalQty} para liberar a entrega. Por enquanto, escolha retirada.
+            </p>
+          </div>
+        )}
 
         {/* Campo de endereço — aparece somente quando Entrega está selecionada */}
         {delivery === "delivery" && (

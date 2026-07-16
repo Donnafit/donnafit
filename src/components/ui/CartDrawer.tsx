@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useCart } from "@/hooks/useCart"
+import { useCart, MIN_DELIVERY_ITEMS } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import { formatCurrency, resolveImageSrc } from "@/lib/utils"
 
@@ -249,6 +249,20 @@ export function CartDrawer({ open, onClose }: Props) {
                 {formatCurrency(totalAmount)}
               </span>
             </div>
+            {itemCount > 0 && itemCount < MIN_DELIVERY_ITEMS && (
+              <div style={{
+                background: "#FFF7E6", border: "1.5px solid #F5D98B",
+                borderRadius: 10, padding: "9px 12px", marginBottom: 14,
+                display: "flex", alignItems: "center", gap: 8,
+              }}>
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#B45309" strokeWidth={2} style={{ flexShrink: 0 }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                </svg>
+                <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontSize: 11, color: "#92400E", fontWeight: 600 }}>
+                  Frete a partir de {MIN_DELIVERY_ITEMS} marmitas — faltam {MIN_DELIVERY_ITEMS - itemCount} para liberar a entrega
+                </span>
+              </div>
+            )}
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
               <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontSize: 13, color: "#888" }}>Entrega</span>
               <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontSize: 13, color: "#5A6B2A", fontWeight: 600 }}>a calcular</span>

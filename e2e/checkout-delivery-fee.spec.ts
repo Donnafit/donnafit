@@ -32,6 +32,16 @@ async function addToCartAndGoToCheckout(page: import("@playwright/test").Page) {
   await login(page)
   await page.goto(`/produto/${fx.product.id}`)
   await page.getByRole("button", { name: /adicionar ao carrinho/i }).click()
+  // Frete mínimo de 8 marmitas (B14) — sem isso, o botão "Entrega" abaixo
+  // fica desabilitado e os testes deste describe quebram.
+  // Locator escopado a <main>: o CartDrawer (montado globalmente pelo Header,
+  // fora de <main>, off-screen quando fechado) renderiza um botão com o MESMO
+  // aria-label "Adicionar mais um" assim que o item entra no carrinho —
+  // sem escopo, o locator fica ambíguo (2 matches) e o clique trava até
+  // o timeout tentando interagir com o botão fora da viewport do drawer.
+  for (let i = 1; i < 8; i++) {
+    await page.locator("main").getByRole("button", { name: "Adicionar mais um" }).click()
+  }
   await page.getByRole("button", { name: "Carrinho" }).first().click()
   await expect(page.getByTestId("cart-drawer").getByRole("button", { name: "Remover um" })).toBeVisible({ timeout: 5000 })
   await page.getByRole("link", { name: /finalizar pedido/i }).or(page.getByRole("button", { name: /finalizar pedido/i })).click()
