@@ -83,7 +83,11 @@ test.describe("Checkout — Cartão (link de pagamento)", () => {
     const url = new URL(page.url())
     const waParam = url.searchParams.get("wa")
     expect(waParam).toBeTruthy()
-    const waUrl = new URL(decodeURIComponent(waParam!))
+    // url.searchParams.get() já decodifica uma camada — decodeURIComponent de
+    // novo aqui decodificaria também o "text=" (ainda percent-encoded) dentro
+    // da string, introduzindo um "#" literal antes do número do pedido que o
+    // URL parser interpretaria como início de fragment, truncando a mensagem.
+    const waUrl = new URL(waParam!)
     const message = waUrl.searchParams.get("text")
     expect(message).toBeTruthy()
     expect(message).toContain("Cartão (link de pagamento) — enviar link manualmente")
