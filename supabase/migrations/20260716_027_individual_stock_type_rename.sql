@@ -30,11 +30,21 @@ DROP TRIGGER IF EXISTS on_order_status_production ON public.orders;
 DROP FUNCTION IF EXISTS public.handle_order_production_stock();
 DROP FUNCTION IF EXISTS public.deduct_stock(UUID, INT, UUID);
 
--- 2. Migra os dados existentes antes de trocar o CHECK (senão a
---    constraint nova rejeitaria as linhas antigas).
+-- 2. Solta a CHECK constraint antiga ANTES de migrar os dados — ela só
+--    permite ('combo', 'avulso'), então o UPDATE abaixo (que grava
+--    'individual') seria rejeitado por ELA MESMA se ainda estivesse
+--    ativa. (Correção de um bug de ordem no plano original: a versão
+--    anterior deste arquivo comentava "migra antes de trocar o CHECK,
+--    senão a constraint nova rejeitaria as linhas antigas" — mas é o
+--    contrário: é a constraint ANTIGA que rejeita os valores NOVOS
+--    enquanto ainda está no lugar. Confirmado batendo a cabeça nisso
+--    ao aplicar esta migration.)
+ALTER TABLE public.products DROP CONSTRAINT IF EXISTS products_stock_type_check;
+
+-- 3. Migra os dados existentes agora que a constraint antiga não bloqueia mais.
 UPDATE public.products SET stock_type = 'individual' WHERE stock_type = 'avulso';
 
--- 3. Combos hoje têm stock_quantity "solta" (do freezer, sem
+-- 4. Combos hoje têm stock_quantity "solta" (do freezer, sem
 --    composição associada) — zera pra deixar explícito que esse número
 --    não significa mais nada até a composição ser cadastrada (ver
 --    passo manual pós-deploy, Task 6 do plano). Intencional: o painel
@@ -43,8 +53,7 @@ UPDATE public.products SET stock_type = 'individual' WHERE stock_type = 'avulso'
 --    esquecer o passo manual.
 UPDATE public.products SET stock_quantity = 0 WHERE stock_type = 'combo';
 
--- 4. Troca a CHECK constraint e o default da coluna.
-ALTER TABLE public.products DROP CONSTRAINT IF EXISTS products_stock_type_check;
+-- 5. Agora que os dados estão limpos, adiciona a CHECK constraint nova.
 ALTER TABLE public.products
   ADD CONSTRAINT products_stock_type_check CHECK (stock_type IN ('combo', 'individual'));
 ALTER TABLE public.products ALTER COLUMN stock_type SET DEFAULT 'individual';
