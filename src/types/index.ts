@@ -25,3 +25,18 @@ export interface CartItem {
 export interface OrderWithItems extends Order {
   order_items: (OrderItem & { product: Product | null })[]
 }
+
+// Dashboard de faturamento — shape retornado por GET /api/dashboard/revenue
+// e consumido por RevenueDashboardModal / RevenueChart.
+export interface RevenueDayPoint {
+  date: string
+  revenue: number
+  orders: number
+}
+
+export interface RevenueSummary {
+  totalOrders: number
+  totalItems: number
+  totalRevenue: number
+  series: RevenueDayPoint[]
+}
