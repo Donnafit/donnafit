@@ -1,3 +1,5 @@
+import { stripAddressComplement } from "./addressComplement"
+
 export interface DeliveryZone {
   name: string
   fee: number
@@ -16,7 +18,7 @@ function normalize(value: string): string {
  * "Alto Boqueirão" seja identificado como "Boqueirão" por engano.
  */
 export function matchDeliveryZone(address: string, zones: DeliveryZone[]): DeliveryZone | null {
-  const normalizedAddress = normalize(address)
+  const normalizedAddress = normalize(stripAddressComplement(address))
 
   // "Atuba" existe em Curitiba (bairro) e em Colombo (localidade homônima) —
   // único caso de ambiguidade real na lista; desempata pela cidade citada.

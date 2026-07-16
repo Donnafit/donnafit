@@ -114,3 +114,60 @@ test.describe("API /api/orders — frete nunca confia no valor do cliente", () =
     expect(body.error).toMatch(/não foi possível identificar o bairro/i)
   })
 })
+
+test.describe("Endereço com complemento não deve atrapalhar o reconhecimento do bairro", () => {
+  test("endereço sem bairro escrito, mas com complemento 'Sala X', geocodifica corretamente", async ({ page }) => {
+    await addToCartAndGoToCheckout(page)
+    await page.getByPlaceholder(/rua, número, bairro, complemento/i)
+      .fill("Rua Marechal Deodoro, 630 - Sala 12")
+
+    // Sem stripping, o Nominatim recebe a query poluída pelo complemento e
+    // não geocodifica nada — o teste fica preso em "não conseguimos identificar".
+    await expect(page.getByText(/bairro identificado: centro/i)).toBeVisible({ timeout: 8000 })
+    await expect(page.getByText(/frete r\$\s?10,00/i)).toBeVisible()
+  })
+
+  test("endereço sem bairro escrito, mas com complemento 'apto 302', geocodifica corretamente", async ({ page }) => {
+    await addToCartAndGoToCheckout(page)
+    await page.getByPlaceholder(/rua, número, bairro, complemento/i)
+      .fill("Rua Padre Anchieta, 2000, apto 302")
+
+    // Esse trecho da Rua Padre Anchieta fica bem na divisa entre Campina do
+    // Siqueira e Bigorrilho — o Nominatim (serviço público, múltiplos
+    // servidores/réplicas) responde ora com um bairro, ora com o outro para a
+    // mesma consulta (verificado ao vivo: curl retornou "Campina do Siqueira"
+    // de forma consistente, enquanto o fetch do servidor Next.js, nesta mesma
+    // rede, retornou "Bigorrilho" de forma igualmente consistente). Os dois
+    // são zonas reais e ativas com a MESMA taxa (R$ 12,00), então a asserção
+    // fixa no frete (estável) e aceita qualquer um dos dois bairros — travar
+    // num nome só tornaria o teste refém de qual réplica do Nominatim atende
+    // a requisição.
+    await expect(page.getByText(/bairro identificado: (campina do siqueira|bigorrilho)/i)).toBeVisible({ timeout: 8000 })
+    await expect(page.getByText(/frete r\$\s?12,00/i)).toBeVisible()
+  })
+})
+
+test.describe("API /api/orders — bairro com complemento também é resolvido no servidor", () => {
+  test("endereço com complemento resolve o mesmo bairro que sem complemento", async ({ request }) => {
+    const res = await request.post("/api/orders", {
+      data: {
+        customerName: "Teste Complemento E2E",
+        customerPhone: "41999994444",
+        deliveryType: "delivery",
+        deliveryAddress: "Rua Marechal Deodoro, 630 - Sala 12",
+        paymentMethod: "card",
+        items: [{
+          product: { id: fx.product.id, name: fx.product.name, sku: `E2E-TEST-${fx.runTag}`, price: fx.product.price, stock_type: "avulso", category_id: null },
+          quantity: 1,
+        }],
+        total: fx.product.price,
+      },
+    })
+    expect(res.ok(), await res.text()).toBeTruthy()
+    const body = await res.json()
+    const { data: order } = await adminClient().from("orders").select("total").eq("id", body.orderId).single()
+    // Frete real do Centro (R$ 10) — só é possível se o servidor conseguiu
+    // geocodificar o endereço com o complemento removido.
+    expect(Number(order?.total)).toBeCloseTo(fx.product.price + 10, 2)
+  })
+})

@@ -6,6 +6,8 @@
 // esporádico (só quando o match grátis falha, nunca a cada tecla digitada).
 // Se o volume de pedidos crescer muito, trocar por instância própria.
 
+import { stripAddressComplement } from "./addressComplement"
+
 interface NominatimResult {
   address?: {
     suburb?: string
@@ -21,7 +23,7 @@ interface NominatimResult {
 export async function geocodeToBairro(address: string): Promise<string | null> {
   if (!address.trim()) return null
 
-  const query = `${address}, Curitiba, PR, Brasil`
+  const query = `${stripAddressComplement(address)}, Curitiba, PR, Brasil`
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&addressdetails=1&countrycodes=br&limit=1`
 
   try {
