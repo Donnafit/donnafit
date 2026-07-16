@@ -135,9 +135,17 @@ test.describe("API /api/orders — integridade de preço e estoque", () => {
     expect(afterProduction.data?.stock_quantity).toBe(7)
   })
 
-  test("pedido combo desconta estoque imediatamente no checkout e não é afetado ao avançar status", async ({ request }) => {
+  test("pedido de combo sem composição cadastrada não mexe no stock_quantity do próprio combo (nem no checkout, nem ao avançar status)", async ({ request }) => {
+    // Pré-C16 este teste esperava o combo descontar a própria stock_quantity
+    // no checkout (10 -> 8). Com o C16 (estoque por componente via
+    // combo_items — ver e2e/api-orders-stock-variants.spec.ts para o caso
+    // com composição cadastrada), combo deixou de ter baixa própria: um
+    // combo sem combo_items simplesmente não gera nenhuma operação de
+    // estoque (só um console.warn no servidor). O que este teste continua
+    // protegendo é a ausência de dupla-baixa do trigger antigo — agora
+    // expressa como "stock_quantity permanece 10 o tempo todo".
     const sb = adminClient()
-    const { data: comboProduct } = await sb
+    const { data: comboProduct, error: comboInsertErr } = await sb
       .from("products")
       .insert({
         name: `[E2E_TEST] Combo Dupla Baixa ${fx.runTag}`,
@@ -151,6 +159,7 @@ test.describe("API /api/orders — integridade de preço e estoque", () => {
       })
       .select()
       .single()
+    expect(comboInsertErr, comboInsertErr?.message).toBeNull()
 
     const res = await request.post("/api/orders", {
       data: {
@@ -169,12 +178,12 @@ test.describe("API /api/orders — integridade de preço e estoque", () => {
     const { orderId } = await res.json()
 
     const afterCheckout = await sb.from("products").select("stock_quantity").eq("id", comboProduct!.id).single()
-    expect(afterCheckout.data?.stock_quantity).toBe(8)
+    expect(afterCheckout.data?.stock_quantity).toBe(10)
 
     await sb.from("orders").update({ status: "production" }).eq("id", orderId)
 
     const afterProduction = await sb.from("products").select("stock_quantity").eq("id", comboProduct!.id).single()
-    expect(afterProduction.data?.stock_quantity).toBe(8)
+    expect(afterProduction.data?.stock_quantity).toBe(10)
 
     await sb.from("order_items").delete().eq("order_id", orderId)
     await sb.from("orders").delete().eq("id", orderId)

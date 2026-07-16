@@ -108,9 +108,17 @@ test.describe("Admin — Estoque", () => {
     await page.getByPlaceholder(/descongelar 24h/i)
       .fill("Descongelar na geladeira por 24h. Aquecer no microondas por 3 minutos.")
 
-    // Tipo de arroz: troca do padrão "Integral e branco" para "Somente arroz branco"
-    await page.getByRole("button", { name: /integral e branco — cliente escolhe no checkout/i }).click()
-    await page.getByRole("button", { name: /^somente arroz branco$/i }).click()
+    // Tipo de Estoque (C16): produto novo nasce como "Combo" por padrão, e o
+    // seletor "Estoque de Arroz" só aparece pra produtos "Individual" (combo
+    // mostra o composer de itens no lugar) — precisa trocar antes.
+    await page.getByRole("button", { name: /^combo — pacote de produtos$/i }).click()
+    await page.getByRole("button", { name: /^individual — produto único$/i }).click()
+
+    // Estoque de Arroz (C16): troca do padrão "Sem arroz" para "Só arroz branco"
+    // — o antigo seletor de 2 opções "Tipo de Arroz Servido" foi substituído
+    // pelo de 4 opções "Estoque de Arroz" quando o C16 foi mesclado.
+    await page.getByRole("button", { name: /^sem arroz$/i }).click()
+    await page.getByRole("button", { name: /^só arroz branco$/i }).click()
 
     await page.getByRole("button", { name: /adicionar ao cardápio/i }).click()
     await expect(page.getByText("Preencha os dados para adicionar ao cardápio")).not.toBeVisible({ timeout: 8000 })
@@ -118,11 +126,12 @@ test.describe("Admin — Estoque", () => {
     const sb = adminClient()
     const { data } = await sb
       .from("products")
-      .select("prep_instructions, rice_integral_available, description")
+      .select("prep_instructions, rice_integral_available, rice_stock_mode, description")
       .eq("name", productName)
       .single()
     expect(data?.prep_instructions).toContain("Descongelar na geladeira")
     expect(data?.description).toContain("brócolis")
+    expect(data?.rice_stock_mode).toBe("branco")
     expect(data?.rice_integral_available).toBe(false)
 
     await sb.from("products").delete().eq("name", productName)
