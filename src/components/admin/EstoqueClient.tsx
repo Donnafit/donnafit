@@ -18,6 +18,9 @@ interface ProductWithCat {
   stock_quantity: number
   min_stock_alert: number
   stock_type: "combo" | "avulso"
+  rice_stock_mode: "none" | "integral" | "branco" | "both"
+  rice_stock_integral: number | null
+  rice_stock_branco: number | null
   image_url: string | null
   categories: { name: string; slug: string } | null
 }
@@ -309,6 +312,9 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
     stock_quantity: productToEdit?.stock_quantity?.toString() ?? "0",
     min_stock_alert: productToEdit?.min_stock_alert?.toString() ?? "10",
     is_active: productToEdit?.is_active ?? true,
+    rice_stock_mode: productToEdit?.rice_stock_mode ?? "none",
+    rice_stock_integral: productToEdit?.rice_stock_integral?.toString() ?? "0",
+    rice_stock_branco: productToEdit?.rice_stock_branco?.toString() ?? "0",
   })
 
   useEffect(() => {
@@ -334,6 +340,13 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
     { value: "avulso", label: "Avulso — baixa na produção" },
   ]
 
+  const riceStockModeOptions: DropdownOption[] = [
+    { value: "none",     label: "Sem arroz" },
+    { value: "integral", label: "Só arroz integral" },
+    { value: "branco",   label: "Só arroz branco" },
+    { value: "both",     label: "Ambos — estoque separado" },
+  ]
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -346,6 +359,7 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = supabase as any
 
+    const isRiceSplit = form.rice_stock_mode === "both"
     const payload = {
       name: form.name.trim(),
       description: form.description.trim() || null,
@@ -354,9 +368,19 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
       image_url: form.image_url.trim() || null,
       category_id: form.category_id || null,
       stock_type: form.stock_type,
-      stock_quantity: Math.max(0, parseInt(form.stock_quantity) || 0),
+      stock_quantity: isRiceSplit ? 0 : Math.max(0, parseInt(form.stock_quantity) || 0),
       min_stock_alert: Math.max(1, parseInt(form.min_stock_alert) || 10),
       is_active: form.is_active,
+      rice_stock_mode: form.rice_stock_mode,
+      rice_stock_integral: isRiceSplit ? Math.max(0, parseInt(form.rice_stock_integral) || 0) : null,
+      rice_stock_branco: isRiceSplit ? Math.max(0, parseInt(form.rice_stock_branco) || 0) : null,
+      // false só quando "branco" (força Branco no checkout, igual já
+      // funciona hoje); nos outros 3 modos o checkout continua livre
+      // pra oferecer as duas opções — "só integral" não tem como travar
+      // a escolha do lado do cliente hoje (não existe esse conceito na
+      // modal de arroz), então é uma responsabilidade do cadastro, não
+      // do código: ver nota abaixo.
+      rice_integral_available: form.rice_stock_mode !== "branco",
     }
 
     let query = sb.from("products")
@@ -507,14 +531,43 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
             </div>
           </div>
 
-          {/* Estoque Inicial + Alerta */}
+          {/* Estoque de Arroz — específico pra esse par de tipos, não é
+              um sistema de variação genérico */}
+          <div>
+            <label style={labelStyle}>Estoque de Arroz</label>
+            <CustomDropdown
+              value={form.rice_stock_mode}
+              onChange={(v) => setForm((f) => ({ ...f, rice_stock_mode: v as typeof f.rice_stock_mode }))}
+              options={riceStockModeOptions}
+            />
+          </div>
+
+          {/* Estoque Inicial + Alerta — os 2 campos de arroz substituem
+              o Estoque Inicial quando rice_stock_mode === "both" */}
           <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12 }}>
-            <div>
-              <label style={labelStyle}>Estoque Inicial</label>
-              <input type="number" min="0" className="modal-input" style={inputStyle}
-                value={form.stock_quantity}
-                onChange={(e) => setForm((f) => ({ ...f, stock_quantity: e.target.value }))} />
-            </div>
+            {form.rice_stock_mode === "both" ? (
+              <>
+                <div>
+                  <label style={labelStyle}>Estoque — Arroz Integral</label>
+                  <input type="number" min="0" className="modal-input" style={inputStyle}
+                    value={form.rice_stock_integral}
+                    onChange={(e) => setForm((f) => ({ ...f, rice_stock_integral: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Estoque — Arroz Branco</label>
+                  <input type="number" min="0" className="modal-input" style={inputStyle}
+                    value={form.rice_stock_branco}
+                    onChange={(e) => setForm((f) => ({ ...f, rice_stock_branco: e.target.value }))} />
+                </div>
+              </>
+            ) : (
+              <div>
+                <label style={labelStyle}>Estoque Inicial</label>
+                <input type="number" min="0" className="modal-input" style={inputStyle}
+                  value={form.stock_quantity}
+                  onChange={(e) => setForm((f) => ({ ...f, stock_quantity: e.target.value }))} />
+              </div>
+            )}
             <div>
               <label style={labelStyle}>Alerta de Baixo Estoque</label>
               <input type="number" min="1" className="modal-input" style={inputStyle}
