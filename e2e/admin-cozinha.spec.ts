@@ -20,7 +20,11 @@ test.describe("Admin — Cozinha", () => {
     await page.getByText(fx.product.name, { exact: false }).first().click()
 
     await page.getByPlaceholder("Qtd").fill("3")
-    const registerBtn = page.getByRole("button", { name: /^Registrar$/ })
+    // Escopado a .kitchen-qty-row: a lista "Precisam de reposição" também
+    // renderiza um botão "Registrar" por linha (ação rápida), então sem
+    // escopo o locator fica ambíguo quando há mais de um produto em baixo
+    // estoque — o botão de submit real é o que fica ao lado do campo "Qtd".
+    const registerBtn = page.locator(".kitchen-qty-row").getByRole("button", { name: /^Registrar$/ })
     await expect(registerBtn).toBeEnabled()
     await registerBtn.click()
 
@@ -30,7 +34,11 @@ test.describe("Admin — Cozinha", () => {
 
   test("não deixa registrar sem selecionar produto ou sem quantidade", async ({ page }) => {
     await loginAdmin(page)
-    const registerBtn = page.getByRole("button", { name: /^Registrar$/ })
+    // Escopado a .kitchen-qty-row: a lista "Precisam de reposição" também
+    // renderiza um botão "Registrar" por linha (ação rápida), então sem
+    // escopo o locator fica ambíguo quando há mais de um produto em baixo
+    // estoque — o botão de submit real é o que fica ao lado do campo "Qtd".
+    const registerBtn = page.locator(".kitchen-qty-row").getByRole("button", { name: /^Registrar$/ })
     await expect(registerBtn).toBeDisabled()
 
     await page.getByPlaceholder("Qtd").fill("5")
