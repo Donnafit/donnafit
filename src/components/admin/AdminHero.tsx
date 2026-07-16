@@ -6,6 +6,7 @@ import { useStaffName } from "@/hooks/useStaffName"
 import { useAuth } from "@/hooks/useAuth"
 import { createClient } from "@/lib/supabase/client"
 import { ProfileModal } from "./ProfileModal"
+import { RevenueDashboardModal } from "./RevenueDashboardModal"
 
 const OPEN_HOUR  = 10
 const CLOSE_HOUR = 22
@@ -78,6 +79,7 @@ export function AdminHero({
   const [showProfile, setShowProfile] = useState(false)
   const [profileName, setProfileName] = useState("")
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
+  const [showRevenueDashboard, setShowRevenueDashboard] = useState(false)
 
   useEffect(() => {
     if (staffName) setProfileName(staffName)
@@ -267,71 +269,89 @@ export function AdminHero({
           marginTop: 4,
         }}
       >
-        {stats.map((stat, i) => (
-          <div
-            key={i}
-            className={i < 2 ? "admin-hero-stat-fade" : undefined}
-            style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderBottom: "none",
-              borderRadius: "12px 12px 0 0",
-              padding: "14px 18px 16px",
-              position: "relative",
-              overflow: "hidden",
-              boxShadow: "0 6px 10px -4px rgba(0,0,0,0.35)",
-            }}
-          >
-            {/* Icon badge */}
-            <div style={{
-              position: "absolute",
-              top: 12, right: 14,
-              width: 28, height: 28,
-              borderRadius: 8,
-              background: stat.dimAccent,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}>
-              <stat.Icon size={13} strokeWidth={2} style={{ color: stat.accent }} />
+        {stats.map((stat, i) => {
+          const isRevenueTile = stat.label === "Faturamento"
+          return (
+            <div
+              key={i}
+              className={i < 2 ? "admin-hero-stat-fade" : undefined}
+              role={isRevenueTile ? "button" : undefined}
+              tabIndex={isRevenueTile ? 0 : undefined}
+              aria-label={isRevenueTile ? "Ver dashboard de faturamento" : undefined}
+              onClick={isRevenueTile ? () => setShowRevenueDashboard(true) : undefined}
+              onKeyDown={
+                isRevenueTile
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        setShowRevenueDashboard(true)
+                      }
+                    }
+                  : undefined
+              }
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderBottom: "none",
+                borderRadius: "12px 12px 0 0",
+                padding: "14px 18px 16px",
+                position: "relative",
+                overflow: "hidden",
+                boxShadow: "0 6px 10px -4px rgba(0,0,0,0.35)",
+                cursor: isRevenueTile ? "pointer" : "default",
+              }}
+            >
+              {/* Icon badge */}
+              <div style={{
+                position: "absolute",
+                top: 12, right: 14,
+                width: 28, height: 28,
+                borderRadius: 8,
+                background: stat.dimAccent,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}>
+                <stat.Icon size={13} strokeWidth={2} style={{ color: stat.accent }} />
+              </div>
+
+              {/* Label */}
+              <p style={{
+                fontFamily: "var(--font-ui)",
+                fontSize: 10,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.7px",
+                color: "rgba(255,255,255,0.35)",
+                marginBottom: 8,
+              }}>
+                {stat.label}
+              </p>
+
+              {/* Value */}
+              <p style={{
+                fontFamily: "var(--font-ui)",
+                fontSize: 30,
+                fontWeight: 900,
+                color: stat.isString ? stat.accent : "#fff",
+                lineHeight: 1,
+                marginBottom: 5,
+              }}>
+                {stat.isString ? <CurrencyValue value={stat.value as number} /> : stat.value}
+              </p>
+
+              {/* Sub-label */}
+              <p style={{
+                fontFamily: "var(--font-ui)",
+                fontSize: 10,
+                color: "rgba(255,255,255,0.25)",
+                fontWeight: 500,
+              }}>
+                {stat.sub}
+              </p>
             </div>
-
-            {/* Label */}
-            <p style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 10,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.7px",
-              color: "rgba(255,255,255,0.35)",
-              marginBottom: 8,
-            }}>
-              {stat.label}
-            </p>
-
-            {/* Value */}
-            <p style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 30,
-              fontWeight: 900,
-              color: stat.isString ? stat.accent : "#fff",
-              lineHeight: 1,
-              marginBottom: 5,
-            }}>
-              {stat.isString ? <CurrencyValue value={stat.value as number} /> : stat.value}
-            </p>
-
-            {/* Sub-label */}
-            <p style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 10,
-              color: "rgba(255,255,255,0.25)",
-              fontWeight: 500,
-            }}>
-              {stat.sub}
-            </p>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <style>{`
@@ -359,6 +379,11 @@ export function AdminHero({
         onLogout={handleLogout}
       />
     )}
+
+    <RevenueDashboardModal
+      open={showRevenueDashboard}
+      onClose={() => setShowRevenueDashboard(false)}
+    />
     </>
   )
 }
