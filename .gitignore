@@ -37,3 +37,6 @@ test-results/
 playwright-report/
 e2e/.fixtures.json
 e2e/.results/
+
+# Supabase CLI link state (contains DB connection info)
+supabase/.temp/
