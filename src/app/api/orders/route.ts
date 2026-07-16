@@ -201,10 +201,51 @@ export async function POST(req: Request) {
     return { kind: "rice", productId: item.product.id, quantity: item.quantity, riceType, label: item.product.name }
   }
 
-  const stockOps: StockOp[] = body.items.map((item) => {
+  // Itens "combo" não têm stock_quantity própria — a baixa mira cada
+  // componente individual (combo_items), multiplicando a quantidade do
+  // componente pela quantidade do combo no pedido.
+  const comboProductIds = body.items
+    .map((item) => item.product.id)
+    .filter((id) => freshById.get(id)?.stock_type === "combo")
+
+  const comboItemsByComboId = new Map<string, { component_product_id: string; quantity: number }[]>()
+  if (comboProductIds.length > 0) {
+    const { data: comboItemsData, error: comboItemsErr } = await supabase
+      .from("combo_items")
+      .select("combo_product_id, component_product_id, quantity")
+      .in("combo_product_id", comboProductIds)
+
+    if (comboItemsErr) {
+      return NextResponse.json({ error: "Erro ao validar composição do combo", detail: comboItemsErr.message }, { status: 500 })
+    }
+    for (const ci of comboItemsData ?? []) {
+      const list = comboItemsByComboId.get(ci.combo_product_id) ?? []
+      list.push({ component_product_id: ci.component_product_id, quantity: ci.quantity })
+      comboItemsByComboId.set(ci.combo_product_id, list)
+    }
+  }
+
+  const stockOps: StockOp[] = body.items.flatMap((item) => {
     const fresh = freshById.get(item.product.id)
-    if (fresh.rice_stock_mode === "both") return buildRiceOp(item)
-    return { kind: "simple", productId: item.product.id, quantity: item.quantity, label: item.product.name }
+    if (fresh.stock_type === "combo") {
+      const components = comboItemsByComboId.get(item.product.id) ?? []
+      if (components.length === 0) {
+        // Combo sem composição cadastrada ainda (migração manual — ver
+        // Task 6 do plano): nenhuma operação de estoque é gerada pra
+        // ele, ou seja, essa venda NÃO baixa estoque de ninguém. É
+        // esperado até a composição ser configurada, mas fica logado
+        // pra ficar visível em produção.
+        console.warn(`Combo ${item.product.id} (${item.product.name}) sem combo_items configurados — venda não baixou estoque de nenhum componente.`)
+      }
+      return components.map((comp) => ({
+        kind: "simple" as const,
+        productId: comp.component_product_id,
+        quantity: comp.quantity * item.quantity,
+        label: item.product.name,
+      }))
+    }
+    if (fresh.rice_stock_mode === "both") return [buildRiceOp(item)]
+    return [{ kind: "simple" as const, productId: item.product.id, quantity: item.quantity, label: item.product.name }]
   })
 
   // Reserva o estoque de TODAS as operações (antes só "combo" era checado
