@@ -32,7 +32,7 @@ FROM cat, (VALUES
 -- Pratos Principais (avulso)
 WITH cat AS (SELECT id FROM public.categories WHERE slug = 'pratos')
 INSERT INTO public.products (category_id, sku, name, description, price, stock_type, stock_quantity, sort_order)
-SELECT cat.id, v.sku, v.name, v.description, v.price, 'avulso', 50, v.sort_order
+SELECT cat.id, v.sku, v.name, v.description, v.price, 'individual', 50, v.sort_order
 FROM cat, (VALUES
   ('04',  'Estrogonofe de Frango',                      'Com arroz branco e batata palha',                       15.00, 1),
   ('03',  'Estrogonofe de Carne',                       'Com arroz branco e batata palha',                       18.50, 2),
@@ -57,7 +57,7 @@ FROM cat, (VALUES
 -- Massas (avulso)
 WITH cat AS (SELECT id FROM public.categories WHERE slug = 'massas')
 INSERT INTO public.products (category_id, sku, name, description, price, stock_type, stock_quantity, sort_order)
-SELECT cat.id, v.sku, v.name, v.description, v.price, 'avulso', 50, v.sort_order
+SELECT cat.id, v.sku, v.name, v.description, v.price, 'individual', 50, v.sort_order
 FROM cat, (VALUES
   ('25', 'Macarrão Integral à Bolonhesa',  'Espaguete, Penne ou parafuso integral ao molho bolonhesa',   16.00, 1),
   ('24', 'Espaguete',                      'Com molho posta desfiada, molho de tomate',                  14.00, 2),
@@ -69,7 +69,7 @@ FROM cat, (VALUES
 -- Sopas e Caldos (avulso)
 WITH cat AS (SELECT id FROM public.categories WHERE slug = 'sopas')
 INSERT INTO public.products (category_id, sku, name, description, price, stock_type, stock_quantity, sort_order)
-SELECT cat.id, v.sku, v.name, v.description, v.price, 'avulso', 50, v.sort_order
+SELECT cat.id, v.sku, v.name, v.description, v.price, 'individual', 50, v.sort_order
 FROM cat, (VALUES
   ('23', 'Caldo Verde',    'Creme de batata inglesa, bacon, calabresa e couve (400g)',         14.00, 1),
   ('39', 'Sopa Eslava',    'Creme de batata inglesa com carne bovina e queijo (400g)',         14.00, 2),
@@ -81,7 +81,7 @@ FROM cat, (VALUES
 -- Low Carb (avulso — cross-listed, separate category entries)
 WITH cat AS (SELECT id FROM public.categories WHERE slug = 'low-carb')
 INSERT INTO public.products (category_id, name, description, price, stock_type, stock_quantity, sort_order)
-SELECT cat.id, v.name, v.description, v.price, 'avulso', 50, v.sort_order
+SELECT cat.id, v.name, v.description, v.price, 'individual', 50, v.sort_order
 FROM cat, (VALUES
   ('Picadinho de Carne com Legumes na Manteiga (Low Carb)', '120g carne + 130g legumes',                 17.00, 1),
   ('Sopa de Abóbora (Low Carb)',                            'Com frango desfiado e queijo (400g)',        13.00, 2),
@@ -91,7 +91,7 @@ FROM cat, (VALUES
 -- Vegetariano (avulso)
 WITH cat AS (SELECT id FROM public.categories WHERE slug = 'vegetariano')
 INSERT INTO public.products (category_id, sku, name, description, price, stock_type, stock_quantity, sort_order)
-SELECT cat.id, v.sku, v.name, v.description, v.price, 'avulso', 50, v.sort_order
+SELECT cat.id, v.sku, v.name, v.description, v.price, 'individual', 50, v.sort_order
 FROM cat, (VALUES
   ('31v', 'Nhoque ao Molho Branco (Vegetariano)', 'Nhoque ao molho branco e queijo (350g)', 15.00, 1)
 ) AS v(sku, name, description, price, sort_order);
@@ -99,7 +99,7 @@ FROM cat, (VALUES
 -- Adicionais (avulso, high stock)
 WITH cat AS (SELECT id FROM public.categories WHERE slug = 'adicionais')
 INSERT INTO public.products (category_id, sku, name, description, price, stock_type, stock_quantity, min_stock_alert, sort_order)
-SELECT cat.id, v.sku, v.name, v.description, v.price, 'avulso', 99, 20, v.sort_order
+SELECT cat.id, v.sku, v.name, v.description, v.price, 'individual', 99, 20, v.sort_order
 FROM cat, (VALUES
   ('27',   'Feijão',                    'Feijão preto ou carioca (200g)', 3.50, 1),
   ('46',   'Mix de Legumes (150g)',     'Cenoura, vagem e grão de bico',  4.50, 2),
