@@ -56,7 +56,8 @@ async function createTestOrder(request: import("@playwright/test").APIRequestCon
     },
   })
   expect(res.ok(), await res.text()).toBeTruthy()
-  return res.json()
+  const body = await res.json()
+  return { ...body, orderId: body.orderId as string }
 }
 
 // Reabre o painel de detalhe do pedido (ele fecha sozinho após cada avanço de status).
@@ -144,5 +145,30 @@ test.describe("Admin — Pedidos", () => {
     expect(info!.scrollWidth).toBeGreaterThan(info!.clientWidth)
     // ...e o scroll precisa funcionar bem em touch (regressão: faltava isso, travava em mobile).
     expect(info!.overscrollBehaviorX).toBe("contain")
+  })
+
+  test("pedido removido concorrentemente: avançar status mostra erro em vez de fechar silenciosamente", async ({ page, request }) => {
+    const customerName = `Pedido Painel E2E ${testRunId}-C`
+    const { orderId } = await createTestOrder(request, customerName)
+    await loginAdmin(page)
+    await openOrderDetail(page, customerName)
+
+    // Simula uma corrida: o pedido some do banco entre a abertura do painel
+    // e o clique em avançar (ex.: outra aba já excluiu ou o realtime ainda
+    // não refletiu). O UPDATE vai casar 0 linhas.
+    const env = Object.fromEntries(
+      fs.readFileSync(".env.local", "utf8").split("\n").filter((l) => l.includes("=")).map((l) => {
+        const i = l.indexOf("=")
+        return [l.slice(0, i), l.slice(i + 1)]
+      })
+    )
+    const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } })
+    await sb.from("order_items").delete().eq("order_id", orderId)
+    await sb.from("orders").delete().eq("id", orderId)
+
+    await page.getByRole("button", { name: "Iniciar Separação" }).click()
+
+    // Comportamento correto: mostra o banner de erro, não fecha silenciosamente.
+    await expect(page.getByText(/não foi possível atualizar o status/i)).toBeVisible({ timeout: 5000 })
   })
 })

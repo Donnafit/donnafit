@@ -47,14 +47,25 @@ export function useRealtimeOrders() {
       )
 
       const supabase = createClient()
+      // .select("id").single() é essencial aqui: um UPDATE que casa 0 linhas
+      // (RLS bloqueando por engano, pedido removido/alterado por outra aba
+      // entre a seleção e o clique) NÃO retorna erro no Supabase/PostgREST
+      // se só checarmos `error` — a call "funciona" mas não muda nada no
+      // banco, e o usuário vê o botão "não responder" (nada muda de verdade,
+      // sem nenhum aviso). .single() força um erro detectável quando 0 (ou
+      // mais de 1) linha for afetada.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase.from("orders") as any).update({ status }).eq("id", orderId)
+      const { data, error } = await (supabase.from("orders") as any)
+        .update({ status })
+        .eq("id", orderId)
+        .select("id")
+        .single()
 
-      if (error) {
+      if (error || !data) {
         // Revert to previous state and surface the error
         setOrders(previousOrders)
         console.error("Erro ao atualizar status do pedido:", error)
-        throw error
+        throw error ?? new Error("Nenhum pedido foi atualizado — verifique permissões ou se o pedido ainda existe.")
       }
     },
     [orders]
