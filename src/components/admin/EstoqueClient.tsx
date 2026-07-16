@@ -12,12 +12,14 @@ interface ProductWithCat {
   name: string
   sku: string | null
   description: string | null
+  prep_instructions: string | null
   price: number
   category_id: string | null
   is_active: boolean
   stock_quantity: number
   min_stock_alert: number
   stock_type: "combo" | "avulso"
+  rice_integral_available: boolean
   image_url: string | null
   categories: { name: string; slug: string } | null
 }
@@ -301,11 +303,13 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
   const [form, setForm] = useState({
     name: productToEdit?.name ?? "",
     description: productToEdit?.description ?? "",
+    prep_instructions: productToEdit?.prep_instructions ?? "",
     sku: productToEdit?.sku ?? "",
     price: productToEdit?.price?.toString() ?? "",
     image_url: productToEdit?.image_url ?? "",
     category_id: productToEdit?.category_id ?? "",
     stock_type: productToEdit?.stock_type ?? "combo",
+    rice_integral_available: productToEdit?.rice_integral_available ?? true,
     stock_quantity: productToEdit?.stock_quantity?.toString() ?? "0",
     min_stock_alert: productToEdit?.min_stock_alert?.toString() ?? "10",
     is_active: productToEdit?.is_active ?? true,
@@ -334,6 +338,18 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
     { value: "avulso", label: "Avulso — baixa na produção" },
   ]
 
+  // Tipo de arroz servido — SÓ o seletor aqui. Hoje só existe a coluna
+  // booleana rice_integral_available (true = "ambos, cliente escolhe no
+  // checkout"; false = "só branco"). O modelo de estoque por variante de
+  // arroz (rice_stock_integral / rice_stock_branco, incluindo "nenhum" e
+  // "só integral" como opções reais) é outro plano (C16 — estoque de arroz
+  // + combos). Quando essa migração existir, trocar este seletor de 2 pra
+  // 4 opções e ligar na coluna nova em vez do booleano.
+  const riceOptions: DropdownOption[] = [
+    { value: "both",   label: "Integral e branco — cliente escolhe no checkout" },
+    { value: "branco", label: "Somente arroz branco" },
+  ]
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -349,11 +365,13 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
     const payload = {
       name: form.name.trim(),
       description: form.description.trim() || null,
+      prep_instructions: form.prep_instructions.trim() || null,
       sku: form.sku.trim().toUpperCase() || null,
       price: Number(Number(form.price).toFixed(2)),
       image_url: form.image_url.trim() || null,
       category_id: form.category_id || null,
       stock_type: form.stock_type,
+      rice_integral_available: form.rice_integral_available,
       stock_quantity: Math.max(0, parseInt(form.stock_quantity) || 0),
       min_stock_alert: Math.max(1, parseInt(form.min_stock_alert) || 10),
       is_active: form.is_active,
@@ -457,13 +475,25 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
               required />
           </div>
 
-          {/* Descrição */}
+          {/* Ingredientes */}
           <div>
-            <label style={labelStyle}>Descrição</label>
+            <label style={labelStyle}>Ingredientes</label>
             <textarea className="modal-input" style={{ ...inputStyle, resize: "vertical", minHeight: 72 }}
-              placeholder="Ingredientes, informações nutricionais, modo de preparo…"
+              placeholder="Ex: Peito de frango grelhado, arroz integral, brócolis no vapor, cenoura"
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+          </div>
+
+          {/* Modo de Preparo */}
+          <div>
+            <label style={labelStyle}>Modo de Preparo</label>
+            <textarea className="modal-input" style={{ ...inputStyle, resize: "vertical", minHeight: 96 }}
+              placeholder="Ex: Descongelar 24h na geladeira. Aquecer no microondas por 3 minutos em potência média..."
+              value={form.prep_instructions}
+              onChange={(e) => setForm((f) => ({ ...f, prep_instructions: e.target.value }))} />
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 6 }}>
+              Também pode ser editado depois em Admin → Manual de Preparo.
+            </p>
           </div>
 
           {/* Preço + SKU */}
@@ -505,6 +535,19 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
                 options={typeOptions}
               />
             </div>
+          </div>
+
+          {/* Tipo de arroz servido */}
+          <div>
+            <label style={labelStyle}>Tipo de Arroz Servido</label>
+            <CustomDropdown
+              value={form.rice_integral_available ? "both" : "branco"}
+              onChange={(v) => setForm((f) => ({ ...f, rice_integral_available: v === "both" }))}
+              options={riceOptions}
+            />
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 6 }}>
+              Só vale para pratos com arroz (identificado pela palavra "arroz" no campo Ingredientes).
+            </p>
           </div>
 
           {/* Estoque Inicial + Alerta */}

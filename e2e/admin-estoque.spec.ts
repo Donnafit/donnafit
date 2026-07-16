@@ -51,7 +51,10 @@ test.describe("Admin — Estoque", () => {
     await loginAdmin(page)
     await page.getByRole("button", { name: /novo produto/i }).click()
 
-    await page.getByPlaceholder(/frango grelhado/i).fill(newProductName)
+    // Match exato — regex genérica de "frango grelhado" agora também bate no
+    // placeholder do textarea de Ingredientes (B7/B12/B13), então precisa ser
+    // o texto completo do placeholder do campo Nome pra não dar strict mode violation.
+    await page.getByPlaceholder("Ex: Frango Grelhado com Arroz Integral (350g)").fill(newProductName)
     await page.getByPlaceholder("0,00").fill("25.90")
     await page.getByRole("button", { name: /adicionar ao cardápio/i }).click()
 
@@ -72,5 +75,54 @@ test.describe("Admin — Estoque", () => {
     // pra cima e a barra de estoque pra baixo dentro da linha.
     expect(box?.height ?? 0).toBeLessThanOrEqual(32)
     expect(box?.width ?? 0).toBeLessThanOrEqual(32)
+  })
+
+  test("cria produto com ingredientes, modo de preparo e tipo de arroz, e os dados persistem", async ({ page }) => {
+    await loginAdmin(page)
+    await page.getByRole("button", { name: /novo produto/i }).click()
+
+    const productName = `${newProductName} — Arroz`
+    // Match exato — mesma razão do teste acima (colisão com o placeholder do
+    // textarea de Ingredientes).
+    await page.getByPlaceholder("Ex: Frango Grelhado com Arroz Integral (350g)").fill(productName)
+    await page.getByPlaceholder("0,00").fill("22.50")
+    await page.getByPlaceholder(/peito de frango grelhado, arroz integral/i)
+      .fill("Peito de frango grelhado, arroz branco, brócolis no vapor")
+    await page.getByPlaceholder(/descongelar 24h/i)
+      .fill("Descongelar na geladeira por 24h. Aquecer no microondas por 3 minutos.")
+
+    // Tipo de arroz: troca do padrão "Integral e branco" para "Somente arroz branco"
+    await page.getByRole("button", { name: /integral e branco — cliente escolhe no checkout/i }).click()
+    await page.getByRole("button", { name: /^somente arroz branco$/i }).click()
+
+    await page.getByRole("button", { name: /adicionar ao cardápio/i }).click()
+    await expect(page.getByText("Preencha os dados para adicionar ao cardápio")).not.toBeVisible({ timeout: 8000 })
+
+    const sb = adminClient()
+    const { data } = await sb
+      .from("products")
+      .select("prep_instructions, rice_integral_available, description")
+      .eq("name", productName)
+      .single()
+    expect(data?.prep_instructions).toContain("Descongelar na geladeira")
+    expect(data?.description).toContain("brócolis")
+    expect(data?.rice_integral_available).toBe(false)
+
+    await sb.from("products").delete().eq("name", productName)
+  })
+
+  test("edita produto existente e persiste ingredientes/modo de preparo alterados", async ({ page }) => {
+    await loginAdmin(page)
+    await page.getByPlaceholder("Buscar por nome ou SKU…").fill(fx.product.name)
+    await page.getByRole("button", { name: `Editar ${fx.product.name}` }).first().click()
+
+    const prepText = `Instruções E2E ${fx.runTag}`
+    await page.getByPlaceholder(/descongelar 24h/i).fill(prepText)
+    await page.getByRole("button", { name: /salvar alterações/i }).click()
+    await expect(page.getByText("Edite os detalhes do produto abaixo")).not.toBeVisible({ timeout: 8000 })
+
+    const sb = adminClient()
+    const { data } = await sb.from("products").select("prep_instructions").eq("id", fx.product.id).single()
+    expect(data?.prep_instructions).toBe(prepText)
   })
 })
