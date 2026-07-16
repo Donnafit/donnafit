@@ -9,8 +9,71 @@
 Spec: `docs/superpowers/specs/2026-07-16-donna-fit-batch-fixes-design.md`
 Planos: `docs/superpowers/plans/2026-07-16-grupo-{a-bugs,b-operacional,c1-pagamento-link,c2-dashboard-faturamento,c3-estoque-combos}.md`
 
-**Fase 1 está 100% concluída e mesclada no master.** Fase 2 (C16 — estoque de
-arroz + combos) e QA final ainda não começaram.
+**Fase 1 e Fase 2 (C16) estão 100% concluídas e mescladas no master, com
+regressão e2e completa passando (40/40 testes).** Só falta QA final.
+Master em `e450cef`.
+
+## ✅ Fase 2 — C16 (estoque de arroz + combos) concluída
+
+Implementada como stream único serial (não dividida em 2, ao contrário do
+que a Fase 1 tinha planejado — ver "Decisões" abaixo), mesclada no master
+com 3 conflitos reais em `EstoqueClient.tsx` (resolvidos à mão: `stock_type`
+virou `"combo" | "individual"`, o seletor antigo "Tipo de Arroz Servido" (2
+opções, do B2) foi substituído pelo novo "Estoque de Arroz" (4 opções, do
+C16), `rice_integral_available` deixou de ser editável direto e passou a
+ser derivado de `rice_stock_mode`).
+
+**Migrations aplicadas:** `20260716_026_rice_stock_and_combo_items.sql`
+(aditiva: colunas de arroz + tabela `combo_items` + RPC
+`reserve_rice_stock`) e `20260716_027_individual_stock_type_rename.sql`
+(rename `avulso`→`individual`, remove trigger/função antigos de baixa-na-
+produção, zera `stock_quantity` de combos existentes). **Bug real
+encontrado e corrigido na 027**: a ordem original dos statements (UPDATE
+antes de trocar a CHECK constraint) fazia a constraint ANTIGA rejeitar o
+próprio UPDATE que tentava migrar os dados — corrigido invertendo a ordem
+(DROP da constraint antiga → UPDATE dos dados → ADD da constraint nova).
+Confirmado aplicado: 49 produtos `individual`, 8 `combo`, trigger removido,
+`combo_items`/`reserve_rice_stock` existem.
+
+**Bug real encontrado em `e2e/scripts/seed.mjs`**: ainda inseria
+`stock_type: "avulso"` (valor não mais aceito pela constraint) — corrigido
+para `"individual"`. Outros ~10 arquivos de spec e2e ainda têm o literal
+`"avulso"` dentro do corpo de itens de pedido enviado a `POST /api/orders`,
+mas isso é inofensivo — `route.ts` nunca lê esse campo do payload do
+cliente (sempre revalida contra o banco via `freshById`), só `seed.mjs`
+fazia um INSERT direto com esse valor.
+
+**Ajustado no merge/regressão**: `admin-estoque.spec.ts` (2 testes —
+seletor de arroz novo + produto novo nasce "Combo" por padrão agora, então
+precisa trocar pra "Individual" antes de ver o seletor de arroz),
+`api-orders-integrity.spec.ts` (teste antigo de combo assumia que combo
+descontava a própria `stock_quantity` no checkout — modelo mudou, agora só
+desconta componentes via `combo_items`; combo sem composição não desconta
+nada), `admin-cozinha.spec.ts` (locator do botão "Registrar" ficou
+ambíguo — ver próxima seção sobre o motivo).
+
+## ⚠️ Mudança adicional pedida pelo usuário durante a Fase 2: limiar de baixo estoque 10→50
+
+O usuário pediu (fora do escopo dos planos originais) pra aumentar o
+padrão de alerta de baixo estoque de 10 para 50 marmitas. Aplicado via
+`supabase/migrations/20260716_028_min_stock_alert_default_50.sql`: muda o
+`DEFAULT` da coluna e atualiza os 56 produtos que ainda estavam no valor
+padrão antigo (10→50); produtos já customizados manualmente (ex: combos em
+5) não foram tocados. Também atualizados os defaults do formulário em
+`EstoqueClient.tsx`.
+
+**Efeito colateral real descoberto:** boa parte do cardápio (48 de 50
+produtos `individual`) tem `stock_quantity` gravado como exatamente `50`
+no banco (provavelmente valor de seed nunca ajustado pra refletir estoque
+físico real) — com o novo limiar também em 50, a comparação
+`stock_quantity <= min_stock_alert` (já existente, não é nova) passou a
+marcar quase o cardápio inteiro como "baixo estoque" na tela da cozinha e
+no painel de estoque. Isso **não é um bug de código** (o comparador
+sempre foi `<=`, o problema é a coincidência dos dois valores ficarem
+iguais) — é um sinal de que os números de `stock_quantity` reais
+provavelmente precisam ser conferidos/atualizados pelo dono do negócio no
+painel admin. Não tentei adivinhar/corrigir os valores reais de estoque —
+isso é dado operacional, não decisão técnica.
 
 ## ✅ Fase 1 — concluída (9/9 streams mesclados no master)
 
@@ -96,16 +159,15 @@ em `fbe51e6` — **não afeta o app real**, só a asserção do teste (o redirec
 de WhatsApp de verdade usa a URL corretamente codificada, sem esse decode
 extra).
 
-## Regressão e2e pós-merge (rodada completa, master em `7c99d5e`)
+## Regressão e2e pós-merge (rodada completa, master em `e450cef`)
 
-36 testes rodados (`admin-pedidos`, `admin-estoque`, `api-orders-integrity`,
-`admin-cozinha`, `checkout-delivery-fee`, `checkout-min-delivery`,
-`checkout-card-link-payment`, `checkout-pix-discount`, `checkout-rice-choice`,
-`admin-revenue-dashboard`) — **todos passando** depois de: (1) corrigir o bug
-de double-decode acima, (2) confirmar que 2 falhas de `admin-cozinha` e
-`checkout-pix-discount` na primeira rodada eram flakiness por contenção de
-recursos (máquina de 2 núcleos rodando a suite inteira de uma vez) — ambas
-passaram limpo isoladas.
+40 testes rodados (`admin-pedidos`, `admin-estoque`, `api-orders-integrity`,
+`api-orders-stock-variants`, `admin-cozinha`, `checkout-delivery-fee`,
+`checkout-min-delivery`, `checkout-card-link-payment`, `checkout-pix-discount`,
+`checkout-rice-choice`, `admin-revenue-dashboard`) — **40/40 passando**.
+Flakiness por contenção de recursos observada em alguns testes ao rodar a
+suite inteira de uma vez (máquina de 2 núcleos) — sempre passaram limpo
+quando isolados; não é regressão real.
 
 ## ⬜ Worktrees órfãs de sessão anterior — decisão pendente
 
@@ -117,18 +179,10 @@ examinadas nesta sessão antes do pedido de remoção). Seguro remover — o
 conteúdo delas é puramente WIP de um trabalho que já foi refeito do zero e
 mesclado — mas precisa de confirmação explícita do usuário antes.
 
-## ⬜ Fase 2 — ainda não iniciada
-
-- **C16** — estoque de arroz + sistema de combos
-  (`grupo-c3-estoque-combos.md`, o maior e mais arriscado). Depende de B2 já
-  ter mesclado os campos de ingrediente/preparo no formulário de produto
-  (✅ já mesclado). Recomendo dividir em 2 sub-streams paralelos (estoque de
-  arroz vs. sistema de combos) pra usar os 2 núcleos de CPU disponíveis.
-
-## ⬜ QA final — ainda não iniciada
+## ⬜ QA final — em andamento
 
 `qa-funcional` + `qa-ui` em paralelo, mais regressão e2e completa
-serializada, depois de C16 mesclado.
+serializada. Único item restante do lote inteiro.
 
 ## Decisões importantes tomadas nesta sessão (não redescobrir)
 
@@ -142,3 +196,14 @@ serializada, depois de C16 mesclado.
 4. **CLI do Supabase deve ser linkado a cada sessão** e `db push` nunca deve
    ser usado neste projeto — usar `db query --linked -f <arquivo>` para
    aplicar SQL direto (ver seção acima).
+5. **C16 não foi dividido em 2 sub-streams paralelos** (arroz vs. combos),
+   ao contrário do que a Fase 1 tinha recomendado — o plano real tem as
+   Tasks 2/3 e 4/5 explicitamente sequenciais (uma task substitui o bloco
+   de código que a anterior criou, no mesmo arquivo), então rodou como 1
+   stream serial único. Só descoberto ao ler o plano por completo.
+6. **Migrations do C16 renumeradas** de 024/025 (como o plano original
+   pedia) para 026/027, já que 024/025 foram usados pelo B1/C11 nesta
+   mesma sessão. Nova migration 028 (limiar de estoque 10→50, pedido do
+   usuário) não faz parte de nenhum plano original.
+7. **Limiar de baixo estoque agora em 50** — ver seção própria acima sobre
+   o efeito colateral nos dados reais de `stock_quantity`.
