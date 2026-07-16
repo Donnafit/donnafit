@@ -73,4 +73,21 @@ test.describe("Admin — Estoque", () => {
     expect(box?.height ?? 0).toBeLessThanOrEqual(32)
     expect(box?.width ?? 0).toBeLessThanOrEqual(32)
   })
+
+  test("digita uma quantidade nova no campo entre os +/- e persiste no banco", async ({ page }) => {
+    await loginAdmin(page)
+    await page.getByPlaceholder("Buscar por nome ou SKU…").fill("E2E_TEST")
+
+    const qtyInput = page.getByRole("spinbutton", { name: `Quantidade de ${fx.product.name}` })
+    await qtyInput.fill("42")
+    await qtyInput.blur()
+    await page.waitForTimeout(600) // mesmo debounce de salvamento usado no teste do stepper
+
+    const sb = adminClient()
+    const { data } = await sb.from("products").select("stock_quantity").eq("id", fx.product.id).single()
+    expect(data?.stock_quantity).toBe(42)
+
+    // devolve o estoque a um valor neutro pra não afetar specs que rodam depois
+    await resetProductStock(fx.product.id, 10)
+  })
 })

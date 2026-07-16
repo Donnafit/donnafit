@@ -601,6 +601,7 @@ export function EstoqueClient({ products: initial }: Props) {
   const [typeFilter, setTypeFilter] = useState("all")
   const [saving,     setSaving]     = useState<Record<string, boolean>>({})
   const [saved,      setSaved]      = useState<Record<string, boolean>>({})
+  const [qtyDraft,   setQtyDraft]   = useState<Record<string, string>>({})
   const [showModal,  setShowModal]  = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductWithCat | null>(null)
   const [, startTransition] = useTransition()
@@ -631,22 +632,37 @@ export function EstoqueClient({ products: initial }: Props) {
   const lowCount   = products.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock_alert).length
   const emptyCount = products.filter((p) => p.stock_quantity === 0).length
 
-  async function adjustQty(product: ProductWithCat, delta: number) {
-    const newQty = Math.max(0, product.stock_quantity + delta)
-    setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, stock_quantity: newQty } : p)))
+  async function applyQty(product: ProductWithCat, newQty: number, notes: string) {
+    const clamped = Math.max(0, newQty)
+    setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, stock_quantity: clamped } : p)))
     setSaving((prev) => ({ ...prev, [product.id]: true }))
     const supabase = createClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.rpc as any)("adjust_stock", {
       p_product_id: product.id,
-      p_new_quantity: newQty,
-      p_notes: "Ajuste manual — painel admin",
+      p_new_quantity: clamped,
+      p_notes: notes,
     })
     setSaving((prev) => ({ ...prev, [product.id]: false }))
     setSaved((prev) => ({ ...prev, [product.id]: true }))
     startTransition(() => {
       setTimeout(() => setSaved((prev) => ({ ...prev, [product.id]: false })), 1500)
     })
+  }
+
+  async function adjustQty(product: ProductWithCat, delta: number) {
+    await applyQty(product, product.stock_quantity + delta, "Ajuste manual — painel admin")
+  }
+
+  async function commitQtyInput(product: ProductWithCat, rawValue: string) {
+    setQtyDraft((prev) => {
+      const next = { ...prev }
+      delete next[product.id]
+      return next
+    })
+    const parsed = parseInt(rawValue, 10)
+    if (Number.isNaN(parsed) || parsed === product.stock_quantity) return
+    await applyQty(product, parsed, "Ajuste manual — digitado no painel admin")
   }
 
   const metrics = [
@@ -811,13 +827,25 @@ export function EstoqueClient({ products: initial }: Props) {
                     <Minus size={14} strokeWidth={2.5} style={{ color: "var(--text-700)" }} />
                   </button>
 
-                  <span style={{
-                    fontFamily: "var(--font-ui)", fontSize: 17, fontWeight: 900,
-                    color: isSaved ? "#10B981" : "var(--text-950)",
-                    width: 32, textAlign: "center", transition: "color 200ms",
-                  }}>
-                    {isSaving ? "…" : isSaved ? "✓" : qty}
-                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    inputMode="numeric"
+                    aria-label={`Quantidade de ${product.name}`}
+                    disabled={isSaving}
+                    value={qtyDraft[product.id] ?? String(qty)}
+                    onChange={(e) => setQtyDraft((prev) => ({ ...prev, [product.id]: e.target.value }))}
+                    onFocus={(e) => e.currentTarget.select()}
+                    onBlur={(e) => commitQtyInput(product, e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur() }}
+                    style={{
+                      width: 40, height: 44, border: "none", borderRadius: 6,
+                      background: "transparent",
+                      fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 900, textAlign: "center",
+                      color: isSaved ? "#10B981" : "var(--text-950)",
+                      outline: "none", transition: "color 200ms",
+                    }}
+                  />
 
                   <button
                     onClick={() => adjustQty(product, 1)}
