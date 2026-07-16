@@ -232,11 +232,12 @@ export function ManualClient({ products: initialProducts }: Props) {
                   <div key={cat}>
                     {/* Category header (accordion toggle) */}
                     <button
+                      data-testid="manual-category-toggle"
                       onClick={() => toggleCat(cat)}
                       style={{
                         width: "100%", textAlign: "left",
                         display: "flex", alignItems: "center", justifyContent: "space-between",
-                        padding: "8px 16px",
+                        padding: "8px 20px 8px 16px",
                         background: "var(--surface-50)",
                         border: "none",
                         borderBottom: "1px solid var(--surface-200)",
@@ -261,6 +262,7 @@ export function ManualClient({ products: initialProducts }: Props) {
                         </span>
                       </span>
                       <ChevronDown
+                        data-testid="manual-accordion-chevron"
                         size={12}
                         strokeWidth={2.5}
                         className={`cat-chevron${isOpen ? " open" : ""}`}
