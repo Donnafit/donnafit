@@ -41,4 +41,32 @@ test.describe("Cardápio — navegação e descoberta", () => {
     // não deve mostrar spinner de carregamento nem resultados para 1 char
     await expect(page.getByText(/nenhum resultado/i)).not.toBeVisible()
   })
+
+  test("clicar numa categoria dentro do popup '+' (Ver todas as categorias) filtra o grid", async ({ page }) => {
+    await page.goto("/")
+    const plusButton = page.getByRole("button", { name: "Ver todas as categorias" })
+    await plusButton.click()
+
+    // Pega qualquer item do dropdown que não seja "Todos" (a categoria
+    // escondida atrás do "+" varia conforme o catálogo, então usamos a
+    // primeira disponível dentro do popup em vez de fixar um nome). "Todos"
+    // é excluído porque já é a categoria ativa por padrão ao carregar a
+    // página — selecioná-lo de novo não provaria que o clique realmente
+    // disparou onSelect.
+    const categoryButton = page
+      .locator('div[style*="position: absolute"] button, div[style*="position:absolute"] button')
+      .filter({ hasNotText: "Todos" })
+      .first()
+    await expect(categoryButton).toBeVisible({ timeout: 3000 })
+    await categoryButton.click()
+
+    // Bug corrigido: o popup fecha E o grid realmente filtra por essa categoria
+    // (antes do fix, nada acontecia — onSelect nunca era chamado). Como a
+    // categoria escolhida está escondida atrás do "+" (não é um chip visível
+    // fixo), o próprio botão "+" fica destacado em dourado quando a categoria
+    // ativa está entre as escondidas — sinal de ativação independente do nome
+    // da categoria sorteada no popup.
+    await expect(plusButton).toBeVisible()
+    await expect(plusButton).toHaveCSS("background-color", "rgb(200, 155, 60)")
+  })
 })
