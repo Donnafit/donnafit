@@ -161,12 +161,15 @@ export type Database = {
           prep_instructions: string | null
           price: number
           image_url: string | null
-          stock_type: "combo" | "avulso"
+          stock_type: "combo" | "individual"
           stock_quantity: number
           min_stock_alert: number
           is_active: boolean
           sort_order: number
           rice_integral_available: boolean
+          rice_stock_mode: "none" | "integral" | "branco" | "both"
+          rice_stock_integral: number | null
+          rice_stock_branco: number | null
           created_at: string
           updated_at: string
         }
@@ -179,12 +182,15 @@ export type Database = {
           prep_instructions?: string | null
           price: number
           image_url?: string | null
-          stock_type?: "combo" | "avulso"
+          stock_type?: "combo" | "individual"
           stock_quantity?: number
           min_stock_alert?: number
           is_active?: boolean
           sort_order?: number
           rice_integral_available?: boolean
+          rice_stock_mode?: "none" | "integral" | "branco" | "both"
+          rice_stock_integral?: number | null
+          rice_stock_branco?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -197,14 +203,40 @@ export type Database = {
           prep_instructions?: string | null
           price?: number
           image_url?: string | null
-          stock_type?: "combo" | "avulso"
+          stock_type?: "combo" | "individual"
           stock_quantity?: number
           min_stock_alert?: number
           is_active?: boolean
           sort_order?: number
           rice_integral_available?: boolean
+          rice_stock_mode?: "none" | "integral" | "branco" | "both"
+          rice_stock_integral?: number | null
+          rice_stock_branco?: number | null
           created_at?: string
           updated_at?: string
+        }
+      }
+      combo_items: {
+        Row: {
+          id: string
+          combo_product_id: string
+          component_product_id: string
+          quantity: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          combo_product_id: string
+          component_product_id: string
+          quantity: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          combo_product_id?: string
+          component_product_id?: string
+          quantity?: number
+          created_at?: string
         }
       }
       orders: {
@@ -346,8 +378,8 @@ export type Database = {
         Args: { p_product_id: string; p_quantity: number; p_order_id: string }
         Returns: void
       }
-      deduct_stock: {
-        Args: { p_product_id: string; p_quantity: number; p_order_id: string }
+      reserve_rice_stock: {
+        Args: { p_product_id: string; p_rice_type: string; p_quantity: number; p_order_id: string }
         Returns: void
       }
       adjust_stock: {

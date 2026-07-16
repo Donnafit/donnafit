@@ -59,7 +59,7 @@ export async function POST(req: Request) {
   const productIds = [...new Set(body.items.map((item) => item.product.id))]
   const { data: freshProducts, error: productsErr } = await supabase
     .from("products")
-    .select("id, name, sku, price, stock_type, is_active, rice_integral_available")
+    .select("id, name, sku, price, stock_type, is_active, rice_integral_available, rice_stock_mode, rice_stock_integral, rice_stock_branco")
     .in("id", productIds)
 
   if (productsErr) {
@@ -179,37 +179,101 @@ export async function POST(req: Request) {
     )
   }
 
-  // Reserva o estoque de TODOS os itens (antes só "combo" era checado — "avulso"
-  // podia vender infinitamente além do estoque real). Atômico no banco: se duas
-  // requisições concorrentes disputam a última unidade, só uma consegue.
-  const reserveResults = await Promise.allSettled(
-    body.items.map((item) =>
-      supabase.rpc("reserve_stock", {
-        p_product_id: item.product.id,
-        p_quantity: item.quantity,
-        p_order_id: order.id,
-      })
-    )
-  )
-  const failedReservations = reserveResults
-    .map((r, i) => ({ r, item: body.items[i] }))
+  // Cada item do pedido vira uma ou mais "operações de estoque". Um item
+  // comum vira 1 operação simples (mira stock_quantity); um item com
+  // estoque dividido por tipo de arroz (rice_stock_mode === "both") vira
+  // 1 operação "rice" (mira rice_stock_integral ou rice_stock_branco,
+  // conforme a escolha do cliente). Itens "combo" ganham uma expansão
+  // própria em componentes — ver Task 3.
+  interface StockOp {
+    kind: "simple" | "rice"
+    productId: string
+    quantity: number
+    riceType?: "integral" | "branco"
+    label: string
+  }
+
+  function buildRiceOp(item: (typeof body.items)[number]): StockOp {
+    const requested = body.riceChoices?.[item.product.id]
+    // Mesmo princípio de nunca confiar em escolha que devia ser travada
+    // no servidor — já usado acima pras notas do pedido (riceNotes).
+    const riceType: "integral" | "branco" = requested === "integral" ? "integral" : "branco"
+    return { kind: "rice", productId: item.product.id, quantity: item.quantity, riceType, label: item.product.name }
+  }
+
+  // Itens "combo" não têm stock_quantity própria — a baixa mira cada
+  // componente individual (combo_items), multiplicando a quantidade do
+  // componente pela quantidade do combo no pedido.
+  const comboProductIds = body.items
+    .map((item) => item.product.id)
+    .filter((id) => freshById.get(id)?.stock_type === "combo")
+
+  const comboItemsByComboId = new Map<string, { component_product_id: string; quantity: number }[]>()
+  if (comboProductIds.length > 0) {
+    const { data: comboItemsData, error: comboItemsErr } = await supabase
+      .from("combo_items")
+      .select("combo_product_id, component_product_id, quantity")
+      .in("combo_product_id", comboProductIds)
+
+    if (comboItemsErr) {
+      return NextResponse.json({ error: "Erro ao validar composição do combo", detail: comboItemsErr.message }, { status: 500 })
+    }
+    for (const ci of comboItemsData ?? []) {
+      const list = comboItemsByComboId.get(ci.combo_product_id) ?? []
+      list.push({ component_product_id: ci.component_product_id, quantity: ci.quantity })
+      comboItemsByComboId.set(ci.combo_product_id, list)
+    }
+  }
+
+  const stockOps: StockOp[] = body.items.flatMap((item) => {
+    const fresh = freshById.get(item.product.id)
+    if (fresh.stock_type === "combo") {
+      const components = comboItemsByComboId.get(item.product.id) ?? []
+      if (components.length === 0) {
+        // Combo sem composição cadastrada ainda (migração manual — ver
+        // Task 6 do plano): nenhuma operação de estoque é gerada pra
+        // ele, ou seja, essa venda NÃO baixa estoque de ninguém. É
+        // esperado até a composição ser configurada, mas fica logado
+        // pra ficar visível em produção.
+        console.warn(`Combo ${item.product.id} (${item.product.name}) sem combo_items configurados — venda não baixou estoque de nenhum componente.`)
+      }
+      return components.map((comp) => ({
+        kind: "simple" as const,
+        productId: comp.component_product_id,
+        quantity: comp.quantity * item.quantity,
+        label: item.product.name,
+      }))
+    }
+    if (fresh.rice_stock_mode === "both") return [buildRiceOp(item)]
+    return [{ kind: "simple" as const, productId: item.product.id, quantity: item.quantity, label: item.product.name }]
+  })
+
+  // Reserva o estoque de TODAS as operações (antes só "combo" era checado
+  // — "avulso" podia vender infinitamente além do estoque real). Atômico
+  // no banco: se duas requisições concorrentes disputam a última
+  // unidade, só uma consegue.
+  const reserveOp = (op: StockOp, quantity: number) => {
+    return op.kind === "rice"
+      ? supabase.rpc("reserve_rice_stock", { p_product_id: op.productId, p_rice_type: op.riceType, p_quantity: quantity, p_order_id: order.id })
+      : supabase.rpc("reserve_stock", { p_product_id: op.productId, p_quantity: quantity, p_order_id: order.id })
+  }
+
+  const reserveResults = await Promise.allSettled(stockOps.map((op) => reserveOp(op, op.quantity)))
+  const failedOps = reserveResults
+    .map((r, i) => ({ r, op: stockOps[i] }))
     .filter(({ r }) => r.status === "rejected" || (r as PromiseFulfilledResult<any>).value?.error)
 
-  if (failedReservations.length > 0) {
+  if (failedOps.length > 0) {
     // Desfaz as reservas que deram certo, pra não vazar estoque, e cancela o pedido.
-    const succeeded = body.items.filter((_, i) => {
+    const succeededOps = stockOps.filter((_, i) => {
       const r = reserveResults[i]
       return r.status === "fulfilled" && !(r as PromiseFulfilledResult<any>).value?.error
     })
-    await Promise.allSettled(
-      succeeded.map((item) =>
-        supabase.rpc("reserve_stock", { p_product_id: item.product.id, p_quantity: -item.quantity, p_order_id: order.id })
-      )
-    )
+    await Promise.allSettled(succeededOps.map((op) => reserveOp(op, -op.quantity)))
     await supabase.from("orders").delete().eq("id", order.id)
 
     return NextResponse.json(
-      { error: `Estoque insuficiente para: ${failedReservations.map(({ item }) => item.product.name).join(", ")}` },
+      { error: `Estoque insuficiente para: ${[...new Set(failedOps.map(({ op }) => op.label))].join(", ")}` },
       { status: 409 }
     )
   }
