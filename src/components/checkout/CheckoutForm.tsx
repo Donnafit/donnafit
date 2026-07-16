@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import { buildWhatsAppMessage, buildWhatsAppURL } from "@/lib/whatsapp"
 import { matchDeliveryZone } from "@/lib/deliveryZones"
 import { formatCurrency } from "@/lib/utils"
-import { Store, Truck, QrCode, CreditCard, Check } from "lucide-react"
+import { Store, Truck, QrCode, CreditCard, Check, Link2, Info } from "lucide-react"
 
 const DEFAULT_PIX_DISCOUNT_RATE = 0.02
 
@@ -139,7 +139,7 @@ export function CheckoutForm() {
     return () => clearTimeout(timer)
   }, [address, delivery, zones])
 
-  const [payment, setPayment] = useState<"pix" | "card">("pix")
+  const [payment, setPayment] = useState<"pix" | "card" | "card_link">("pix")
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState("")
   const [riceChoices, setRiceChoices] = useState<Record<string, "integral" | "branco">>({})
@@ -550,15 +550,16 @@ export function CheckoutForm() {
           </span>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {/* PIX */}
           <button
             type="button"
             onClick={() => setPayment("pix")}
             className={`option-card ${payment === "pix" ? "selected" : ""}`}
+            style={{ padding: "14px 6px" }}
           >
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
-              <QrCode size={28} style={{ color: "#C89B3C" }} />
+              <QrCode size={24} style={{ color: "#C89B3C" }} />
             </div>
             <div style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 700, fontSize: 14, color: "#1A1A1A", marginBottom: 4 }}>PIX</div>
             <div style={{ fontSize: 11, color: "#5A6B2A", fontWeight: 700, marginBottom: 2 }}>{pixDiscountPercentLabel} de desconto</div>
@@ -575,9 +576,10 @@ export function CheckoutForm() {
             type="button"
             onClick={() => setPayment("card")}
             className={`option-card ${payment === "card" ? "selected" : ""}`}
+            style={{ padding: "14px 6px" }}
           >
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
-              <CreditCard size={28} style={{ color: "#C89B3C" }} />
+              <CreditCard size={24} style={{ color: "#C89B3C" }} />
             </div>
             <div style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 700, fontSize: 14, color: "#1A1A1A", marginBottom: 4 }}>Maquininha</div>
             <div style={{ fontSize: 11, color: "#888", fontWeight: 500 }}>Na entrega/retirada</div>
@@ -587,7 +589,44 @@ export function CheckoutForm() {
               </svg>
             </div>
           </button>
+
+          {/* Cartão (link de pagamento) */}
+          <button
+            type="button"
+            onClick={() => setPayment("card_link")}
+            className={`option-card ${payment === "card_link" ? "selected" : ""}`}
+            style={{ padding: "14px 6px" }}
+          >
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+              <Link2 size={24} style={{ color: "#C89B3C" }} />
+            </div>
+            <div style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 700, fontSize: 13, color: "#1A1A1A", marginBottom: 4 }}>Cartão (link)</div>
+            <div style={{ fontSize: 10.5, color: "#888", fontWeight: 500 }}>Enviado após confirmação</div>
+            <div className="option-check">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="3">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+          </button>
         </div>
+
+        {payment === "card_link" && (
+          <div style={{
+            marginTop: 16,
+            background: "#FFF7E6",
+            border: "1.5px solid #F5DFA6",
+            borderRadius: 10,
+            padding: "12px 14px",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 8,
+          }}>
+            <Info size={15} style={{ color: "#B45309", flexShrink: 0, marginTop: 1 }} />
+            <span style={{ fontSize: 12.5, color: "#8A6D1D", fontWeight: 600, lineHeight: 1.4 }}>
+              O link de pagamento será enviado manualmente pelo WhatsApp após a confirmação do pedido.
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Secao: Resumo */}

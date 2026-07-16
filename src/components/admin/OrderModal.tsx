@@ -68,7 +68,11 @@ export function OrderModal({ order, onClose, onUpdateStatus }: Props) {
               </p>
             )}
             <p className="text-sm text-gray-600">
-              {order.payment_method === "pix" ? "PIX" : "Maquininha na entrega"}
+              {order.payment_method === "pix"
+                ? "PIX"
+                : order.payment_method === "card_link"
+                  ? "Cartão (link de pagamento)"
+                  : "Maquininha na entrega"}
             </p>
             <p className="text-xs text-gray-400">{formatDate(order.created_at)}</p>
           </div>

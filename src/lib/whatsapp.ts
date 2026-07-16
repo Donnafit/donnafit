@@ -5,7 +5,7 @@ interface OrderPayload {
   customerName: string
   customerPhone: string
   deliveryType: "delivery" | "pickup"
-  paymentMethod: "pix" | "card"
+  paymentMethod: "pix" | "card" | "card_link"
   deliveryAddress?: string
   pickupAddress?: string
   items: CartItem[]
@@ -59,7 +59,9 @@ export function buildWhatsAppMessage(order: OrderPayload): string {
   const paymentLabel =
     order.paymentMethod === "pix"
       ? `PIX _(desconto de ${order.pixDiscountPercentLabel ?? "2%"} já incluído no total)_`
-      : "Maquininha"
+      : order.paymentMethod === "card_link"
+        ? "Cartão (link de pagamento) — enviar link manualmente"
+        : "Maquininha"
 
   const totalFormatted = `R$ ${order.total.toFixed(2).replace(".", ",")}`
 

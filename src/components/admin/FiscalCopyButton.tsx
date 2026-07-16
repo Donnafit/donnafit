@@ -25,7 +25,11 @@ function buildReceiptHTML(order: OrderWithItems): string {
   }).join("")
 
   const total = Number(order.total).toFixed(2).replace(".", ",")
-  const payment = order.payment_method === "pix" ? "PIX" : "Cartão / Maquininha"
+  const payment = order.payment_method === "pix"
+    ? "PIX"
+    : order.payment_method === "card_link"
+      ? "Cartão (link de pagamento)"
+      : "Cartão / Maquininha"
   const delivery = order.delivery_type === "delivery" ? "Entrega" : "Retirada"
 
   return `<!DOCTYPE html>

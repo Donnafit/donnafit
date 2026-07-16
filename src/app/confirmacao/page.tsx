@@ -8,7 +8,7 @@ type OrderSummary = {
   items: { name: string; qty: number; price: number }[]
   deliveryType: "pickup" | "delivery"
   deliveryFee?: number
-  paymentMethod: "pix" | "card"
+  paymentMethod: "pix" | "card" | "card_link"
   pixDiscountPercentLabel?: string
   total: number
 }
@@ -177,7 +177,9 @@ function ConfirmacaoContent() {
                 <span style={{ fontWeight: 600, color: "#1A1A1A" }}>
                   {summary.paymentMethod === "pix"
                     ? `PIX (${summary.pixDiscountPercentLabel ?? "2%"} desconto)`
-                    : "Maquininha"}
+                    : summary.paymentMethod === "card_link"
+                      ? "Cartão (link de pagamento)"
+                      : "Maquininha"}
                 </span>
               </div>
               <div style={{ borderTop: "1.5px dashed #E5E0D8", paddingTop: 12, marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>

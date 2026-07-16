@@ -214,7 +214,7 @@ export type Database = {
           customer_name: string
           customer_phone: string
           delivery_type: "delivery" | "pickup"
-          payment_method: "pix" | "card"
+          payment_method: "pix" | "card" | "card_link"
           status: "pending" | "production" | "ready" | "out_for_delivery" | "delivered" | "cancelled"
           subtotal: number
           total: number
@@ -230,7 +230,7 @@ export type Database = {
           customer_name: string
           customer_phone: string
           delivery_type: "delivery" | "pickup"
-          payment_method: "pix" | "card"
+          payment_method: "pix" | "card" | "card_link"
           status?: "pending" | "production" | "ready" | "out_for_delivery" | "delivered" | "cancelled"
           subtotal: number
           total: number
@@ -246,7 +246,7 @@ export type Database = {
           customer_name?: string
           customer_phone?: string
           delivery_type?: "delivery" | "pickup"
-          payment_method?: "pix" | "card"
+          payment_method?: "pix" | "card" | "card_link"
           status?: "pending" | "production" | "ready" | "out_for_delivery" | "delivered" | "cancelled"
           subtotal?: number
           total?: number

@@ -12,7 +12,7 @@ interface OrderBody {
   customerName: string
   customerPhone: string
   deliveryType: "delivery" | "pickup"
-  paymentMethod: "pix" | "card"
+  paymentMethod: "pix" | "card" | "card_link"
   deliveryAddress?: string
   deliveryFee?: number
   items: CartItem[]
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
   }
 
   // Validar valores permitidos para paymentMethod e deliveryType
-  const validPaymentMethods = ["pix", "card"]
+  const validPaymentMethods = ["pix", "card", "card_link"]
   const validDeliveryTypes = ["delivery", "pickup"]
 
   if (!validPaymentMethods.includes(body.paymentMethod)) {
