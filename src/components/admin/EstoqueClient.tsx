@@ -17,7 +17,7 @@ interface ProductWithCat {
   is_active: boolean
   stock_quantity: number
   min_stock_alert: number
-  stock_type: "combo" | "avulso"
+  stock_type: "combo" | "individual"
   rice_stock_mode: "none" | "integral" | "branco" | "both"
   rice_stock_integral: number | null
   rice_stock_branco: number | null
@@ -289,6 +289,109 @@ export function ImageUploader({ value, onChange }: ImageUploaderProps) {
   )
 }
 
+// ─── Composição de Combo ────────────────────────────────────────────────────
+interface ComboComponentDraft {
+  component_product_id: string
+  quantity: string
+}
+
+interface SimpleProductOption {
+  id: string
+  name: string
+}
+
+interface ComboComposerProps {
+  components: ComboComponentDraft[]
+  onChange: (next: ComboComponentDraft[]) => void
+  individualProducts: SimpleProductOption[]
+  comboOptions: SimpleProductOption[]
+  onCopyFrom: (comboId: string) => void
+}
+
+function ComboComposer({ components, onChange, individualProducts, comboOptions, onCopyFrom }: ComboComposerProps) {
+  const productOptions: DropdownOption[] = individualProducts.map((p) => ({ value: p.id, label: p.name }))
+  const copyOptions: DropdownOption[] = [
+    { value: "", label: "Copiar composição de um combo existente…" },
+    ...comboOptions.map((p) => ({ value: p.id, label: p.name })),
+  ]
+
+  function updateRow(index: number, patch: Partial<ComboComponentDraft>) {
+    onChange(components.map((row, i) => (i === index ? { ...row, ...patch } : row)))
+  }
+  function removeRow(index: number) {
+    onChange(components.filter((_, i) => i !== index))
+  }
+  function addRow() {
+    onChange([...components, { component_product_id: "", quantity: "1" }])
+  }
+
+  return (
+    <div>
+      <label style={{
+        fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700,
+        color: "var(--text-300)", letterSpacing: "0.5px", textTransform: "uppercase",
+        display: "block", marginBottom: 5,
+      }}>
+        Composição do Combo
+      </label>
+
+      <div style={{ marginBottom: 10 }}>
+        <CustomDropdown value="" onChange={onCopyFrom} options={copyOptions} placeholder="Copiar composição de um combo existente…" />
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {components.map((row, index) => (
+          <div key={index} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ flex: 3 }}>
+              <CustomDropdown
+                value={row.component_product_id}
+                onChange={(v) => updateRow(index, { component_product_id: v })}
+                options={productOptions}
+                placeholder="Produto…"
+                compact
+              />
+            </div>
+            <input
+              type="number" min="1"
+              value={row.quantity}
+              onChange={(e) => updateRow(index, { quantity: e.target.value })}
+              style={{
+                width: 64, fontFamily: "var(--font-ui)", fontSize: 13,
+                color: "var(--text-950)", background: "var(--surface-50)",
+                border: "1px solid var(--surface-200)", borderRadius: 9,
+                padding: "0 10px", height: 40, outline: "none", boxSizing: "border-box",
+              }}
+            />
+            <button type="button" onClick={() => removeRow(index)} aria-label="Remover componente"
+              style={{
+                width: 32, height: 32, borderRadius: 8, border: "none",
+                background: "var(--surface-200)", cursor: "pointer", flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+              <X size={13} strokeWidth={2.5} style={{ color: "var(--text-700)" }} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <button type="button" onClick={addRow} style={{
+        display: "flex", alignItems: "center", gap: 6, marginTop: 10,
+        background: "none", border: "none", cursor: "pointer", padding: "4px 0",
+        fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700, color: "var(--gold-500)",
+      }}>
+        <PlusCircle size={14} strokeWidth={2.5} />
+        Adicionar produto ao combo
+      </button>
+
+      {components.length === 0 && (
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 8 }}>
+          Nenhum componente adicionado — o combo não terá baixa de estoque até que você adicione ao menos um produto.
+        </p>
+      )}
+    </div>
+  )
+}
+
 // ─── Modal de Produto (Criar / Editar) ──────────────────────────────────────────
 interface ProductModalProps {
   onClose: () => void
@@ -317,12 +420,56 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
     rice_stock_branco: productToEdit?.rice_stock_branco?.toString() ?? "0",
   })
 
+  const isCombo = form.stock_type === "combo"
+
+  const [comboComponents, setComboComponents]     = useState<ComboComponentDraft[]>([])
+  const [individualProducts, setIndividualProducts] = useState<SimpleProductOption[]>([])
+  const [comboOptions, setComboOptions]           = useState<SimpleProductOption[]>([])
+
   useEffect(() => {
     const supabase = createClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(supabase as any).from("categories").select("id,name,slug").order("sort_order")
       .then(({ data }: { data: CategoryOption[] | null }) => { if (data) setCategories(data) })
   }, [])
+
+  useEffect(() => {
+    const supabase = createClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = supabase as any
+    sb.from("products").select("id, name").eq("stock_type", "individual").order("name")
+      .then(({ data }: { data: SimpleProductOption[] | null }) =>
+        setIndividualProducts((data ?? []).filter((p) => p.id !== productToEdit?.id)))
+    sb.from("products").select("id, name").eq("stock_type", "combo").order("name")
+      .then(({ data }: { data: SimpleProductOption[] | null }) =>
+        setComboOptions((data ?? []).filter((p) => p.id !== productToEdit?.id)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!productToEdit || productToEdit.stock_type !== "combo") return
+    const supabase = createClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(supabase as any).from("combo_items").select("component_product_id, quantity")
+      .eq("combo_product_id", productToEdit.id)
+      .then(({ data }: { data: { component_product_id: string; quantity: number }[] | null }) => {
+        if (data) setComboComponents(data.map((d) => ({ component_product_id: d.component_product_id, quantity: String(d.quantity) })))
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function handleCopyFrom(comboId: string) {
+    if (!comboId) return
+    const supabase = createClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any).from("combo_items")
+      .select("component_product_id, quantity")
+      .eq("combo_product_id", comboId)
+    setComboComponents((data ?? []).map((d: { component_product_id: string; quantity: number }) => ({
+      component_product_id: d.component_product_id,
+      quantity: String(d.quantity),
+    })))
+  }
 
   // Bloqueia scroll do body ao abrir modal
   useEffect(() => {
@@ -336,8 +483,8 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
   ]
 
   const typeOptions: DropdownOption[] = [
-    { value: "combo",  label: "Combo — reserva no checkout" },
-    { value: "avulso", label: "Avulso — baixa na produção" },
+    { value: "individual", label: "Individual — produto único" },
+    { value: "combo",      label: "Combo — pacote de produtos" },
   ]
 
   const riceStockModeOptions: DropdownOption[] = [
@@ -359,7 +506,7 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = supabase as any
 
-    const isRiceSplit = form.rice_stock_mode === "both"
+    const isRiceSplit = !isCombo && form.rice_stock_mode === "both"
     const payload = {
       name: form.name.trim(),
       description: form.description.trim() || null,
@@ -368,19 +515,13 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
       image_url: form.image_url.trim() || null,
       category_id: form.category_id || null,
       stock_type: form.stock_type,
-      stock_quantity: isRiceSplit ? 0 : Math.max(0, parseInt(form.stock_quantity) || 0),
+      stock_quantity: isCombo || isRiceSplit ? 0 : Math.max(0, parseInt(form.stock_quantity) || 0),
       min_stock_alert: Math.max(1, parseInt(form.min_stock_alert) || 10),
       is_active: form.is_active,
-      rice_stock_mode: form.rice_stock_mode,
+      rice_stock_mode: isCombo ? "none" : form.rice_stock_mode,
       rice_stock_integral: isRiceSplit ? Math.max(0, parseInt(form.rice_stock_integral) || 0) : null,
       rice_stock_branco: isRiceSplit ? Math.max(0, parseInt(form.rice_stock_branco) || 0) : null,
-      // false só quando "branco" (força Branco no checkout, igual já
-      // funciona hoje); nos outros 3 modos o checkout continua livre
-      // pra oferecer as duas opções — "só integral" não tem como travar
-      // a escolha do lado do cliente hoje (não existe esse conceito na
-      // modal de arroz), então é uma responsabilidade do cadastro, não
-      // do código: ver nota abaixo.
-      rice_integral_available: form.rice_stock_mode !== "branco",
+      rice_integral_available: isCombo ? true : form.rice_stock_mode !== "branco",
     }
 
     let query = sb.from("products")
@@ -397,6 +538,27 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
       setSaving(false)
       return
     }
+
+    if (isCombo) {
+      const validRows = comboComponents
+        .filter((row) => row.component_product_id && Number(row.quantity) > 0)
+        .map((row) => ({
+          combo_product_id: data.id,
+          component_product_id: row.component_product_id,
+          quantity: Math.max(1, parseInt(row.quantity) || 1),
+        }))
+
+      await sb.from("combo_items").delete().eq("combo_product_id", data.id)
+      if (validRows.length > 0) {
+        const { error: comboItemsError } = await sb.from("combo_items").insert(validRows)
+        if (comboItemsError) {
+          setError(`Produto salvo, mas houve erro na composição do combo: ${comboItemsError.message}`)
+          setSaving(false)
+          return
+        }
+      }
+    }
+
     onSaved(data as ProductWithCat)
     onClose()
   }
@@ -525,56 +687,68 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
               <label style={labelStyle}>Tipo de Estoque</label>
               <CustomDropdown
                 value={form.stock_type}
-                onChange={(v) => setForm((f) => ({ ...f, stock_type: v as "combo" | "avulso" }))}
+                onChange={(v) => setForm((f) => ({ ...f, stock_type: v as "combo" | "individual" }))}
                 options={typeOptions}
               />
             </div>
           </div>
 
-          {/* Estoque de Arroz — específico pra esse par de tipos, não é
-              um sistema de variação genérico */}
-          <div>
-            <label style={labelStyle}>Estoque de Arroz</label>
-            <CustomDropdown
-              value={form.rice_stock_mode}
-              onChange={(v) => setForm((f) => ({ ...f, rice_stock_mode: v as typeof f.rice_stock_mode }))}
-              options={riceStockModeOptions}
+          {isCombo ? (
+            <ComboComposer
+              components={comboComponents}
+              onChange={setComboComponents}
+              individualProducts={individualProducts}
+              comboOptions={comboOptions}
+              onCopyFrom={handleCopyFrom}
             />
-          </div>
-
-          {/* Estoque Inicial + Alerta — os 2 campos de arroz substituem
-              o Estoque Inicial quando rice_stock_mode === "both" */}
-          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12 }}>
-            {form.rice_stock_mode === "both" ? (
-              <>
-                <div>
-                  <label style={labelStyle}>Estoque — Arroz Integral</label>
-                  <input type="number" min="0" className="modal-input" style={inputStyle}
-                    value={form.rice_stock_integral}
-                    onChange={(e) => setForm((f) => ({ ...f, rice_stock_integral: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Estoque — Arroz Branco</label>
-                  <input type="number" min="0" className="modal-input" style={inputStyle}
-                    value={form.rice_stock_branco}
-                    onChange={(e) => setForm((f) => ({ ...f, rice_stock_branco: e.target.value }))} />
-                </div>
-              </>
-            ) : (
+          ) : (
+            <>
+              {/* Estoque de Arroz — específico pra esse par de tipos, não é
+                  um sistema de variação genérico */}
               <div>
-                <label style={labelStyle}>Estoque Inicial</label>
-                <input type="number" min="0" className="modal-input" style={inputStyle}
-                  value={form.stock_quantity}
-                  onChange={(e) => setForm((f) => ({ ...f, stock_quantity: e.target.value }))} />
+                <label style={labelStyle}>Estoque de Arroz</label>
+                <CustomDropdown
+                  value={form.rice_stock_mode}
+                  onChange={(v) => setForm((f) => ({ ...f, rice_stock_mode: v as typeof f.rice_stock_mode }))}
+                  options={riceStockModeOptions}
+                />
               </div>
-            )}
-            <div>
-              <label style={labelStyle}>Alerta de Baixo Estoque</label>
-              <input type="number" min="1" className="modal-input" style={inputStyle}
-                value={form.min_stock_alert}
-                onChange={(e) => setForm((f) => ({ ...f, min_stock_alert: e.target.value }))} />
-            </div>
-          </div>
+
+              {/* Estoque Inicial + Alerta — os 2 campos de arroz substituem
+                  o Estoque Inicial quando rice_stock_mode === "both" */}
+              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12 }}>
+                {form.rice_stock_mode === "both" ? (
+                  <>
+                    <div>
+                      <label style={labelStyle}>Estoque — Arroz Integral</label>
+                      <input type="number" min="0" className="modal-input" style={inputStyle}
+                        value={form.rice_stock_integral}
+                        onChange={(e) => setForm((f) => ({ ...f, rice_stock_integral: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Estoque — Arroz Branco</label>
+                      <input type="number" min="0" className="modal-input" style={inputStyle}
+                        value={form.rice_stock_branco}
+                        onChange={(e) => setForm((f) => ({ ...f, rice_stock_branco: e.target.value }))} />
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label style={labelStyle}>Estoque Inicial</label>
+                    <input type="number" min="0" className="modal-input" style={inputStyle}
+                      value={form.stock_quantity}
+                      onChange={(e) => setForm((f) => ({ ...f, stock_quantity: e.target.value }))} />
+                  </div>
+                )}
+                <div>
+                  <label style={labelStyle}>Alerta de Baixo Estoque</label>
+                  <input type="number" min="1" className="modal-input" style={inputStyle}
+                    value={form.min_stock_alert}
+                    onChange={(e) => setForm((f) => ({ ...f, min_stock_alert: e.target.value }))} />
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Ativo */}
           <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
@@ -674,15 +848,16 @@ export function EstoqueClient({ products: initial }: Props) {
     ).map(([slug, name]) => ({ value: slug, label: name })),
   ]
   const typeOptions: DropdownOption[] = [
-    { value: "all",    label: "Todos os tipos" },
-    { value: "combo",  label: "Combos" },
-    { value: "avulso", label: "Avulsos" },
+    { value: "all",        label: "Todos os tipos" },
+    { value: "combo",      label: "Combos" },
+    { value: "individual", label: "Individuais" },
   ]
 
   const total      = products.length
-  const okCount    = products.filter((p) => p.stock_quantity > p.min_stock_alert).length
-  const lowCount   = products.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock_alert).length
-  const emptyCount = products.filter((p) => p.stock_quantity === 0).length
+  const nonComboProducts = products.filter((p) => p.stock_type !== "combo")
+  const okCount    = nonComboProducts.filter((p) => p.stock_quantity > p.min_stock_alert).length
+  const lowCount   = nonComboProducts.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock_alert).length
+  const emptyCount = nonComboProducts.filter((p) => p.stock_quantity === 0).length
 
   async function adjustQty(product: ProductWithCat, delta: number) {
     const newQty = Math.max(0, product.stock_quantity + delta)
@@ -821,8 +996,9 @@ export function EstoqueClient({ products: initial }: Props) {
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {filtered.map((product) => {
               const qty      = product.stock_quantity
-              const isEmpty  = qty === 0
-              const isLow    = !isEmpty && qty <= product.min_stock_alert
+              const isCombo  = product.stock_type === "combo"
+              const isEmpty  = !isCombo && qty === 0
+              const isLow    = !isCombo && qty > 0 && qty <= product.min_stock_alert
               const pill     = isEmpty
                 ? { bg: "rgba(239,68,68,0.08)", color: "#EF4444", label: "Esgotado" }
                 : isLow
@@ -940,7 +1116,7 @@ export function EstoqueClient({ products: initial }: Props) {
                         }}>
                           {product.name}
                         </p>
-                        {statusPill}
+                        {!isCombo && statusPill}
                         {comboTag}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -954,7 +1130,11 @@ export function EstoqueClient({ products: initial }: Props) {
                       </div>
                     </div>
 
-                    {stepper}
+                    {isCombo ? (
+                      <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, color: "var(--text-300)", flexShrink: 0 }}>
+                        Estoque dos componentes
+                      </span>
+                    ) : stepper}
                   </div>
 
                   {/* ── Mobile: duas linhas ───────────────────────────── */}
@@ -983,7 +1163,11 @@ export function EstoqueClient({ products: initial }: Props) {
                           </p>
                         )}
                       </div>
-                      {stepper}
+                      {isCombo ? (
+                      <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, color: "var(--text-300)", flexShrink: 0 }}>
+                        Estoque dos componentes
+                      </span>
+                    ) : stepper}
                     </div>
                   </div>
                 </div>
