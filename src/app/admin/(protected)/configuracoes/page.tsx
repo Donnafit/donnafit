@@ -241,14 +241,14 @@ export default function ConfiguracoesPage() {
         <Section title="Horário de atendimento" description="Define quando o restaurante aparece como Online no painel" icon={Clock}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <Field label="Abertura">
-              <select value={settings.openHour} onChange={(e) => update("openHour", e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+              <select value={settings.openHour} onChange={(e) => update("openHour", e.target.value)} style={{ ...inputStyle, cursor: "pointer", paddingRight: 32 }}>
                 {Array.from({ length: 24 }, (_, i) => (
                   <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
                 ))}
               </select>
             </Field>
             <Field label="Fechamento">
-              <select value={settings.closeHour} onChange={(e) => update("closeHour", e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+              <select value={settings.closeHour} onChange={(e) => update("closeHour", e.target.value)} style={{ ...inputStyle, cursor: "pointer", paddingRight: 32 }}>
                 {Array.from({ length: 24 }, (_, i) => (
                   <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
                 ))}

@@ -65,9 +65,10 @@ interface DropdownProps {
   options: DropdownOption[]
   placeholder?: string
   compact?: boolean
+  testId?: string
 }
 
-function CustomDropdown({ value, onChange, options, placeholder = "Selecionar", compact = false }: DropdownProps) {
+function CustomDropdown({ value, onChange, options, placeholder = "Selecionar", compact = false, testId }: DropdownProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -82,18 +83,18 @@ function CustomDropdown({ value, onChange, options, placeholder = "Selecionar", 
   const current = options.find((o) => o.value === value)?.label ?? placeholder
 
   return (
-    <div ref={ref} style={{ position: "relative", width: "100%" }}>
+    <div ref={ref} data-testid={testId} style={{ position: "relative", width: "100%" }}>
       <button
         type="button"
         onClick={() => setOpen((p) => !p)}
         style={{
           width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-          gap: 8, textAlign: "left",
+          gap: 10, textAlign: "left",
           fontFamily: "var(--font-ui)", fontSize: compact ? 12 : 13, fontWeight: 500,
           color: value ? "var(--text-950)" : "var(--text-300)",
           background: "var(--surface-50)",
           border: `1px solid ${open ? "rgba(200,155,60,0.6)" : "var(--surface-200)"}`,
-          borderRadius: 9, padding: compact ? "0 12px" : "10px 12px",
+          borderRadius: 9, padding: compact ? "0 16px 0 12px" : "10px 16px 10px 12px",
           height: compact ? 40 : "auto",
           cursor: "pointer",
           transition: "border-color 150ms",
@@ -101,7 +102,7 @@ function CustomDropdown({ value, onChange, options, placeholder = "Selecionar", 
         }}
       >
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{current}</span>
-        <ChevronDown size={compact ? 12 : 14} strokeWidth={2.5}
+        <ChevronDown data-testid={testId ? `${testId}-chevron` : undefined} size={compact ? 12 : 14} strokeWidth={2.5}
           style={{ color: "var(--gold-500)", flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 180ms" }} />
       </button>
 
@@ -750,7 +751,7 @@ export function EstoqueClient({ products: initial }: Props) {
             </div>
             <div className="grid grid-cols-2 sm:contents" style={{ gap: 8 }}>
               <div className="sm:w-[180px]">
-                <CustomDropdown value={catFilter} onChange={setCatFilter} options={catOptions} compact />
+                <CustomDropdown value={catFilter} onChange={setCatFilter} options={catOptions} compact testId="stock-category-filter" />
               </div>
               <div className="sm:w-[150px]">
                 <CustomDropdown value={typeFilter} onChange={setTypeFilter} options={typeOptions} compact />
