@@ -48,6 +48,7 @@ export function OrderCard({ order, onClick, onUpdateStatus }: Props) {
   const avatarColor = getAvatarColor(order.customer_name)
   const isDelivery  = order.delivery_type === "delivery"
   const isPix       = order.payment_method === "pix"
+  const isCardLink  = order.payment_method === "card_link"
   const next        = NEXT_STATUS[order.status]
 
   return (
@@ -100,10 +101,12 @@ export function OrderCard({ order, onClick, onUpdateStatus }: Props) {
           style={
             isPix
               ? { background: "#F0FDF4", color: "#16A34A" }
-              : { background: "#EFF6FF", color: "#2563EB" }
+              : isCardLink
+                ? { background: "#FEF3C7", color: "#B45309" }
+                : { background: "#EFF6FF", color: "#2563EB" }
           }
         >
-          {isPix ? "PIX" : "Cartão"}
+          {isPix ? "PIX" : isCardLink ? "Link" : "Cartão"}
         </span>
       </div>
 

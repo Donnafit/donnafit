@@ -135,7 +135,7 @@ export function OrderDetailPanel({ order, onClose, onUpdateStatus }: Props) {
               ...(displayOrder.delivery_type === "delivery" && displayOrder.delivery_address
                 ? [{ label: "Endereço", value: displayOrder.delivery_address }]
                 : []),
-              { label: "Pagamento", value: displayOrder.payment_method === "pix" ? "PIX" : "Maquininha" },
+              { label: "Pagamento", value: displayOrder.payment_method === "pix" ? "PIX" : displayOrder.payment_method === "card_link" ? "Cartão (link)" : "Maquininha" },
             ].map(({ label, value }) => (
               <div
                 key={label}
