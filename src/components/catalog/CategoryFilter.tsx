@@ -135,12 +135,16 @@ interface Props {
 export function CategoryFilter({ categories, activeCategory, onSelect, onSearch }: Props) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const dropdownRefDesktop = useRef<HTMLDivElement>(null)
+  const dropdownRefMobile = useRef<HTMLDivElement>(null)
   const isAll = activeCategory === null
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      const insideDesktop = dropdownRefDesktop.current?.contains(target) ?? false
+      const insideMobile = dropdownRefMobile.current?.contains(target) ?? false
+      if (!insideDesktop && !insideMobile) {
         setDropdownOpen(false)
       }
     }
@@ -252,7 +256,7 @@ export function CategoryFilter({ categories, activeCategory, onSelect, onSearch 
             </Chip>
           ))}
           {hiddenDesktop.length > 0 && (
-            <div ref={dropdownRef} style={{ position: "relative" }}>
+            <div ref={dropdownRefDesktop} style={{ position: "relative" }}>
               <button
                 onClick={() => setDropdownOpen((v) => !v)}
                 aria-label="Ver todas as categorias"
@@ -290,7 +294,7 @@ export function CategoryFilter({ categories, activeCategory, onSelect, onSearch 
               {cat.name}
             </Chip>
           ))}
-          <div style={{ marginLeft: "auto", position: "relative" }} ref={dropdownRef}>
+          <div style={{ marginLeft: "auto", position: "relative" }} ref={dropdownRefMobile}>
             <button
               onClick={() => setDropdownOpen((v) => !v)}
               aria-label="Ver todas as categorias"
