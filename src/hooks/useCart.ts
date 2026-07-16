@@ -2,6 +2,9 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import type { Product, CartItem } from "@/types"
 
+// Frete só é oferecido a partir desta quantidade total de marmitas no carrinho.
+export const MIN_DELIVERY_ITEMS = 8
+
 interface CartStore {
   items: CartItem[]
   addItem: (product: Product) => void
