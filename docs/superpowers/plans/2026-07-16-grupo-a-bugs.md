@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Corrigir quatro bugs diretos e independentes do Donna FIT — reconhecimento de bairro quebrado por complemento no endereço, espaçamento da seta em dropdowns do admin, botão "+" de categoria inexistente/não funcional no cardápio admin, e overflow horizontal em telas mobile — cada um validado por teste e2e Playwright.
+**Goal:** Corrigir quatro bugs diretos e independentes do Donna FIT — reconhecimento de bairro quebrado por complemento no endereço, espaçamento da seta em dropdowns do admin, categoria escolhida dentro do popup "+" do cardápio que não filtra o grid, e overflow horizontal em telas mobile — cada um validado por teste e2e Playwright.
 
-**Architecture:** Cada task é isolada e não depende das outras (podem ser feitas em paralelo por workers diferentes). Task 1 mexe em `src/lib/deliveryZones.ts` e `src/lib/geocoding.ts` (lógica pura, sem UI). Task 2 mexe em estilos inline de 3 componentes admin (`EstoqueClient.tsx`, `ManualClient.tsx`, `configuracoes/page.tsx`) — a investigação de código mostrou que o 4º arquivo citado no ticket original (`AnunciosClient.tsx`) não tem o bug descrito (ver nota na Task 2). Task 3 adiciona uma feature nova (criação de categoria) dentro de `EstoqueClient.tsx`, já que o botão "+" citado no ticket não existe hoje no código — foi verificado por leitura direta do arquivo. Task 4 é uma auditoria diagnóstico+fix: primeiro roda um teste que detecta overflow horizontal em 7 telas, depois corrige cada uma com base no que o teste apontar.
+**Architecture:** Cada task é isolada e não depende das outras (podem ser feitas em paralelo por workers diferentes). Task 1 mexe em `src/lib/deliveryZones.ts` e `src/lib/geocoding.ts` (lógica pura, sem UI). Task 2 mexe em estilos inline de 3 componentes admin (`EstoqueClient.tsx`, `ManualClient.tsx`, `configuracoes/page.tsx`) — a investigação de código mostrou que o 4º arquivo citado no ticket original (`AnunciosClient.tsx`) não tem o bug descrito (ver nota na Task 2). Task 3 corrige um bug de ref compartilhado em `src/components/catalog/CategoryFilter.tsx` (cardápio, não admin) que faz o clique-fora fechar o popup de categorias antes do clique no item disparar o filtro. Task 4 é uma auditoria diagnóstico+fix: primeiro roda um teste que detecta overflow horizontal em 7 telas, depois corrige cada uma com base no que o teste apontar.
 
 **Tech Stack:** Next.js 14 App Router, TypeScript, Supabase, Playwright (e2e)
 
@@ -404,273 +404,122 @@ item, na extremidade esquerda da linha, sem esse problema."
 
 ---
 
-### Task 3: Botão "+" de categoria não funciona no cardápio admin (A10)
+### Task 3: Botão "+" de categoria no cardápio não filtra ao clicar (A10)
 
-**Nota de investigação (importante, leia antes de implementar):** o ticket descreve "o botão '+' existe na UI mas não abre modal nem salva nada". Isso **não corresponde ao código atual** — não existe nenhum botão "+" de categoria em `EstoqueClient.tsx` hoje (confirmado por leitura completa do arquivo e `grep` por `PlusCircle|"+"|Nova categoria|Adicionar categoria`). O que existe:
-- Um `CustomDropdown` de filtro (`catFilter`, linha 753) que só lista categorias que já têm produto associado (derivado de `products`, não da tabela `categories` — isso é comportamento existente e **fora de escopo** mudar aqui).
-- Um `CustomDropdown` de categoria dentro do `ProductModal` (linhas 490-499), que busca a tabela `categories` via `.from("categories").select("id,name,slug")` (linha 317) só pra popular as opções — sem nenhum jeito de criar categoria nova.
+**Correção de diagnóstico (o brief original estava errado — confirmado com o cliente):** o botão "+" **existe e abre o modal de categorias normalmente**. O bug é outro: clicar numa categoria **dentro** desse modal não filtra o grid de produtos — nada acontece. Os chips de categoria sempre visíveis (fora do modal) filtram normalmente.
 
-Ou seja: esta task **implementa a feature do zero** (não "conserta um botão quebrado"), no lugar mais natural do fluxo — ao lado do label "Categoria" dentro do `ProductModal`, que é onde o admin já está escolhendo/cadastrando categoria de um produto.
+**Causa raiz real (achada lendo o código):** `src/components/catalog/CategoryFilter.tsx` — o "+" abre um `DropdownMenu` (linhas 254-282 versão desktop, 293+ versão mobile) listando as categorias que não cabem nos chips. Só que **um único `dropdownRef` (linha 138) é compartilhado entre os containers desktop e mobile** — os dois ficam sempre montados no DOM ao mesmo tempo, só escondidos via classes Tailwind `hidden md:flex` / `flex md:hidden` (CSS, não renderização condicional). Como o bloco mobile é renderizado depois do desktop, `dropdownRef.current` sempre acaba apontando pro container **mobile**, não importa o viewport real.
 
-**Schema confirmado (`supabase/migrations/20260602_001_initial_schema.sql`):** `categories(id uuid pk, name text not null, slug text not null unique, sort_order int not null default 0, created_at)`. RLS (`20260602_002_rls_policies.sql`) já permite `INSERT` via `categories_admin_write` policy pra qualquer usuário autenticado com `is_admin()` — nenhuma migration nova é necessária, o admin logado já pode inserir direto pelo client do Supabase.
+O handler de "clique fora" (linhas 141-149) usa esse ref no evento `mousedown`:
+```tsx
+function handleOutside(e: MouseEvent) {
+  if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+    setDropdownOpen(false)
+  }
+}
+```
+Em desktop, ao clicar numa categoria dentro do dropdown **desktop** (visível), `e.target` não está contido em `dropdownRef.current` (que na verdade referencia o container mobile escondido) — o clique é classificado errado como "fora", e `setDropdownOpen(false)` roda no `mousedown`, desmontando o `DropdownMenu` **antes** do evento `click` do botão da categoria disparar. Resultado: `onSelect(item.id)` (linha 103) nunca executa, o filtro nunca aplica. Os chips sempre visíveis não passam por esse ref/handler — chamam `handleSelect` direto no clique, por isso funcionam.
+
+**Fix:** usar dois refs separados (desktop/mobile) e checar contra os dois no handler de clique fora.
 
 **Files:**
-- Modify: `src/components/admin/EstoqueClient.tsx:297-299,314-319,489-499` (novo estado, refatorar carregamento de categorias, botão "+"), e adicionar novo componente `NewCategoryModal` no mesmo arquivo (perto de `ProductModal`, seguindo o padrão de colocation já usado pra `CustomDropdown`/`StockBar`/`ProductThumb`)
-- Test: `e2e/admin-estoque.spec.ts` (estender — já existe suíte de Estoque nesse arquivo, com `loginAdmin`/`adminClient` prontos)
+- Modify: `src/components/catalog/CategoryFilter.tsx:138,141-149,255,293`
+- Test: `e2e/storefront-navigation.spec.ts` (estender — já existe suíte de navegação/filtro de categoria nesse arquivo)
 
 **Interfaces:**
-- Produz: `NewCategoryModal` (componente local, não exportado), usado só dentro de `EstoqueClient.tsx`.
 - Consumes: nada de outras tasks (independente).
+- Produces: nada consumido por outra task — fix isolado neste componente.
 
 - [ ] **Step 1: Estender o teste e2e (esperando falhar)**
 
-Abrir `e2e/admin-estoque.spec.ts` e ajustar o topo + adicionar o teste novo:
+  Adicionar ao final do `test.describe("Cardápio — navegação e descoberta", ...)` em `e2e/storefront-navigation.spec.ts`:
+  ```ts
+  test("clicar numa categoria dentro do popup '+' (Ver todas as categorias) filtra o grid", async ({ page }) => {
+    await page.goto("/")
+    await page.getByRole("button", { name: "Ver todas as categorias" }).click()
 
-```diff
- const fx = loadFixtures()
- const newProductName = `[E2E_TEST] Produto Criado ${fx.runTag}`
-+const newCategoryName = `[E2E_TEST] Categoria ${fx.runTag}`
-```
+    // Pega qualquer item do dropdown que não seja "Todos" (a categoria
+    // escondida atrás do "+" varia conforme o catálogo, então usamos a
+    // primeira disponível dentro do popup em vez de fixar um nome).
+    const dropdownItem = page.locator("button", { hasText: /./ }).filter({ hasNot: page.getByText("Todos") })
+    const menuButtons = page.getByRole("button").filter({ has: page.locator(":visible") })
+    const categoryButton = page
+      .locator('div[style*="position: absolute"] button, div[style*="position:absolute"] button')
+      .first()
+    await expect(categoryButton).toBeVisible({ timeout: 3000 })
+    const categoryName = (await categoryButton.textContent())?.trim()
+    await categoryButton.click()
 
-```diff
- test.afterAll(async () => {
-   // não existe botão de excluir produto na UI — limpa o produto criado neste teste via service role
-   await adminClient().from("products").delete().eq("name", newProductName)
-+  await adminClient().from("categories").delete().eq("name", newCategoryName)
- })
-```
-
-Adicionar no final do `test.describe("Admin — Estoque", ...)`:
-
-```ts
-  test("cria uma nova categoria pelo botão + e ela aparece no filtro depois de salvar o produto", async ({ page }) => {
-    await loginAdmin(page)
-    await page.getByRole("button", { name: /novo produto/i }).click()
-
-    await page.getByRole("button", { name: "Nova categoria" }).click()
-    await page.getByPlaceholder("Ex: Sobremesas").fill(newCategoryName)
-    await page.getByRole("button", { name: "Salvar" }).click()
-
-    // O modal de nova categoria fecha e a categoria criada já vem selecionada
-    // no dropdown do formulário de produto.
-    await expect(page.getByPlaceholder("Ex: Sobremesas")).not.toBeVisible({ timeout: 5000 })
-    await expect(page.locator("button", { hasText: newCategoryName })).toBeVisible()
-
-    await page.getByPlaceholder(/frango grelhado/i).fill(newProductName)
-    await page.getByPlaceholder("0,00").fill("19.90")
-    await page.getByRole("button", { name: /adicionar ao cardápio/i }).click()
-    await expect(page.getByText("Preencha os dados para adicionar ao cardápio")).not.toBeVisible({ timeout: 8000 })
-
-    // Filtro de categorias no topo da lista agora reflete a categoria nova
-    // (esse filtro só lista categorias com produto associado — comportamento
-    // existente, não alterado por esta task).
-    await page.getByRole("button", { name: /todas categorias/i }).click()
-    await expect(page.getByRole("button", { name: newCategoryName })).toBeVisible({ timeout: 5000 })
+    // Bug corrigido: o popup fecha E o grid realmente filtra por essa categoria
+    // (antes do fix, nada acontecia — onSelect nunca era chamado).
+    await expect(page.getByRole("button", { name: "Ver todas as categorias" })).toBeVisible()
+    if (categoryName) {
+      await expect(page.getByRole("button", { name: categoryName, exact: true }).last()).toHaveCSS("color", "rgb(200, 155, 60)")
+    }
   })
-```
+  ```
+  Nota: o seletor de item do dropdown usa a posição (`div[style*="position: absolute"] button`) porque o nome da categoria escondida varia conforme os dados de catálogo — não fixar um nome específico de categoria evita um teste frágil que quebra quando alguém reordena/renomeia categorias no admin.
 
 - [ ] **Step 2: Rodar teste, esperar falhar**
 
-Run: `npx playwright test e2e/admin-estoque.spec.ts --project=chromium`
-Expected: FAIL — `page.getByRole("button", { name: "Nova categoria" })` não existe (timeout esperando o elemento).
+  Run: `npx playwright test e2e/storefront-navigation.spec.ts --project=chromium`
+  Expected: FAIL — depois de clicar no item do dropdown, o botão "Ver todas as categorias" já não está mais visível de novo a tempo (o dropdown nem chega a fechar do jeito esperado) ou a cor do chip correspondente nunca muda para a cor "ativa", confirmando que `onSelect` não foi chamado.
 
-- [ ] **Step 3: Adicionar estado e refatorar carregamento de categorias em `ProductModal`**
+- [ ] **Step 3: Corrigir o ref compartilhado em `CategoryFilter.tsx`**
 
-```diff
- function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
-   const [categories, setCategories] = useState<CategoryOption[]>([])
-   const [saving,  setSaving]  = useState(false)
-   const [error,   setError]   = useState<string | null>(null)
-+  const [showNewCategory, setShowNewCategory] = useState(false)
-```
+  Trocar a declaração do ref (linha 138):
+  ```diff
+-  const dropdownRef = useRef<HTMLDivElement>(null)
++  const dropdownRefDesktop = useRef<HTMLDivElement>(null)
++  const dropdownRefMobile = useRef<HTMLDivElement>(null)
+  ```
 
-```diff
--  useEffect(() => {
--    const supabase = createClient()
--    // eslint-disable-next-line @typescript-eslint/no-explicit-any
--    ;(supabase as any).from("categories").select("id,name,slug").order("sort_order")
--      .then(({ data }: { data: CategoryOption[] | null }) => { if (data) setCategories(data) })
--  }, [])
-+  const loadCategories = useCallback(() => {
-+    const supabase = createClient()
-+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-+    ;(supabase as any).from("categories").select("id,name,slug").order("sort_order")
-+      .then(({ data }: { data: CategoryOption[] | null }) => { if (data) setCategories(data) })
-+  }, [])
-+
-+  useEffect(() => { loadCategories() }, [loadCategories])
-```
+  Trocar o handler de clique fora (linhas 141-149) para checar os dois refs:
+  ```diff
+   useEffect(() => {
+     function handleOutside(e: MouseEvent) {
+-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
++      const target = e.target as Node
++      const insideDesktop = dropdownRefDesktop.current?.contains(target) ?? false
++      const insideMobile = dropdownRefMobile.current?.contains(target) ?? false
++      if (!insideDesktop && !insideMobile) {
+         setDropdownOpen(false)
+       }
+     }
+     if (dropdownOpen) document.addEventListener("mousedown", handleOutside)
+     return () => document.removeEventListener("mousedown", handleOutside)
+   }, [dropdownOpen])
+  ```
 
-(`useCallback` já está importado no topo do arquivo — linha 2 — nenhum import novo necessário aqui.)
+  Trocar o container desktop (linha 255):
+  ```diff
+-            <div ref={dropdownRef} style={{ position: "relative" }}>
++            <div ref={dropdownRefDesktop} style={{ position: "relative" }}>
+  ```
 
-- [ ] **Step 4: Adicionar o botão "+" ao lado do label "Categoria"**
+  Trocar o container mobile (linha 293):
+  ```diff
+-          <div style={{ marginLeft: "auto", position: "relative" }} ref={dropdownRef}>
++          <div style={{ marginLeft: "auto", position: "relative" }} ref={dropdownRefMobile}>
+  ```
 
-```diff
-             <div>
--              <label style={labelStyle}>Categoria</label>
-+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-+                <label style={{ ...labelStyle, marginBottom: 0 }}>Categoria</label>
-+                <button
-+                  type="button"
-+                  onClick={() => setShowNewCategory(true)}
-+                  style={{
-+                    display: "flex", alignItems: "center", gap: 4,
-+                    background: "none", border: "none", cursor: "pointer",
-+                    fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700,
-+                    color: "var(--gold-500)", padding: 0,
-+                  }}
-+                >
-+                  <Plus size={12} strokeWidth={2.5} /> Nova categoria
-+                </button>
-+              </div>
-               <CustomDropdown
-                 value={form.category_id}
-                 onChange={(v) => setForm((f) => ({ ...f, category_id: v }))}
-                 options={catOptions}
-                 placeholder="Sem categoria"
-               />
-             </div>
-```
+- [ ] **Step 4: Rodar teste, esperar passar**
 
-- [ ] **Step 5: Criar `NewCategoryModal` (novo componente local, colocado antes de `ProductModal` no mesmo arquivo)**
+  Run: `npx playwright test e2e/storefront-navigation.spec.ts --project=chromium`
+  Expected: PASS em todos os testes do arquivo, incluindo o novo — clicar numa categoria dentro do popup "+" agora filtra o grid e marca o chip correspondente como ativo.
 
-```tsx
-// ─── Modal de Nova Categoria ────────────────────────────────────────────────
-function slugifyCategoryName(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-}
+- [ ] **Step 5: Commit**
+  ```bash
+  git add src/components/catalog/CategoryFilter.tsx e2e/storefront-navigation.spec.ts
+  git commit -m "fix(cardapio): categoria escolhida no popup + agora filtra o grid
 
-function NewCategoryModal({ onClose, onCreated }: {
-  onClose: () => void
-  onCreated: (category: CategoryOption) => void
-}) {
-  const [name, setName] = useState("")
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
-
-  async function handleCreate() {
-    const trimmed = name.trim()
-    if (!trimmed) return setError("Informe o nome da categoria.")
-    setSaving(true)
-    setError("")
-    const supabase = createClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sb = supabase as any
-    const { data, error: err } = await sb
-      .from("categories")
-      .insert({ name: trimmed, slug: slugifyCategoryName(trimmed) })
-      .select("id,name,slug")
-      .single()
-
-    if (err) {
-      setError(err.code === "23505" ? "Já existe uma categoria com esse nome." : "Erro ao criar categoria. Tente novamente.")
-      setSaving(false)
-      return
-    }
-    onCreated(data as CategoryOption)
-    onClose()
-  }
-
-  return (
-    <div
-      style={{
-        position: "fixed", inset: 0, zIndex: 1100,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)",
-        padding: 16, boxSizing: "border-box",
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div style={{
-        background: "var(--surface-100)", borderRadius: 16, width: "100%", maxWidth: 360,
-        padding: 20, boxShadow: "0 28px 72px rgba(0,0,0,0.32)",
-      }}>
-        <p style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 800, color: "var(--text-950)", marginBottom: 12 }}>
-          Nova categoria
-        </p>
-        <input
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Ex: Sobremesas"
-          style={{
-            width: "100%", fontFamily: "var(--font-ui)", fontSize: 13,
-            color: "var(--text-950)", background: "var(--surface-50)",
-            border: "1px solid var(--surface-200)", borderRadius: 9,
-            padding: "10px 12px", outline: "none", boxSizing: "border-box",
-          }}
-          onKeyDown={(e) => { if (e.key === "Enter") handleCreate() }}
-        />
-        {error && (
-          <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "#DC2626", marginTop: 8 }}>{error}</p>
-        )}
-        <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-          <button type="button" onClick={onClose} style={{
-            flex: 1, padding: "10px", borderRadius: 9, border: "1px solid var(--surface-200)",
-            background: "transparent", cursor: "pointer",
-            fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700, color: "var(--text-700)",
-          }}>
-            Cancelar
-          </button>
-          <button type="button" onClick={handleCreate} disabled={saving} style={{
-            flex: 1, padding: "10px", borderRadius: 9, border: "none",
-            background: saving ? "var(--surface-200)" : "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
-            cursor: saving ? "not-allowed" : "pointer",
-            fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700,
-            color: saving ? "var(--text-300)" : "#FFFFFF",
-          }}>
-            {saving ? "Salvando…" : "Salvar"}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-```
-
-- [ ] **Step 6: Renderizar o modal condicionalmente dentro de `ProductModal`**
-
-Adicionar logo antes do `</div>` que fecha o wrapper mais externo do `ProductModal` (depois do `<form>`, dentro do `return`):
-
-```diff
-         </form>
-       </div>
-+
-+      {showNewCategory && (
-+        <NewCategoryModal
-+          onClose={() => setShowNewCategory(false)}
-+          onCreated={(cat) => {
-+            setCategories((prev) => [...prev, cat])
-+            setForm((f) => ({ ...f, category_id: cat.id }))
-+          }}
-+        />
-+      )}
-     </div>
-   )
- }
-```
-
-- [ ] **Step 7: Rodar teste, esperar passar**
-
-Run: `npx playwright test e2e/admin-estoque.spec.ts --project=chromium`
-Expected: PASS em todos os testes do arquivo, incluindo o novo.
-
-- [ ] **Step 8: Commit**
-```bash
-git add src/components/admin/EstoqueClient.tsx e2e/admin-estoque.spec.ts
-git commit -m "feat(admin): botão de criar categoria direto no formulário de produto
-
-Não existia nenhum jeito de cadastrar categoria pelo painel — o admin
-dependia de inserir direto no banco. Adiciona modal simples de nome +
-insert em categories, com a categoria recém-criada já pré-selecionada
-no produto que está sendo cadastrado."
-```
+  Um único dropdownRef era compartilhado entre os containers desktop e
+  mobile do filtro de categoria (ambos sempre montados no DOM, só
+  escondidos via CSS) — o ref sempre acabava apontando pro container
+  mobile. Em desktop, isso fazia o handler de clique-fora fechar o
+  popup no mousedown antes do clique no item disparar onSelect, então
+  a categoria nunca era aplicada. Refs separados por viewport resolvem."
+  ```
 
 ---
 
@@ -810,5 +659,7 @@ clientWidth do body em cada uma, evitando regressão futura."
 - src/lib/deliveryZones.ts
 - src/lib/geocoding.ts
 - src/components/admin/EstoqueClient.tsx
+- src/components/catalog/CategoryFilter.tsx
 - e2e/checkout-delivery-fee.spec.ts
 - e2e/admin-estoque.spec.ts
+- e2e/storefront-navigation.spec.ts
