@@ -46,7 +46,9 @@ export function RevenueStatCard({
   const badgeText =
     trend.direction === "new"
       ? "Novo"
-      : `${trend.pct !== null && trend.pct > 0 ? "+" : ""}${(trend.pct ?? 0).toFixed(1)}%`
+      : trend.pct === 0
+        ? "0%"
+        : `${trend.pct !== null && trend.pct > 0 ? "+" : ""}${(trend.pct ?? 0).toFixed(1)}%`
 
   const Icon = trend.direction === "down" ? TrendingDown : trend.direction === "neutral" ? Minus : TrendingUp
 
@@ -55,7 +57,9 @@ export function RevenueStatCard({
       ? "border-red-200 bg-red-50 text-red-600"
       : trend.direction === "neutral"
         ? "border-gray-200 bg-gray-50 text-gray-500"
-        : "border-brand-green/20 bg-brand-green/10 text-brand-green-dark"
+        : trend.direction === "new"
+          ? "border-brand-gold/20 bg-brand-gold/10 text-brand-gold-dark"
+          : "border-brand-green/20 bg-brand-green/10 text-brand-green-dark"
 
   const footerText =
     trend.direction === "down"
