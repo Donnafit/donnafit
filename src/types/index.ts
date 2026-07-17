@@ -39,4 +39,9 @@ export interface RevenueSummary {
   totalItems: number
   totalRevenue: number
   series: RevenueDayPoint[]
+  previousPeriod: {
+    totalOrders: number
+    totalItems: number
+    totalRevenue: number
+  }
 }

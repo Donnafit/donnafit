@@ -21,6 +21,26 @@ function toDayKey(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
+/** Soma pedidos (excluindo cancelados, já filtrado na query) em totais agregados. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function aggregateOrders(orders: any[]) {
+  let totalOrders = 0
+  let totalItems = 0
+  let totalRevenue = 0
+
+  for (const order of orders) {
+    const orderItemsQty = ((order.order_items ?? []) as { quantity: number }[]).reduce(
+      (sum, item) => sum + Number(item.quantity),
+      0
+    )
+    totalOrders += 1
+    totalItems += orderItemsQty
+    totalRevenue += Number(order.total) || 0
+  }
+
+  return { totalOrders, totalItems, totalRevenue }
+}
+
 export async function GET(req: Request) {
   if (!(await requireStaff())) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
@@ -60,17 +80,39 @@ export async function GET(req: Request) {
     toDate.getFullYear(), toDate.getMonth(), toDate.getDate(), 23, 59, 59, 999
   )
 
+  // Período anterior equivalente: mesma duração, terminando no dia
+  // imediatamente antes de 'from'. Usado pelos badges de tendência.
+  const prevToDate = new Date(fromDate)
+  prevToDate.setDate(prevToDate.getDate() - 1)
+  const prevFromDate = new Date(prevToDate)
+  prevFromDate.setDate(prevFromDate.getDate() - (rangeDays - 1))
+  const prevRangeEnd = new Date(
+    prevToDate.getFullYear(), prevToDate.getMonth(), prevToDate.getDate(), 23, 59, 59, 999
+  )
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = createAdminClient() as any
-  const { data, error } = await supabase
-    .from("orders")
-    .select("id, total, created_at, order_items(quantity)")
-    .not("status", "eq", "cancelled")
-    .gte("created_at", fromDate.toISOString())
-    .lte("created_at", rangeEnd.toISOString())
+
+  const [{ data, error }, { data: prevData, error: prevError }] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("id, total, created_at, order_items(quantity)")
+      .not("status", "eq", "cancelled")
+      .gte("created_at", fromDate.toISOString())
+      .lte("created_at", rangeEnd.toISOString()),
+    supabase
+      .from("orders")
+      .select("id, total, order_items(quantity)")
+      .not("status", "eq", "cancelled")
+      .gte("created_at", prevFromDate.toISOString())
+      .lte("created_at", prevRangeEnd.toISOString()),
+  ])
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  if (prevError) {
+    return NextResponse.json({ error: prevError.message }, { status: 500 })
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -113,7 +155,8 @@ export async function GET(req: Request) {
   }
 
   const series = Array.from(buckets.values()).sort((a, b) => a.date.localeCompare(b.date))
+  const previousPeriod = aggregateOrders(prevData ?? [])
 
-  const response: RevenueSummary = { totalOrders, totalItems, totalRevenue, series }
+  const response: RevenueSummary = { totalOrders, totalItems, totalRevenue, series, previousPeriod }
   return NextResponse.json(response)
 }

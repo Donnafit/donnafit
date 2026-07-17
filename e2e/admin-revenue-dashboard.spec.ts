@@ -82,4 +82,17 @@ test.describe("Admin — Dashboard de Faturamento", () => {
     // "7 dias" é um superconjunto de "Hoje" — o total nunca pode ser menor.
     expect(totalOrders7d).toBeGreaterThanOrEqual(totalOrdersHoje)
   })
+
+  test("API retorna previousPeriod com totais do período anterior", async ({ page }) => {
+    await loginAdmin(page)
+
+    const todayKey = new Date().toISOString().slice(0, 10)
+    const res = await page.request.get(`/api/dashboard/revenue?from=${todayKey}&to=${todayKey}`)
+    expect(res.ok()).toBeTruthy()
+
+    const json = await res.json()
+    expect(typeof json.previousPeriod?.totalOrders).toBe("number")
+    expect(typeof json.previousPeriod?.totalItems).toBe("number")
+    expect(typeof json.previousPeriod?.totalRevenue).toBe("number")
+  })
 })
