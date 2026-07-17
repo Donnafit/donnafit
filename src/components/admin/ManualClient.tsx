@@ -1,9 +1,10 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { BookOpen, Search, ChefHat, Tag, ChevronDown, ArrowLeft, Pencil, X, Loader2 } from "lucide-react"
 import { resolveImageSrc } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { ImageUploader } from "./EstoqueClient"
+import { fetchProductIngredients, type IngredientRow } from "@/lib/productIngredients"
 
 interface ProductWithCategory {
   id: string
@@ -61,12 +62,19 @@ export function ManualClient({ products: initialProducts }: Props) {
   const [editPrep, setEditPrep] = useState("")
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [ingredientRows, setIngredientRows] = useState<IngredientRow[]>([])
 
   function selectProduct(p: ProductWithCategory) {
     setSelected(p)
     setMobileDetailOpen(true)
     setEditing(false)
   }
+
+  useEffect(() => {
+    if (!selected) { setIngredientRows([]); return }
+    const supabase = createClient()
+    fetchProductIngredients(supabase, selected.id).then(setIngredientRows)
+  }, [selected?.id])
 
   function startEditing() {
     if (!selected) return
@@ -531,8 +539,8 @@ export function ManualClient({ products: initialProducts }: Props) {
                   </div>
                 )}
 
-                {/* Descrição */}
-                {selected.description && (
+                {/* Ingredientes */}
+                {(ingredientRows.length > 0 || selected.description) && (
                   <div style={{
                     background: "var(--surface-100)",
                     border: "1px solid var(--surface-200)",
@@ -543,14 +551,29 @@ export function ManualClient({ products: initialProducts }: Props) {
                       textTransform: "uppercase", letterSpacing: "0.8px",
                       color: "var(--text-300)", marginBottom: 12,
                     }}>
-                      Descrição / Ingredientes
+                      Ingredientes
                     </p>
-                    <p style={{
-                      fontFamily: "var(--font-ui)", fontSize: 13,
-                      color: "var(--text-700)", lineHeight: 1.7, whiteSpace: "pre-line",
-                    }}>
-                      {selected.description}
-                    </p>
+                    {ingredientRows.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {ingredientRows.map((row) => (
+                          <div
+                            key={row.ingredientId}
+                            data-testid="ingredient-row"
+                            style={{ display: "flex", justifyContent: "space-between", fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--text-700)" }}
+                          >
+                            <span>{row.name}</span>
+                            <span style={{ fontWeight: 700, color: "var(--text-950)" }}>{row.quantity}{row.unit}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{
+                        fontFamily: "var(--font-ui)", fontSize: 13,
+                        color: "var(--text-700)", lineHeight: 1.7, whiteSpace: "pre-line",
+                      }}>
+                        {selected.description}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
