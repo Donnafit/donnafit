@@ -5,6 +5,16 @@ import { Package, Search, CheckCircle2, AlertTriangle, XCircle, Minus, Plus,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { resolveImageSrc } from "@/lib/utils"
+import { IngredientBuilder } from "./IngredientBuilder"
+import {
+  buildIngredientsDescription,
+  createIngredient,
+  fetchIngredientCatalog,
+  fetchProductIngredients,
+  saveProductIngredients,
+  type IngredientCatalogEntry,
+  type IngredientRow,
+} from "@/lib/productIngredients"
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface ProductWithCat {
@@ -425,7 +435,6 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
 
   const [form, setForm] = useState({
     name: productToEdit?.name ?? "",
-    description: productToEdit?.description ?? "",
     prep_instructions: productToEdit?.prep_instructions ?? "",
     sku: productToEdit?.sku ?? "",
     price: productToEdit?.price?.toString() ?? "",
@@ -445,12 +454,19 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
   const [comboComponents, setComboComponents]     = useState<ComboComponentDraft[]>([])
   const [individualProducts, setIndividualProducts] = useState<SimpleProductOption[]>([])
   const [comboOptions, setComboOptions]           = useState<SimpleProductOption[]>([])
+  const [ingredientRows, setIngredientRows] = useState<IngredientRow[]>([])
+  const [ingredientCatalog, setIngredientCatalog] = useState<IngredientCatalogEntry[]>([])
 
   useEffect(() => {
     const supabase = createClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(supabase as any).from("categories").select("id,name,slug").order("sort_order")
       .then(({ data }: { data: CategoryOption[] | null }) => { if (data) setCategories(data) })
+  }, [])
+
+  useEffect(() => {
+    const supabase = createClient()
+    fetchIngredientCatalog(supabase).then(setIngredientCatalog)
   }, [])
 
   useEffect(() => {
@@ -491,6 +507,13 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
     })))
   }
 
+  async function handleCreateIngredient(name: string) {
+    const supabase = createClient()
+    const created = await createIngredient(supabase, name)
+    setIngredientCatalog((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
+    return created
+  }
+
   // Bloqueia scroll do body ao abrir modal
   useEffect(() => {
     document.body.style.overflow = "hidden"
@@ -527,9 +550,9 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
     const sb = supabase as any
 
     const isRiceSplit = !isCombo && form.rice_stock_mode === "both"
+    const generatedDescription = buildIngredientsDescription(ingredientRows)
     const payload = {
       name: form.name.trim(),
-      description: form.description.trim() || null,
       prep_instructions: form.prep_instructions.trim() || null,
       sku: form.sku.trim().toUpperCase() || null,
       price: Number(Number(form.price).toFixed(2)),
@@ -543,6 +566,11 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
       rice_stock_integral: isRiceSplit ? Math.max(0, parseInt(form.rice_stock_integral) || 0) : null,
       rice_stock_branco: isRiceSplit ? Math.max(0, parseInt(form.rice_stock_branco) || 0) : null,
       rice_integral_available: isCombo ? true : form.rice_stock_mode !== "branco",
+      // Produto novo sempre grava a description gerada (mesmo null, igual ao
+      // comportamento anterior de "sem descrição"). Produto existente só
+      // sobrescreve quando há pelo menos 1 ingrediente — lista vazia não
+      // apaga a description livre que já estava salva.
+      ...(generatedDescription !== null || !productToEdit ? { description: generatedDescription } : {}),
     }
 
     let query = sb.from("products")
@@ -578,6 +606,14 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
           return
         }
       }
+    }
+
+    try {
+      await saveProductIngredients(sb, data.id, ingredientRows)
+    } catch (err) {
+      setError(`Produto salvo, mas houve erro ao salvar os ingredientes: ${err instanceof Error ? err.message : "erro desconhecido"}`)
+      setSaving(false)
+      return
     }
 
     onSaved(data as ProductWithCat)
@@ -667,10 +703,12 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
           {/* Ingredientes */}
           <div>
             <label style={labelStyle}>Ingredientes</label>
-            <textarea className="modal-input" style={{ ...inputStyle, resize: "vertical", minHeight: 72 }}
-              placeholder="Ex: Peito de frango grelhado, arroz integral, brócolis no vapor, cenoura"
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+            <IngredientBuilder
+              rows={ingredientRows}
+              onChange={setIngredientRows}
+              catalog={ingredientCatalog}
+              onCreateIngredient={handleCreateIngredient}
+            />
           </div>
 
           {/* Modo de Preparo */}

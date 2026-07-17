@@ -103,8 +103,18 @@ test.describe("Admin — Estoque", () => {
     // textarea de Ingredientes).
     await page.getByPlaceholder("Ex: Frango Grelhado com Arroz Integral (350g)").fill(productName)
     await page.getByPlaceholder("0,00").fill("22.50")
-    await page.getByPlaceholder(/peito de frango grelhado, arroz integral/i)
-      .fill("Peito de frango grelhado, arroz branco, brócolis no vapor")
+    // Ingredientes (C17): o textarea livre foi substituído pelo IngredientBuilder
+    // — adiciona um ingrediente estruturado que ainda contém "brócolis" pra manter
+    // a asserção original (o textarea antigo não existe mais).
+    await page.getByRole("button", { name: /adicionar ingrediente/i }).click()
+    await page.getByRole("combobox").click()
+    await page.getByRole("option", { name: "+ Novo ingrediente…" }).click()
+    await page.getByPlaceholder("Nome do novo ingrediente").fill("brócolis no vapor")
+    await page.getByPlaceholder("Quantidade").fill("80")
+    await page.getByPlaceholder("Unidade").fill("g")
+    await page.getByRole("button", { name: "Adicionar", exact: true }).click()
+    await expect(page.getByTestId("ingredient-row").filter({ hasText: "brócolis no vapor" })).toBeVisible()
+
     await page.getByPlaceholder(/descongelar 24h/i)
       .fill("Descongelar na geladeira por 24h. Aquecer no microondas por 3 minutos.")
 
@@ -135,6 +145,61 @@ test.describe("Admin — Estoque", () => {
     expect(data?.rice_integral_available).toBe(false)
 
     await sb.from("products").delete().eq("name", productName)
+    // catálogo de ingredientes é global e "name" é UNIQUE — sem isso o teste
+    // falha ao rodar de novo (2ª tentativa de criar o mesmo ingrediente colide).
+    await sb.from("ingredients").delete().eq("name", "brócolis no vapor")
+  })
+
+  test("cria produto com lista estruturada de ingredientes e gera a description automaticamente", async ({ page }) => {
+    await loginAdmin(page)
+    await page.getByRole("button", { name: /novo produto/i }).click()
+
+    const productName = `${newProductName} — Ingredientes`
+    await page.getByPlaceholder("Ex: Frango Grelhado com Arroz Integral (350g)").fill(productName)
+    await page.getByPlaceholder("0,00").fill("19.90")
+    await page.getByRole("button", { name: /^combo — pacote de produtos$/i }).click()
+    await page.getByRole("button", { name: /^individual — produto único$/i }).click()
+
+    // Primeiro ingrediente — cria "Peito de frango grelhado" no catálogo.
+    await page.getByRole("button", { name: /adicionar ingrediente/i }).click()
+    await page.getByRole("combobox").click()
+    await page.getByRole("option", { name: "+ Novo ingrediente…" }).click()
+    await page.getByPlaceholder("Nome do novo ingrediente").fill("Peito de frango grelhado")
+    await page.getByPlaceholder("Quantidade").fill("150")
+    await page.getByPlaceholder("Unidade").fill("g")
+    await page.getByRole("button", { name: "Adicionar", exact: true }).click()
+    await expect(page.getByTestId("ingredient-row").filter({ hasText: "Peito de frango grelhado" })).toBeVisible()
+
+    // Segundo ingrediente.
+    await page.getByRole("button", { name: /adicionar ingrediente/i }).click()
+    await page.getByRole("combobox").click()
+    await page.getByRole("option", { name: "+ Novo ingrediente…" }).click()
+    await page.getByPlaceholder("Nome do novo ingrediente").fill("Arroz integral")
+    await page.getByPlaceholder("Quantidade").fill("180")
+    await page.getByPlaceholder("Unidade").fill("g")
+    await page.getByRole("button", { name: "Adicionar", exact: true }).click()
+    await expect(page.getByTestId("ingredient-row").filter({ hasText: "Arroz integral" })).toBeVisible()
+
+    await page.getByRole("button", { name: /adicionar ao cardápio/i }).click()
+    await expect(page.getByText("Preencha os dados para adicionar ao cardápio")).not.toBeVisible({ timeout: 8000 })
+
+    const sb = adminClient()
+    const { data: product } = await sb.from("products").select("id, description").eq("name", productName).single()
+    expect(product?.description).toBe("Peito de frango grelhado (150g), Arroz integral (180g)")
+
+    const { data: rows } = await sb
+      .from("product_ingredients")
+      .select("quantity, unit, ingredients(name)")
+      .eq("product_id", product!.id)
+      .order("sort_order")
+    expect(rows).toHaveLength(2)
+    expect((rows as any[])[0].ingredients.name).toBe("Peito de frango grelhado")
+    expect(Number((rows as any[])[0].quantity)).toBe(150)
+
+    await sb.from("products").delete().eq("name", productName)
+    // catálogo de ingredientes é global e "name" é UNIQUE — sem isso o teste
+    // falha ao rodar de novo (2ª tentativa de criar o mesmo ingrediente colide).
+    await sb.from("ingredients").delete().in("name", ["Peito de frango grelhado", "Arroz integral"])
   })
 
   test("edita produto existente e persiste ingredientes/modo de preparo alterados", async ({ page }) => {
