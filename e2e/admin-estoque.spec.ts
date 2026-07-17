@@ -270,5 +270,10 @@ test.describe("Admin — Estoque", () => {
     const sb = adminClient()
     const { data } = await sb.from("products").select("prep_instructions").eq("id", fx.product.id).single()
     expect(data?.prep_instructions).toBe(prepText)
+
+    // fx.product é compartilhado entre specs — admin-manual.spec.ts assume que ele
+    // começa sem modo de preparo cadastrado. Sem resetar aqui, este teste deixava
+    // prep_instructions preenchido pra sempre e quebrava aquele outro spec.
+    await sb.from("products").update({ prep_instructions: null }).eq("id", fx.product.id)
   })
 })
