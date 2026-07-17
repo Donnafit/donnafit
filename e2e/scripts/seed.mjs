@@ -32,7 +32,7 @@ async function main() {
       name: "[E2E_TEST] Marmita de Teste — não remover manualmente",
       sku: `E2E-TEST-${runTag}`,
       price: 1,
-      stock_type: "avulso",
+      stock_type: "individual",
       stock_quantity: 25,
       min_stock_alert: 5,
       is_active: true,
