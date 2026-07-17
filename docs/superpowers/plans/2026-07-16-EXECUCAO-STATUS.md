@@ -1,5 +1,40 @@
 # Status de Execução — Lote de Correções/Features (16/07/2026)
 
+## ✅ 17/07/2026 — QA final concluído, lote fechado (com 1 item adiado)
+
+QA final rodou (`qa-funcional` + `qa-ui` em paralelo, achados verificados
+manualmente). 4 bugs novos encontrados além do que já estava documentado:
+
+1. **BLOCKER, corrigido** — todo produto `combo` aparecia como "Esgotado" no
+   cardápio (front checava `stock_quantity`, que o C16 zerou pra combo).
+   Corrigido em `ProductCard.tsx`/`ProductDetailClient.tsx`: combo só trava
+   por `is_active` agora.
+2. **ALTO, corrigido** — frete mínimo de 8 marmitas só existia no front;
+   `/api/orders` aceitava entrega com 1 item via request direta. Checagem
+   espelhada adicionada na API.
+3. **ALTO, corrigido** — `stripAddressComplement` perdia o bairro quando ele
+   vinha *depois* do complemento no texto (ex: "100, Apto 12, Boqueirão").
+   Reescrito pra remover só o trecho do complemento, preservando o resto da
+   string dos dois lados.
+4. **BLOCKER, NÃO corrigido — decisão explícita do usuário** — cancelar
+   pedido não devolve estoque reservado (`stock_movements` já prevê os
+   enums `'restock'`/`'cancellation'` desde a migration inicial, mas nunca
+   foi implementado nenhum trigger/RPC). Usuário decidiu deixar pra ajuste
+   manual depois ("esse é complexo pois pode ser ajustado manualmente
+   depois") — não mexer nisso sem novo pedido explícito.
+
+Commits: `4e71c6d` (fix pendente de seed.mjs) e `5737aac` (os 3 fixes acima
++ testes). Regressão e2e completa rodada 2x (85 testes): 82 passando, 3
+falhas sempre nos mesmos 3 testes (`admin-configuracoes`,
+`admin-manual` x2) por contenção de recursos da máquina de 2 núcleos —
+confirmado limpo quando rodados isolados, não é regressão real.
+
+**Lote considerado fechado.** Únicos itens em aberto, todos por decisão do
+usuário/dono do negócio, não por falta de trabalho: item 4 acima, tabela
+`customer_profiles` ausente no remoto, e dado de `stock_quantity` real do
+cardápio precisando revisão (efeito do limiar de 50).
+
+
 > Este arquivo existe pra qualquer sessão (nova ou continuação) saber exatamente
 > por onde retomar. Não depende de cache de workflow (esse é "same-session
 > only" e pode não sobreviver a uma sessão nova).
