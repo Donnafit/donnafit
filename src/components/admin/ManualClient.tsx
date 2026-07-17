@@ -152,9 +152,15 @@ export function ManualClient({ products: initialProducts }: Props) {
       prep_instructions: editPrep.trim() || null,
     }
     // Mesma regra do ProductModal: só sobrescreve description se a lista
-    // não estiver vazia — preserva texto legado quando o produto ainda não
-    // foi migrado pra ingredientes estruturados.
-    if (generatedDescription !== null) {
+    // não estiver vazia OU se o produto já tinha ingredientes estruturados
+    // antes desta sessão de edição (ingredientRows — estado de visualização,
+    // carregado à parte de editIngredientRows, ainda reflete o que estava
+    // salvo antes do usuário mexer). Esvaziar a lista de um produto já
+    // migrado precisa limpar a description gerada também, senão ela fica
+    // presa com ingredientes que não existem mais. Só preserva a description
+    // como está quando o produto é genuinamente legado (nunca teve lista
+    // estruturada) e continua sem nenhum ingrediente agora.
+    if (generatedDescription !== null || ingredientRows.length > 0) {
       updatePayload.description = generatedDescription
     }
 

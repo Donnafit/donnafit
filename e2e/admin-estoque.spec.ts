@@ -257,6 +257,45 @@ test.describe("Admin — Estoque", () => {
     await sb.from("ingredients").delete().eq("name", "Cenoura")
   })
 
+  test("esvaziar a lista de ingredientes de um produto já migrado limpa a description gerada", async ({ page }) => {
+    const productName = `${newProductName} — Esvazia Ingredientes`
+    const sb = adminClient()
+
+    const { data: product } = await sb.from("products").insert({
+      name: productName, price: 19.9, stock_type: "individual", is_active: true,
+    }).select("id").single()
+    const { data: ingredient } = await sb.from("ingredients")
+      .upsert({ name: "Couve refogada" }, { onConflict: "name" })
+      .select("id").single()
+    await sb.from("product_ingredients").insert({
+      product_id: product!.id, ingredient_id: ingredient!.id, quantity: 40, unit: "g", sort_order: 0,
+    })
+    // Description já gerada por este mesmo produto anteriormente — é
+    // exatamente o texto que precisa ser limpo, não preservado, quando a
+    // lista de ingredientes for esvaziada (diferente do caso de um produto
+    // genuinamente legado, que nunca teve ingredientes estruturados).
+    await sb.from("products").update({ description: "Couve refogada (40g)" }).eq("id", product!.id)
+
+    await loginAdmin(page)
+    await page.getByPlaceholder("Buscar por nome ou SKU…").fill(productName)
+    await page.getByRole("button", { name: `Editar ${productName}` }).click()
+
+    await expect(page.getByTestId("ingredient-row").filter({ hasText: "Couve refogada" })).toBeVisible()
+    await page.getByRole("button", { name: "Remover Couve refogada" }).click()
+    await expect(page.getByTestId("ingredient-row")).toHaveCount(0)
+
+    await page.getByRole("button", { name: /salvar altera/i }).click()
+    await expect(page.getByText("Edite os detalhes do produto abaixo")).not.toBeVisible({ timeout: 8000 })
+
+    const { data: rows } = await sb.from("product_ingredients").select("id").eq("product_id", product!.id)
+    expect(rows).toHaveLength(0)
+
+    const { data: updated } = await sb.from("products").select("description").eq("id", product!.id).single()
+    expect(updated?.description).toBeNull()
+
+    await sb.from("products").delete().eq("id", product!.id)
+  })
+
   test("edita produto existente e persiste ingredientes/modo de preparo alterados", async ({ page }) => {
     await loginAdmin(page)
     await page.getByPlaceholder("Buscar por nome ou SKU…").fill(fx.product.name)

@@ -456,6 +456,12 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
   const [comboOptions, setComboOptions]           = useState<SimpleProductOption[]>([])
   const [ingredientRows, setIngredientRows] = useState<IngredientRow[]>([])
   const [ingredientCatalog, setIngredientCatalog] = useState<IngredientCatalogEntry[]>([])
+  // Capturado uma vez, na carga inicial de edição — não muda conforme
+  // `ingredientRows` é editado na sessão atual. Distingue "produto que já
+  // tinha ingredientes estruturados antes deste save" (esvaziar a lista
+  // deve limpar a description gerada também) de "produto legado que nunca
+  // teve" (lista vazia não deve mexer na description livre existente).
+  const [hadIngredientsInitially, setHadIngredientsInitially] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -497,7 +503,10 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
   useEffect(() => {
     if (!productToEdit) return
     const supabase = createClient()
-    fetchProductIngredients(supabase, productToEdit.id).then(setIngredientRows)
+    fetchProductIngredients(supabase, productToEdit.id).then((rows) => {
+      setIngredientRows(rows)
+      setHadIngredientsInitially(rows.length > 0)
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -575,9 +584,14 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
       rice_integral_available: isCombo ? true : form.rice_stock_mode !== "branco",
       // Produto novo sempre grava a description gerada (mesmo null, igual ao
       // comportamento anterior de "sem descrição"). Produto existente só
-      // sobrescreve quando há pelo menos 1 ingrediente — lista vazia não
-      // apaga a description livre que já estava salva.
-      ...(generatedDescription !== null || !productToEdit ? { description: generatedDescription } : {}),
+      // sobrescreve quando há pelo menos 1 ingrediente OU quando ele já
+      // tinha ingredientes estruturados antes deste save — esse segundo
+      // caso importa pra esvaziar a lista limpar também a description
+      // gerada anteriormente (senão ela ficava presa com o texto de
+      // ingredientes que não existem mais). Só preserva a description como
+      // está quando o produto é genuinamente legado (nunca teve lista
+      // estruturada) e continua sem nenhum ingrediente agora.
+      ...(generatedDescription !== null || !productToEdit || hadIngredientsInitially ? { description: generatedDescription } : {}),
     }
 
     let query = sb.from("products")
