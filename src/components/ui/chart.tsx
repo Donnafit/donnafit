@@ -2,11 +2,13 @@
 
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
+import type { TooltipValueType } from "recharts"
 
 import { cn } from "@/lib/utils"
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const
+type TooltipNameType = number | string
 
 export type ChartConfig = {
   [k in string]: {
@@ -111,7 +113,13 @@ const ChartTooltipContent = React.forwardRef<
       indicator?: "line" | "dot" | "dashed"
       nameKey?: string
       labelKey?: string
-    }
+    } & Omit<
+      RechartsPrimitive.DefaultTooltipContentProps<
+        TooltipValueType,
+        TooltipNameType
+      >,
+      "accessibilityLayer"
+    >
 >(
   (
     {
@@ -194,7 +202,7 @@ const ChartTooltipContent = React.forwardRef<
 
               return (
                 <div
-                  key={item.dataKey}
+                  key={index}
                   className={cn(
                     "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
                     indicator === "dot" && "items-center"
@@ -263,7 +271,7 @@ const ChartLegend = RechartsPrimitive.Legend
 const ChartLegendContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> &
-    Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+    RechartsPrimitive.DefaultLegendContentProps & {
       hideIcon?: boolean
       nameKey?: string
     }
@@ -289,13 +297,13 @@ const ChartLegendContent = React.forwardRef<
       >
         {payload
           .filter((item) => item.type !== "none")
-          .map((item) => {
+          .map((item, index) => {
             const key = `${nameKey || item.dataKey || "value"}`
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
 
             return (
               <div
-                key={item.value}
+                key={index}
                 className={cn(
                   "flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground"
                 )}
