@@ -86,4 +86,66 @@ test.describe("Admin — Manual de Preparo", () => {
     await expect(page.getByText("Ingredientes")).toBeVisible()
     await expect(page.getByTestId("ingredient-row")).toHaveCount(0)
   })
+
+  test("edita ingredientes direto pelo Manual de Preparo e reflete na visualização", async ({ page }) => {
+    const sb = adminClient()
+    const { data: product } = await sb.from("products").insert({
+      name: `[E2E_TEST] Manual Editar Ingredientes ${fx.runTag}`, price: 19.9, stock_type: "individual", is_active: true,
+    }).select("id").single()
+    // Nome do ingrediente único por execução (não só por fixture/runTag):
+    // ingredientes nunca são apagados entre testes (catálogo compartilhado
+    // por design), então reusar o mesmo nome numa segunda execução com o
+    // mesmo runTag violaria a constraint de unicidade em `ingredients.name`.
+    const ingredientName = `Batata doce ${fx.runTag}-${Date.now()}`
+
+    await loginAdmin(page)
+    await page.getByPlaceholder("Buscar produto...").fill("Manual Editar Ingredientes")
+    await page.getByText("Manual Editar Ingredientes", { exact: false }).first().click()
+    await page.getByRole("button", { name: "Editar", exact: true }).click()
+
+    await page.getByRole("button", { name: /adicionar ingrediente/i }).click()
+    await page.getByRole("combobox").click()
+    await page.getByRole("option", { name: "+ Novo ingrediente…" }).click()
+    await page.getByPlaceholder("Nome do novo ingrediente").fill(ingredientName)
+    await page.getByPlaceholder("Quantidade").fill("100")
+    await page.getByPlaceholder("Unidade").fill("g")
+    await page.getByRole("button", { name: "Adicionar", exact: true }).click()
+    // onCreateIngredient faz um round-trip de rede antes de fechar o popover
+    // e atualizar editIngredientRows — espera a linha aparecer no modo de
+    // edição antes de salvar, senão o clique em "Salvar" pode disparar antes
+    // do estado ser atualizado.
+    await expect(page.getByTestId("ingredient-row").filter({ hasText: ingredientName })).toBeVisible()
+
+    await page.getByRole("button", { name: "Salvar" }).click()
+    await expect(page.getByText("Salvar")).not.toBeVisible({ timeout: 8000 })
+
+    await expect(page.getByTestId("ingredient-row").filter({ hasText: ingredientName })).toBeVisible()
+
+    const { data: updated } = await sb.from("products").select("description").eq("id", product!.id).single()
+    expect(updated?.description).toBe(`${ingredientName} (100g)`)
+
+    await sb.from("products").delete().eq("id", product!.id)
+  })
+
+  test("salvar modo de preparo sem mexer nos ingredientes não apaga a description legada", async ({ page }) => {
+    const sb = adminClient()
+    const legacyDescription = "Descrição legada que não pode sumir"
+    const { data: product } = await sb.from("products").insert({
+      name: `[E2E_TEST] Manual Preserva Legado ${fx.runTag}`, price: 19.9, stock_type: "individual", is_active: true,
+      description: legacyDescription,
+    }).select("id").single()
+
+    await loginAdmin(page)
+    await page.getByPlaceholder("Buscar produto...").fill("Manual Preserva Legado")
+    await page.getByText("Manual Preserva Legado", { exact: false }).first().click()
+    await page.getByRole("button", { name: "Editar" }).click()
+    await page.getByPlaceholder(/descreva o passo a passo/i).fill("Aquecer por 3 minutos.")
+    await page.getByRole("button", { name: "Salvar" }).click()
+    await expect(page.getByText("Salvar")).not.toBeVisible({ timeout: 8000 })
+
+    const { data: updated } = await sb.from("products").select("description").eq("id", product!.id).single()
+    expect(updated?.description).toBe(legacyDescription)
+
+    await sb.from("products").delete().eq("id", product!.id)
+  })
 })

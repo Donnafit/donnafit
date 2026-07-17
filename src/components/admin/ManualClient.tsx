@@ -4,7 +4,16 @@ import { BookOpen, Search, ChefHat, Tag, ChevronDown, ArrowLeft, Pencil, X, Load
 import { resolveImageSrc } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { ImageUploader } from "./EstoqueClient"
-import { fetchProductIngredients, type IngredientRow } from "@/lib/productIngredients"
+import {
+  buildIngredientsDescription,
+  createIngredient,
+  fetchIngredientCatalog,
+  fetchProductIngredients,
+  saveProductIngredients,
+  type IngredientCatalogEntry,
+  type IngredientRow,
+} from "@/lib/productIngredients"
+import { IngredientBuilder } from "./IngredientBuilder"
 
 interface ProductWithCategory {
   id: string
@@ -63,6 +72,20 @@ export function ManualClient({ products: initialProducts }: Props) {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [ingredientRows, setIngredientRows] = useState<IngredientRow[]>([])
+  const [editIngredientRows, setEditIngredientRows] = useState<IngredientRow[]>([])
+  const [ingredientCatalog, setIngredientCatalog] = useState<IngredientCatalogEntry[]>([])
+
+  useEffect(() => {
+    const supabase = createClient()
+    fetchIngredientCatalog(supabase).then(setIngredientCatalog)
+  }, [])
+
+  async function handleCreateIngredient(name: string) {
+    const supabase = createClient()
+    const created = await createIngredient(supabase, name)
+    setIngredientCatalog((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
+    return created
+  }
 
   function selectProduct(p: ProductWithCategory) {
     setSelected(p)
@@ -76,11 +99,20 @@ export function ManualClient({ products: initialProducts }: Props) {
     fetchProductIngredients(supabase, selected.id).then(setIngredientRows)
   }, [selected?.id])
 
-  function startEditing() {
+  async function startEditing() {
     if (!selected) return
     setEditImageUrl(selected.image_url ?? "")
     setEditPrep(selected.prep_instructions ?? "")
     setSaveError(null)
+    // Busca os ingredientes direto da base em vez de confiar no estado
+    // `ingredientRows` (que é preenchido por um useEffect assíncrono
+    // disparado ao trocar de produto): se o usuário clicar em "Editar"
+    // rápido demais após trocar de produto, esse fetch em segundo plano
+    // pode não ter resolvido ainda, e semear `editIngredientRows` a partir
+    // dele congelaria os ingredientes do produto ANTERIOR na edição atual.
+    const supabase = createClient()
+    const rows = await fetchProductIngredients(supabase, selected.id)
+    setEditIngredientRows(rows)
     setEditing(true)
   }
 
@@ -91,12 +123,22 @@ export function ManualClient({ products: initialProducts }: Props) {
     const supabase = createClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = supabase as any
+
+    const generatedDescription = buildIngredientsDescription(editIngredientRows)
+    const updatePayload: Record<string, unknown> = {
+      image_url: editImageUrl.trim() || null,
+      prep_instructions: editPrep.trim() || null,
+    }
+    // Mesma regra do ProductModal: só sobrescreve description se a lista
+    // não estiver vazia — preserva texto legado quando o produto ainda não
+    // foi migrado pra ingredientes estruturados.
+    if (generatedDescription !== null) {
+      updatePayload.description = generatedDescription
+    }
+
     const { data, error } = await sb
       .from("products")
-      .update({
-        image_url: editImageUrl.trim() || null,
-        prep_instructions: editPrep.trim() || null,
-      })
+      .update(updatePayload)
       .eq("id", selected.id)
       .select("*, categories(name, slug)")
       .single()
@@ -106,8 +148,18 @@ export function ManualClient({ products: initialProducts }: Props) {
       setSaving(false)
       return
     }
+
+    try {
+      await saveProductIngredients(sb, selected.id, editIngredientRows)
+    } catch (err) {
+      setSaveError(`Modo de preparo salvo, mas houve erro ao salvar os ingredientes: ${err instanceof Error ? err.message : "erro desconhecido"}`)
+      setSaving(false)
+      return
+    }
+
     setProducts((prev) => prev.map((p) => (p.id === selected.id ? data : p)))
     setSelected(data)
+    setIngredientRows(editIngredientRows)
     setEditing(false)
     setSaving(false)
   }
@@ -449,6 +501,21 @@ export function ManualClient({ products: initialProducts }: Props) {
                       }}>
                         Modo de Preparo
                       </p>
+                    </div>
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{
+                        fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 700,
+                        textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-300)",
+                        display: "block", marginBottom: 8,
+                      }}>
+                        Ingredientes
+                      </label>
+                      <IngredientBuilder
+                        rows={editIngredientRows}
+                        onChange={setEditIngredientRows}
+                        catalog={ingredientCatalog}
+                        onCreateIngredient={handleCreateIngredient}
+                      />
                     </div>
                     <textarea
                       value={editPrep}
