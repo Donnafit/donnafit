@@ -49,7 +49,7 @@ test.describe("Admin — Dashboard de Faturamento", () => {
 
     // Abre o popup pelo tile
     await page.getByRole("button", { name: "Ver dashboard de faturamento" }).click()
-    await expect(page.getByRole("heading", { name: "Faturamento" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Faturamento", exact: true })).toBeVisible()
 
     // Filtro "Hoje" ativo por padrão
     await expect(page.getByRole("button", { name: "Hoje", exact: true })).toHaveAttribute("aria-pressed", "true")

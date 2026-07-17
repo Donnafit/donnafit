@@ -999,7 +999,7 @@ No mesmo `test.describe` de `e2e/admin-revenue-dashboard.spec.ts`, adicionar:
     await loginAdmin(page)
 
     await page.getByRole("button", { name: "Ver dashboard de faturamento" }).click()
-    await expect(page.getByRole("heading", { name: "Faturamento" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Faturamento", exact: true })).toBeVisible()
 
     await page.getByRole("button", { name: "Personalizado", exact: true }).click()
     await expect(page.getByTestId("date-range-trigger")).toBeVisible()
@@ -1038,7 +1038,7 @@ Expected: PASS. Se o locator `dayButton` não encontrar exatamente 1 elemento (e
     await loginAdmin(page)
 
     await page.getByRole("button", { name: "Ver dashboard de faturamento" }).click()
-    await expect(page.getByRole("heading", { name: "Faturamento" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Faturamento", exact: true })).toBeVisible()
     await expect(page.locator('[data-testid="revenue-chart"]')).toBeVisible({ timeout: 5000 })
 
     const hasHorizontalOverflow = await page.evaluate(
