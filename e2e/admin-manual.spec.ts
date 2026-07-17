@@ -148,4 +148,79 @@ test.describe("Admin — Manual de Preparo", () => {
 
     await sb.from("products").delete().eq("id", product!.id)
   })
+
+  test("trocar de produto enquanto o fetch de Editar está em andamento não força edição com dados do produto errado", async ({ page }) => {
+    const sb = adminClient()
+
+    // Produto A: tem ingredientes estruturados — sua resposta de fetch será
+    // atrasada artificialmente pra abrir a janela de corrida.
+    const { data: productA } = await sb.from("products").insert({
+      name: `[E2E_TEST] Manual Race A ${fx.runTag}`, price: 19.9, stock_type: "individual", is_active: true,
+    }).select("id").single()
+    const { data: ingredient } = await sb.from("ingredients")
+      .upsert({ name: "Espinafre refogado" }, { onConflict: "name" })
+      .select("id").single()
+    await sb.from("product_ingredients").insert({
+      product_id: productA!.id, ingredient_id: ingredient!.id, quantity: 60, unit: "g", sort_order: 0,
+    })
+
+    // Produto B: description legada — é quem não pode ser corrompido se a
+    // resposta atrasada de A chegar depois do usuário já ter trocado pra B.
+    const legacyDescriptionB = "Descrição legada do produto B — não pode ser sobrescrita"
+    const { data: productB } = await sb.from("products").insert({
+      name: `[E2E_TEST] Manual Race B ${fx.runTag}`, price: 19.9, stock_type: "individual", is_active: true,
+      description: legacyDescriptionB,
+    }).select("id").single()
+
+    await loginAdmin(page)
+
+    // Atrasa só a resposta do fetch de ingredientes disparado por
+    // startEditing pro produto A — outras chamadas (incluindo o fetch
+    // passivo de visualização de B) seguem normais.
+    await page.route("**/rest/v1/product_ingredients*", async (route) => {
+      if (route.request().url().includes(productA!.id)) {
+        await new Promise((r) => setTimeout(r, 1500))
+      }
+      await route.continue()
+    })
+
+    await page.getByPlaceholder("Buscar produto...").fill("Manual Race A")
+    await page.getByText("Manual Race A", { exact: false }).first().click()
+    await page.getByRole("button", { name: "Editar", exact: true }).click()
+
+    // Antes do fetch atrasado de A resolver, troca pro produto B.
+    await page.getByPlaceholder("Buscar produto...").fill("Manual Race B")
+    await page.getByText("Manual Race B", { exact: false }).first().click()
+
+    // Espera além do delay artificial: se a corrida não estivesse fechada, é
+    // aqui que a resposta tardia de A forçaria modo de edição com os dados
+    // de A por cima do produto B, atualmente exibido — startEditing() é o
+    // escopo desta correção (Task 6); o efeito passivo de visualização
+    // (Task 5) tem uma corrida semelhante e já conhecida/aceita como Minor
+    // separadamente, então esta asserção mira só o que startEditing garante:
+    // não entrar em modo de edição com o produto errado.
+    await page.waitForTimeout(2000)
+    await expect(page.getByRole("button", { name: "Editar", exact: true })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Salvar" })).not.toBeVisible()
+
+    // Confirmação mais forte, direto no banco: clicando "Editar" de verdade
+    // agora em B (ação real do usuário, sem corrida — o fetch é novo, mira o
+    // id de B, não passa pelo delay artificial de A) e salvando sem alterar
+    // nada, B não pode ter ganhado o ingrediente de A nem perdido sua
+    // description legada. Checagem via banco (não via texto na tela) porque
+    // o bloco de visualização de ingredientes (Task 5) tem sua própria
+    // corrida, separada e já conhecida, que deixa texto de A momentaneamente
+    // na tela — não é o que esta correção (Task 6, startEditing) garante.
+    await page.getByRole("button", { name: "Editar", exact: true }).click()
+    await page.getByRole("button", { name: "Salvar", exact: true }).click()
+    await expect(page.getByText("Salvar")).not.toBeVisible({ timeout: 8000 })
+
+    const { data: updatedB } = await sb.from("products").select("description").eq("id", productB!.id).single()
+    expect(updatedB?.description).toBe(legacyDescriptionB)
+    const { data: linksB } = await sb.from("product_ingredients").select("id").eq("product_id", productB!.id)
+    expect(linksB).toHaveLength(0)
+
+    await sb.from("products").delete().in("id", [productA!.id, productB!.id])
+    await sb.from("ingredients").delete().eq("name", "Espinafre refogado")
+  })
 })

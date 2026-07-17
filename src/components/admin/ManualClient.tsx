@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { BookOpen, Search, ChefHat, Tag, ChevronDown, ArrowLeft, Pencil, X, Loader2 } from "lucide-react"
 import { resolveImageSrc } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -75,6 +75,18 @@ export function ManualClient({ products: initialProducts }: Props) {
   const [editIngredientRows, setEditIngredientRows] = useState<IngredientRow[]>([])
   const [ingredientCatalog, setIngredientCatalog] = useState<IngredientCatalogEntry[]>([])
 
+  // startEditing roda dentro de uma closure presa ao `selected` do render em
+  // que foi disparada — `await` não faz essa closure "ver" um `setSelected`
+  // posterior, então comparar `selected?.id` contra o alvo capturado antes do
+  // await nunca detecta troca de produto (a e a mesma referência constante).
+  // Um ref, atualizado a cada mudança de seleção independente de qual
+  // closure está rodando, é o único jeito de checar a seleção ATUAL depois
+  // do await.
+  const selectedIdRef = useRef(selected?.id)
+  useEffect(() => {
+    selectedIdRef.current = selected?.id
+  }, [selected?.id])
+
   useEffect(() => {
     const supabase = createClient()
     fetchIngredientCatalog(supabase).then(setIngredientCatalog)
@@ -115,14 +127,13 @@ export function ManualClient({ products: initialProducts }: Props) {
     const rows = await fetchProductIngredients(supabase, targetId)
     // Guarda de obsolescência: se o usuário trocou de produto ENQUANTO este
     // fetch estava em andamento (clicou Editar, depois clicou em outro
-    // produto na barra lateral antes da resposta chegar), `selected` já
-    // mudou por baixo — aplicar `rows`/entrar em modo de edição agora
-    // congelaria os ingredientes do produto ERRADO (o que estava selecionado
-    // quando o clique em "Editar" aconteceu) sobre o produto atualmente
-    // exibido, corrompendo o save seguinte. Sem essa checagem, o fetch
-    // "correto" desta função ainda podia resolver depois de uma troca de
-    // produto e sobrescrever silenciosamente o estado de edição errado.
-    if (selected?.id !== targetId) return
+    // produto na barra lateral antes da resposta chegar), a seleção atual
+    // (via ref, não via `selected` desta closure) já mudou — aplicar `rows`
+    // /entrar em modo de edição agora congelaria os ingredientes do produto
+    // ERRADO (o que estava selecionado quando o clique em "Editar"
+    // aconteceu) sobre o produto atualmente exibido, corrompendo o save
+    // seguinte.
+    if (selectedIdRef.current !== targetId) return
     setEditIngredientRows(rows)
     setEditing(true)
   }
