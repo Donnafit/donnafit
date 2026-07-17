@@ -189,4 +189,36 @@ test.describe("API /api/orders — integridade de preço e estoque", () => {
     await sb.from("orders").delete().eq("id", orderId)
     await sb.from("products").delete().eq("id", comboProduct!.id)
   })
+
+  test("combo ativo com stock_quantity=0 (estado normal pós-C16) continua vendável no cardápio", async ({ page }) => {
+    // Regressão: ProductCard/ProductDetailClient calculavam soldOut a partir
+    // de stock_quantity, que o C16 zerou para TODO combo (a fonte de verdade
+    // virou combo_items) — sem esse ajuste, nenhum combo aparecia comprável
+    // no site.
+    const sb = adminClient()
+    const productName = `[E2E_TEST] Combo Sempre Disponível ${fx.runTag}`
+    const { data: comboProduct, error: comboInsertErr } = await sb
+      .from("products")
+      .insert({
+        name: productName,
+        sku: `E2E-COMBO-SOLDOUT-${fx.runTag}`,
+        price: 30,
+        stock_type: "combo",
+        stock_quantity: 0,
+        min_stock_alert: 2,
+        is_active: true,
+        sort_order: 9999,
+      })
+      .select()
+      .single()
+    expect(comboInsertErr, comboInsertErr?.message).toBeNull()
+
+    await page.goto("/")
+    const card = page.locator(`[data-product-id="${comboProduct!.id}"]`)
+    await expect(card).toBeVisible({ timeout: 10_000 })
+    await expect(card.getByText(/esgotado/i)).not.toBeVisible()
+    await expect(card.getByLabel(/adicionar ao carrinho/i)).toBeVisible()
+
+    await sb.from("products").delete().eq("id", comboProduct!.id)
+  })
 })

@@ -4,6 +4,7 @@ import { matchDeliveryZone } from "@/lib/deliveryZones"
 import { geocodeToBairro } from "@/lib/geocoding"
 import type { Database } from "@/lib/supabase/database.types"
 import type { CartItem } from "@/types"
+import { MIN_DELIVERY_ITEMS } from "@/hooks/useCart"
 
 type OrderRow = Database["public"]["Tables"]["orders"]["Row"]
 type OrderItemInsert = Database["public"]["Tables"]["order_items"]["Insert"]
@@ -48,6 +49,17 @@ export async function POST(req: Request) {
 
   if (body.deliveryType === "delivery" && !body.deliveryAddress?.trim()) {
     return NextResponse.json({ error: "Endereço de entrega obrigatório" }, { status: 400 })
+  }
+
+  // Mesmo princípio de nunca confiar só na validação do front — o carrinho
+  // já bloqueia entrega abaixo do mínimo, mas isso é só cosmético sem essa
+  // checagem espelhada aqui.
+  const totalQty = body.items.reduce((sum, item) => sum + item.quantity, 0)
+  if (body.deliveryType === "delivery" && totalQty < MIN_DELIVERY_ITEMS) {
+    return NextResponse.json(
+      { error: `Frete disponível apenas a partir de ${MIN_DELIVERY_ITEMS} marmitas` },
+      { status: 400 }
+    )
   }
 
   // Remover máscara do telefone antes de salvar

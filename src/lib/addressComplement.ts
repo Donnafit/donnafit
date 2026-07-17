@@ -12,22 +12,32 @@ export function stripAddressComplement(address: string): string {
   const trimmed = address.trim()
   if (!trimmed) return trimmed
 
-  // 1. Hífen com espaços é o separador mais comum digitado pelo cliente
-  //    (ex: "Rua Marechal Deodoro, 630 - Sala 12").
-  const dashIndex = trimmed.indexOf(" - ")
-  const beforeDash = dashIndex !== -1 ? trimmed.slice(0, dashIndex) : trimmed
+  // Palavra-chave de complemento só é procurada DEPOIS do primeiro número do
+  // endereço — pra não arriscar cortar um nome de rua que por acaso contenha
+  // uma dessas palavras (ex: uma futura "Rua Casa Verde").
+  const numberMatch = trimmed.match(/\d+/)
+  if (!numberMatch || numberMatch.index === undefined) return trimmed
 
-  // 2. Palavra-chave de complemento aparecendo DEPOIS do primeiro número do
-  //    endereço — só corta ali pra não arriscar cortar um nome de rua que por
-  //    acaso contenha uma dessas palavras (ex: uma futura "Rua Casa Verde").
-  const numberMatch = beforeDash.match(/\d+/)
-  if (!numberMatch || numberMatch.index === undefined) return beforeDash.trim()
+  const searchStart = numberMatch.index + numberMatch[0].length
+  const head = trimmed.slice(0, searchStart)
+  const tail = trimmed.slice(searchStart)
 
-  const afterNumber = beforeDash.slice(numberMatch.index + numberMatch[0].length)
-  const keywordRegex = new RegExp(`\\b(${COMPLEMENT_KEYWORDS.join("|")})\\b`, "i")
-  const keywordMatch = afterNumber.match(keywordRegex)
-  if (!keywordMatch || keywordMatch.index === undefined) return beforeDash.trim()
+  // Remove só o trecho do complemento em si (separador + palavra-chave +
+  // número opcional logo depois, ex: "- Sala 12" ou ", Apto 5"), preservando
+  // o que vem antes E depois dele na mesma string — o bairro pode aparecer
+  // tanto antes quanto depois do complemento, dependendo de como o cliente
+  // digitou (cortar tudo depois do complemento, como a versão anterior
+  // fazia, perdia o bairro sempre que ele vinha depois).
+  const complementSegment = new RegExp(
+    `[\\s,-]*\\b(${COMPLEMENT_KEYWORDS.join("|")})\\b\\.?\\s*\\d*`,
+    "gi"
+  )
+  const cleanedTail = tail.replace(complementSegment, " ")
 
-  const cutAt = numberMatch.index + numberMatch[0].length + keywordMatch.index
-  return beforeDash.slice(0, cutAt).trim().replace(/[,]+$/, "").trim()
+  return (head + cleanedTail)
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s*,\s*,/g, ",")
+    .trim()
+    .replace(/^[,-]+\s*/, "")
+    .replace(/\s*[,-]+$/, "")
 }

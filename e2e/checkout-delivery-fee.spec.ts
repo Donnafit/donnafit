@@ -89,9 +89,9 @@ test.describe("API /api/orders — frete nunca confia no valor do cliente", () =
         paymentMethod: "card",
         items: [{
           product: { id: fx.product.id, name: fx.product.name, sku: `E2E-TEST-${fx.runTag}`, price: fx.product.price, stock_type: "avulso", category_id: null },
-          quantity: 1,
+          quantity: 8,
         }],
-        total: fx.product.price,
+        total: fx.product.price * 8,
       },
     })
     expect(res.ok(), await res.text()).toBeTruthy()
@@ -101,7 +101,7 @@ test.describe("API /api/orders — frete nunca confia no valor do cliente", () =
     const { data: order } = await adminClient().from("orders").select("total").eq("id", body.orderId).single()
     // Comportamento correto: total = preço do produto + taxa REAL do Batel (R$12),
     // nunca o frete forjado de R$999 enviado pelo cliente.
-    expect(Number(order?.total)).toBeCloseTo(fx.product.price + 12, 2)
+    expect(Number(order?.total)).toBeCloseTo(fx.product.price * 8 + 12, 2)
   })
 
   test("bairro não reconhecido no endereço é rejeitado com 400", async ({ request }) => {
@@ -114,9 +114,9 @@ test.describe("API /api/orders — frete nunca confia no valor do cliente", () =
         paymentMethod: "card",
         items: [{
           product: { id: fx.product.id, name: fx.product.name, sku: `E2E-TEST-${fx.runTag}`, price: fx.product.price, stock_type: "avulso", category_id: null },
-          quantity: 1,
+          quantity: 8,
         }],
-        total: fx.product.price,
+        total: fx.product.price * 8,
       },
     })
     expect(res.status()).toBe(400)
@@ -168,9 +168,9 @@ test.describe("API /api/orders — bairro com complemento também é resolvido n
         paymentMethod: "card",
         items: [{
           product: { id: fx.product.id, name: fx.product.name, sku: `E2E-TEST-${fx.runTag}`, price: fx.product.price, stock_type: "avulso", category_id: null },
-          quantity: 1,
+          quantity: 8,
         }],
-        total: fx.product.price,
+        total: fx.product.price * 8,
       },
     })
     expect(res.ok(), await res.text()).toBeTruthy()
@@ -178,6 +178,31 @@ test.describe("API /api/orders — bairro com complemento também é resolvido n
     const { data: order } = await adminClient().from("orders").select("total").eq("id", body.orderId).single()
     // Frete real do Centro (R$ 10) — só é possível se o servidor conseguiu
     // geocodificar o endereço com o complemento removido.
-    expect(Number(order?.total)).toBeCloseTo(fx.product.price + 10, 2)
+    expect(Number(order?.total)).toBeCloseTo(fx.product.price * 8 + 10, 2)
+  })
+
+  test("bairro escrito DEPOIS do complemento também é resolvido (regressão)", async ({ request }) => {
+    // stripAddressComplement cortava tudo que vinha depois da palavra-chave
+    // de complemento — quando o bairro aparecia depois do "apto"/"bloco"/etc
+    // (em vez de antes), ele era perdido junto e o pedido falhava com "não
+    // foi possível identificar o bairro" mesmo o cliente tendo digitado certo.
+    const res = await request.post("/api/orders", {
+      data: {
+        customerName: "Teste Complemento Antes do Bairro E2E",
+        customerPhone: "41999993333",
+        deliveryType: "delivery",
+        deliveryAddress: "Rua das Flores, 100, Apto 12, Batel",
+        paymentMethod: "card",
+        items: [{
+          product: { id: fx.product.id, name: fx.product.name, sku: `E2E-TEST-${fx.runTag}`, price: fx.product.price, stock_type: "avulso", category_id: null },
+          quantity: 8,
+        }],
+        total: fx.product.price * 8,
+      },
+    })
+    expect(res.ok(), await res.text()).toBeTruthy()
+    const body = await res.json()
+    const { data: order } = await adminClient().from("orders").select("total").eq("id", body.orderId).single()
+    expect(Number(order?.total)).toBeCloseTo(fx.product.price * 8 + 12, 2)
   })
 })

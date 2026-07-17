@@ -40,9 +40,9 @@ async function createReadyDeliveryOrder(request: import("@playwright/test").APIR
           id: fx.product.id, name: fx.product.name, sku: `E2E-TEST-${fx.runTag}`,
           price: fx.product.price, stock_type: "avulso", category_id: null,
         },
-        quantity: 1,
+        quantity: 8,
       }],
-      total: fx.product.price + 10,
+      total: fx.product.price * 8 + 10,
     },
   })
   expect(res.ok(), await res.text()).toBeTruthy()
