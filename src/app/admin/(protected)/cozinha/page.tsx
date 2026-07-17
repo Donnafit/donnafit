@@ -11,8 +11,9 @@ export default async function CozinhaPage() {
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
-  // Produtos e reposições são independentes — busca em paralelo em vez de sequencial
-  const [{ data: productsRaw }, { data: restocksRaw }] = await Promise.all([
+  // Produtos, reposições e pedidos de produção pendentes são independentes
+  // — busca em paralelo em vez de sequencial.
+  const [{ data: productsRaw }, { data: restocksRaw }, { data: pendingRaw }] = await Promise.all([
     supabase
       .from("products")
       .select("id, name, sku, stock_quantity, min_stock_alert, categories(name)")
@@ -24,6 +25,11 @@ export default async function CozinhaPage() {
       .eq("type", "restock")
       .gte("created_at", todayStart.toISOString())
       .order("created_at", { ascending: false }),
+    supabase
+      .from("production_requests")
+      .select("id, product_id, requested_quantity, created_at, product:products(name, sku)")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true }),
   ])
 
   const products = (productsRaw ?? []) as {
@@ -44,9 +50,17 @@ export default async function CozinhaPage() {
     product: { name: string; sku: string | null } | null
   }[]
 
+  const pendingRequests = (pendingRaw ?? []) as {
+    id: string
+    product_id: string
+    requested_quantity: number
+    created_at: string
+    product: { name: string; sku: string | null } | null
+  }[]
+
   return (
     <div style={{ flex: 1, position: "relative", overflow: "hidden", height: "100%" }}>
-      <KitchenClient products={products} todayRestocks={todayRestocks} />
+      <KitchenClient products={products} todayRestocks={todayRestocks} pendingRequests={pendingRequests} />
     </div>
   )
 }

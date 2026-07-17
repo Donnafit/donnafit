@@ -1,6 +1,6 @@
 "use client"
 import { useState, useRef } from "react"
-import { ChefHat, Search, Plus, CheckCircle2, AlertTriangle, XCircle, Clock } from "lucide-react"
+import { ChefHat, Search, Plus, CheckCircle2, AlertTriangle, XCircle, Clock, X } from "lucide-react"
 
 interface Product {
   id: string
@@ -20,9 +20,18 @@ interface RestockLog {
   product: { name: string; sku: string | null } | null
 }
 
+interface PendingRequest {
+  id: string
+  product_id: string
+  requested_quantity: number
+  created_at: string
+  product: { name: string; sku: string | null } | null
+}
+
 interface Props {
   products: Product[]
   todayRestocks: RestockLog[]
+  pendingRequests: PendingRequest[]
 }
 
 function StockBar({ qty, min }: { qty: number; min: number }) {
@@ -40,15 +49,18 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
 }
 
-export function KitchenClient({ products: initial, todayRestocks: initialLog }: Props) {
-  const [products, setProducts]   = useState<Product[]>(initial)
-  const [restockLog, setLog]      = useState<RestockLog[]>(initialLog)
-  const [search, setSearch]       = useState("")
+export function KitchenClient({ products: initial, todayRestocks: initialLog, pendingRequests: initialPending }: Props) {
+  const [products, setProducts]     = useState<Product[]>(initial)
+  const [restockLog, setLog]        = useState<RestockLog[]>(initialLog)
+  const [pending, setPending]       = useState<PendingRequest[]>(initialPending)
+  const [search, setSearch]         = useState("")
   const [selectedId, setSelectedId] = useState<string>("")
-  const [qty, setQty]             = useState<string>("")
-  const [saving, setSaving]       = useState(false)
-  const [flash, setFlash]         = useState<string | null>(null)
-  const [error, setError]         = useState<string | null>(null)
+  const [qty, setQty]               = useState<string>("")
+  const [creating, setCreating]     = useState(false)
+  const [flash, setFlash]           = useState<string | null>(null)
+  const [error, setError]           = useState<string | null>(null)
+  const [actualQty, setActualQty]   = useState<Record<string, string>>({})
+  const [completingId, setCompletingId] = useState<string | null>(null)
   const qtyRef = useRef<HTMLInputElement>(null)
 
   const empty = products.filter((p) => p.stock_quantity === 0)
@@ -61,13 +73,13 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
 
   const selectedProduct = products.find((p) => p.id === selectedId) ?? null
 
-  async function handleRegister() {
+  async function handleCreateRequest() {
     const amount = parseInt(qty, 10)
     if (!selectedId || !amount || amount <= 0) return
-    setSaving(true)
+    setCreating(true)
     setError(null)
     try {
-      const res = await fetch("/api/kitchen/produce", {
+      const res = await fetch("/api/kitchen/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productId: selectedId, quantity: amount }),
@@ -75,27 +87,69 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
-      // Atualiza estado local
+      setPending((prev) => [...prev, {
+        id: data.id,
+        product_id: selectedId,
+        requested_quantity: amount,
+        created_at: data.created_at,
+        product: data.product,
+      }])
+      setQty("")
+      setSelectedId("")
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao criar pedido de produção.")
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  async function handleCancelRequest(id: string) {
+    setPending((prev) => prev.filter((r) => r.id !== id))
+    try {
+      await fetch(`/api/kitchen/requests/${id}`, { method: "DELETE" })
+    } catch {
+      // Silencioso — pior caso, o pedido cancelado reaparece no próximo refresh.
+    }
+  }
+
+  async function handleComplete(request: PendingRequest) {
+    const amount = parseInt(actualQty[request.id] ?? "", 10)
+    if (!amount || amount <= 0) return
+    setCompletingId(request.id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/kitchen/requests/${request.id}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actualQuantity: amount }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+
       setProducts((prev) =>
-        prev.map((p) => p.id === selectedId ? { ...p, stock_quantity: data.newQuantity } : p)
+        prev.map((p) => p.id === request.product_id ? { ...p, stock_quantity: data.newQuantity } : p)
       )
+      setPending((prev) => prev.filter((r) => r.id !== request.id))
       setLog((prev) => [{
         id: `local-${Date.now()}`,
-        product_id: selectedId,
+        product_id: request.product_id,
         quantity: amount,
         notes: null,
         created_at: new Date().toISOString(),
-        product: { name: data.productName, sku: selectedProduct?.sku ?? null },
+        product: request.product,
       }, ...prev])
 
       setFlash(`+${amount} ${data.productName}`)
       setTimeout(() => setFlash(null), 2500)
-      setQty("")
-      setSelectedId("")
+      setActualQty((prev) => {
+        const next = { ...prev }
+        delete next[request.id]
+        return next
+      })
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao registrar produção.")
+      setError(e instanceof Error ? e.message : "Erro ao concluir produção.")
     } finally {
-      setSaving(false)
+      setCompletingId(null)
     }
   }
 
@@ -120,7 +174,7 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
           display: "flex", alignItems: "center", gap: 8,
         }}>
           <CheckCircle2 size={15} strokeWidth={2} />
-          Registrado: {flash}
+          Concluído: {flash}
         </div>
       )}
 
@@ -148,7 +202,7 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
               Painel da Cozinha
             </h1>
             <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 1 }}>
-              Repor estoque após cada produção
+              Controle de produção — repor estoque após cada produção
             </p>
           </div>
         </div>
@@ -161,7 +215,7 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
           {[
             { label: "Esgotados",    value: empty.length, Icon: XCircle,      accent: "#EF4444", dim: "rgba(239,68,68,0.1)" },
             { label: "Estoque baixo",value: low.length,   Icon: AlertTriangle, accent: "#F59E0B", dim: "rgba(245,158,11,0.1)" },
-            { label: "Produzidos hoje", value: restockLog.reduce((s, r) => s + r.quantity, 0), Icon: CheckCircle2, accent: "#10B981", dim: "rgba(16,185,129,0.1)" },
+            { label: "Produzido hoje", value: restockLog.reduce((s, r) => s + r.quantity, 0), Icon: CheckCircle2, accent: "#10B981", dim: "rgba(16,185,129,0.1)" },
           ].map(({ label, value, Icon, accent, dim }) => (
             <div key={label} style={{
               background: "var(--surface-100)",
@@ -238,7 +292,7 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
                       }}
                     >
                       <Plus size={12} strokeWidth={2.5} />
-                      Registrar
+                      Pedir produção
                     </button>
                   </div>
                 )
@@ -247,7 +301,100 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
           </div>
         )}
 
-        {/* Registrar Produção */}
+        {/* Lista de Produção — pedidos pendentes aguardando conclusão */}
+        <div style={{ marginBottom: 24 }}>
+          <p style={{
+            fontFamily: "var(--font-ui)", fontSize: 10, fontWeight: 700,
+            textTransform: "uppercase", letterSpacing: "0.9px",
+            color: "var(--text-300)", marginBottom: 10,
+          }}>
+            Lista de Produção
+          </p>
+
+          {pending.length === 0 ? (
+            <div style={{
+              background: "var(--surface-100)",
+              border: "1px solid var(--surface-200)",
+              borderRadius: 14, padding: "24px", textAlign: "center",
+            }}>
+              <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--text-300)" }}>
+                Nenhum pedido de produção pendente.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {pending.map((r) => (
+                <div
+                  key={r.id}
+                  style={{
+                    background: "var(--surface-100)",
+                    border: "1px solid var(--surface-200)",
+                    borderRadius: 14, padding: "14px 16px",
+                    display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700, color: "var(--text-950)" }}>
+                      {r.product?.name ?? "—"}
+                    </p>
+                    <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--gold-500)", fontWeight: 700, marginTop: 2 }}>
+                      Meta: {r.requested_quantity} unidades
+                    </p>
+                  </div>
+
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="Qtd real"
+                    value={actualQty[r.id] ?? ""}
+                    onChange={(e) => setActualQty((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                    onKeyDown={(e) => e.key === "Enter" && handleComplete(r)}
+                    style={{
+                      width: 90, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700,
+                      color: "var(--text-950)",
+                      background: "var(--surface-50)",
+                      border: "1px solid var(--surface-200)",
+                      borderRadius: 9, padding: "9px 12px", outline: "none",
+                      textAlign: "center",
+                    }}
+                  />
+
+                  <button
+                    onClick={() => handleComplete(r)}
+                    disabled={completingId === r.id || !actualQty[r.id] || parseInt(actualQty[r.id]) <= 0}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6,
+                      padding: "10px 16px", borderRadius: 9, border: "none",
+                      background: "linear-gradient(135deg, #10B981, #059669)",
+                      color: "#fff",
+                      fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700,
+                      cursor: "pointer", flexShrink: 0,
+                      opacity: completingId === r.id || !actualQty[r.id] || parseInt(actualQty[r.id]) <= 0 ? 0.45 : 1,
+                    }}
+                  >
+                    <CheckCircle2 size={13} strokeWidth={2.5} />
+                    {completingId === r.id ? "Salvando..." : "Concluído"}
+                  </button>
+
+                  <button
+                    onClick={() => handleCancelRequest(r.id)}
+                    aria-label="Cancelar pedido de produção"
+                    title="Cancelar pedido"
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: 32, height: 32, borderRadius: 8, border: "1px solid var(--surface-200)",
+                      background: "transparent", color: "var(--text-300)", cursor: "pointer", flexShrink: 0,
+                    }}
+                  >
+                    <X size={14} strokeWidth={2} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Criar pedido de produção */}
         <div style={{
           background: "var(--surface-100)",
           border: "1px solid var(--surface-200)",
@@ -258,7 +405,7 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
             textTransform: "uppercase", letterSpacing: "0.9px",
             color: "var(--text-300)", marginBottom: 14,
           }}>
-            Registrar produção
+            Criar pedido de produção
           </p>
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -341,15 +488,15 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
             </div>
 
             <div className="kitchen-qty-row" style={{ display: "flex", gap: 8 }}>
-              {/* Quantidade */}
+              {/* Quantidade (meta) */}
               <input
                 ref={qtyRef}
                 type="number"
                 min="1"
-                placeholder="Qtd"
+                placeholder="Meta"
                 value={qty}
                 onChange={(e) => setQty(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleRegister()}
+                onKeyDown={(e) => e.key === "Enter" && handleCreateRequest()}
                 style={{
                   width: 80, fontFamily: "var(--font-ui)", fontSize: 15, fontWeight: 700,
                   color: "var(--text-950)",
@@ -362,8 +509,8 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
 
               {/* Botão */}
               <button
-                onClick={handleRegister}
-                disabled={saving || !selectedId || !qty || parseInt(qty) <= 0}
+                onClick={handleCreateRequest}
+                disabled={creating || !selectedId || !qty || parseInt(qty) <= 0}
                 style={{
                   display: "flex", alignItems: "center", gap: 8,
                   padding: "0 20px", height: 44, borderRadius: 9, border: "none",
@@ -371,12 +518,12 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog }: 
                   color: "#fff",
                   fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700,
                   cursor: "pointer", flexShrink: 0,
-                  opacity: saving || !selectedId || !qty || parseInt(qty) <= 0 ? 0.4 : 1,
+                  opacity: creating || !selectedId || !qty || parseInt(qty) <= 0 ? 0.4 : 1,
                   transition: "opacity 150ms",
                 }}
               >
                 <Plus size={14} strokeWidth={2.5} />
-                {saving ? "Salvando..." : "Registrar"}
+                {creating ? "Salvando..." : "Criar pedido"}
               </button>
             </div>
           </div>
