@@ -6,8 +6,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { formatCurrency } from "@/lib/utils"
-import { RevenueChart } from "./RevenueChart"
+import { RevenueChart, formatDayLabel } from "./RevenueChart"
+import { RevenueStatCard } from "./RevenueStatCard"
+import { DateRangePicker } from "./DateRangePicker"
 import type { RevenueSummary } from "@/types"
 
 type Period = "today" | "7d" | "30d" | "custom"
@@ -41,7 +44,6 @@ function rangeForPeriod(
     return { from: toDayKey(start), to: todayKey }
   }
 
-  // custom
   if (!customFrom || !customTo) return null
   return { from: customFrom, to: customTo }
 }
@@ -115,12 +117,11 @@ export function RevenueDashboardModal({ open, onClose }: Props) {
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-2xl rounded-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-black">Faturamento</DialogTitle>
+          <DialogTitle className="text-xl font-black font-display">Faturamento</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5 mt-2">
-          {/* Filtros de período */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {PERIOD_OPTIONS.map((opt) => (
               <button
                 key={opt.key}
@@ -129,73 +130,80 @@ export function RevenueDashboardModal({ open, onClose }: Props) {
                 aria-pressed={period === opt.key}
                 className={
                   period === opt.key
-                    ? "px-3 py-1.5 rounded-full text-sm font-semibold bg-brand-gold text-white"
-                    : "px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "px-3 py-1.5 rounded-full text-sm font-semibold bg-brand-gold text-white font-ui"
+                    : "px-3 py-1.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 font-ui"
                 }
               >
                 {opt.label}
               </button>
             ))}
+
+            {period === "custom" && (
+              <DateRangePicker
+                from={customFrom}
+                to={customTo}
+                onChange={(r) => {
+                  setCustomFrom(r.from)
+                  setCustomTo(r.to)
+                }}
+              />
+            )}
           </div>
 
-          {period === "custom" && (
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-gray-600">
-                De
-                <input
-                  type="date"
-                  value={customFrom}
-                  max={customTo || undefined}
-                  onChange={(e) => setCustomFrom(e.target.value)}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm"
-                />
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-600">
-                Até
-                <input
-                  type="date"
-                  value={customTo}
-                  min={customFrom || undefined}
-                  max={toDayKey(new Date())}
-                  onChange={(e) => setCustomTo(e.target.value)}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm"
-                />
-              </label>
-            </div>
-          )}
-
-          {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
+          {errorMsg && <p className="text-sm text-red-600 font-ui">{errorMsg}</p>}
 
           {period === "custom" && !range && (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-400 font-ui">
               Selecione as duas datas para ver os dados.
             </p>
           )}
 
-          {/* Cards de resumo */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-gray-50 rounded-2xl p-4">
-              <p className="text-xs font-medium text-gray-400 mb-1">Total de pedidos</p>
-              <p className="text-2xl font-black text-gray-900" data-testid="stat-total-orders">
-                {loading ? "…" : summary?.totalOrders ?? 0}
-              </p>
-            </div>
-            <div className="bg-gray-50 rounded-2xl p-4">
-              <p className="text-xs font-medium text-gray-400 mb-1">Marmitas vendidas</p>
-              <p className="text-2xl font-black text-gray-900" data-testid="stat-total-items">
-                {loading ? "…" : summary?.totalItems ?? 0}
-              </p>
-            </div>
-            <div className="bg-gray-50 rounded-2xl p-4">
-              <p className="text-xs font-medium text-gray-400 mb-1">Faturamento total</p>
-              <p className="text-2xl font-black text-brand-gold" data-testid="stat-total-revenue">
-                {loading ? "…" : formatCurrency(summary?.totalRevenue ?? 0)}
-              </p>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <RevenueStatCard
+              label="Total de pedidos"
+              value={String(summary?.totalOrders ?? 0)}
+              current={summary?.totalOrders ?? 0}
+              previous={summary?.previousPeriod?.totalOrders ?? 0}
+              loading={loading}
+              valueTestId="stat-total-orders"
+              trendTestId="stat-total-orders-trend"
+            />
+            <RevenueStatCard
+              label="Marmitas vendidas"
+              value={String(summary?.totalItems ?? 0)}
+              current={summary?.totalItems ?? 0}
+              previous={summary?.previousPeriod?.totalItems ?? 0}
+              loading={loading}
+              valueTestId="stat-total-items"
+              trendTestId="stat-total-items-trend"
+            />
+            <RevenueStatCard
+              label="Faturamento total"
+              value={formatCurrency(summary?.totalRevenue ?? 0)}
+              current={summary?.totalRevenue ?? 0}
+              previous={summary?.previousPeriod?.totalRevenue ?? 0}
+              loading={loading}
+              valueTestId="stat-total-revenue"
+              trendTestId="stat-total-revenue-trend"
+              valueClassName="text-brand-gold"
+            />
           </div>
 
-          {/* Gráfico */}
-          <RevenueChart data={summary?.series ?? []} loading={loading} />
+          <Card className="rounded-2xl border-gray-100 shadow-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold font-ui text-gray-600">
+                Faturamento por dia
+              </CardTitle>
+              <CardDescription className="font-ui">
+                {range
+                  ? `${formatDayLabel(range.from)} – ${formatDayLabel(range.to)}`
+                  : "Selecione um período"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <RevenueChart data={summary?.series ?? []} loading={loading} />
+            </CardContent>
+          </Card>
         </div>
       </DialogContent>
     </Dialog>
