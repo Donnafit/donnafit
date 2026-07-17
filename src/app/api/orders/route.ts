@@ -101,6 +101,7 @@ export async function POST(req: Request) {
       .from("delivery_zones")
       .select("name, fee")
       .eq("active", true)
+      .order("name")
     let zone = matchDeliveryZone(body.deliveryAddress!, activeZones ?? [])
     if (!zone) {
       // Endereço sem o nome do bairro escrito — tenta resolver via geocoding

@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = createAdminClient() as any
-  const { data: zones } = await supabase.from("delivery_zones").select("name, fee").eq("active", true)
+  const { data: zones } = await supabase.from("delivery_zones").select("name, fee").eq("active", true).order("name")
   const zone = matchDeliveryZone(geocodedBairro, zones ?? [])
 
   return NextResponse.json({ zone: zone ?? null, geocodedBairro })

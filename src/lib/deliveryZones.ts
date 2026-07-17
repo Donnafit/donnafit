@@ -29,13 +29,20 @@ export function matchDeliveryZone(address: string, zones: DeliveryZone[]): Deliv
     if (colomboZone) return colomboZone
   }
 
+  // Não removemos o sufixo "(Colombo)" do nome aqui: como ninguém digita
+  // literalmente "(Colombo)" com parênteses no endereço, "Atuba (Colombo)"
+  // nunca bate por substring neste loop genérico — só pelo caso especial
+  // acima. Removê-lo (como uma versão anterior fazia) igualava o nome
+  // normalizado de "Atuba (Colombo)" ao de "Atuba", fazendo a escolha
+  // depender da ordem de iteração e, sem "Colombo" no endereço, às vezes
+  // escolher a zona errada (Colombo em vez de Curitiba).
   let best: DeliveryZone | null = null
+  let bestNormalizedLength = -1
   for (const zone of zones) {
-    const normalizedName = normalize(zone.name).replace(/\s*\(colombo\)\s*/, "")
-    if (normalizedName && normalizedAddress.includes(normalizedName)) {
-      if (!best || normalizedName.length > normalize(best.name).length) {
-        best = zone
-      }
+    const normalizedName = normalize(zone.name)
+    if (normalizedName && normalizedAddress.includes(normalizedName) && normalizedName.length > bestNormalizedLength) {
+      best = zone
+      bestNormalizedLength = normalizedName.length
     }
   }
   return best
