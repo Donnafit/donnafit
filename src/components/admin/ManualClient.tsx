@@ -101,6 +101,7 @@ export function ManualClient({ products: initialProducts }: Props) {
 
   async function startEditing() {
     if (!selected) return
+    const targetId = selected.id
     setEditImageUrl(selected.image_url ?? "")
     setEditPrep(selected.prep_instructions ?? "")
     setSaveError(null)
@@ -111,7 +112,17 @@ export function ManualClient({ products: initialProducts }: Props) {
     // pode não ter resolvido ainda, e semear `editIngredientRows` a partir
     // dele congelaria os ingredientes do produto ANTERIOR na edição atual.
     const supabase = createClient()
-    const rows = await fetchProductIngredients(supabase, selected.id)
+    const rows = await fetchProductIngredients(supabase, targetId)
+    // Guarda de obsolescência: se o usuário trocou de produto ENQUANTO este
+    // fetch estava em andamento (clicou Editar, depois clicou em outro
+    // produto na barra lateral antes da resposta chegar), `selected` já
+    // mudou por baixo — aplicar `rows`/entrar em modo de edição agora
+    // congelaria os ingredientes do produto ERRADO (o que estava selecionado
+    // quando o clique em "Editar" aconteceu) sobre o produto atualmente
+    // exibido, corrompendo o save seguinte. Sem essa checagem, o fetch
+    // "correto" desta função ainda podia resolver depois de uma troca de
+    // produto e sobrescrever silenciosamente o estado de edição errado.
+    if (selected?.id !== targetId) return
     setEditIngredientRows(rows)
     setEditing(true)
   }
