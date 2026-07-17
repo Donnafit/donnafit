@@ -50,6 +50,22 @@ function ProductThumb({ src, alt }: { src: string | null; alt: string }) {
   )
 }
 
+// ─── Status de estoque (considera o par integral/branco quando o produto usa
+// estoque separado por tipo de arroz — stock_quantity fica travado em 0 nesse
+// caso e não pode ser usado pra decidir "esgotado"/"baixo") ────────────────────
+function stockStatus(product: ProductWithCat): "empty" | "low" | "ok" {
+  if (product.rice_stock_mode === "both") {
+    const integral = product.rice_stock_integral ?? 0
+    const branco = product.rice_stock_branco ?? 0
+    if (integral === 0 && branco === 0) return "empty"
+    if (integral <= product.min_stock_alert || branco <= product.min_stock_alert) return "low"
+    return "ok"
+  }
+  if (product.stock_quantity === 0) return "empty"
+  if (product.stock_quantity <= product.min_stock_alert) return "low"
+  return "ok"
+}
+
 // ─── Barra de estoque ─────────────────────────────────────────────────────────
 function StockBar({ qty, min }: { qty: number; min: number }) {
   const max   = Math.max(qty, min * 3, 10)
@@ -846,6 +862,7 @@ export function EstoqueClient({ products: initial }: Props) {
   const [saving,     setSaving]     = useState<Record<string, boolean>>({})
   const [saved,      setSaved]      = useState<Record<string, boolean>>({})
   const [qtyDraft,   setQtyDraft]   = useState<Record<string, string>>({})
+  const [riceQtyDraft, setRiceQtyDraft] = useState<Record<string, string>>({})
   const [showModal,  setShowModal]  = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductWithCat | null>(null)
   const [, startTransition] = useTransition()
@@ -873,9 +890,9 @@ export function EstoqueClient({ products: initial }: Props) {
 
   const total      = products.length
   const nonComboProducts = products.filter((p) => p.stock_type !== "combo")
-  const okCount    = nonComboProducts.filter((p) => p.stock_quantity > p.min_stock_alert).length
-  const lowCount   = nonComboProducts.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock_alert).length
-  const emptyCount = nonComboProducts.filter((p) => p.stock_quantity === 0).length
+  const okCount    = nonComboProducts.filter((p) => stockStatus(p) === "ok").length
+  const lowCount   = nonComboProducts.filter((p) => stockStatus(p) === "low").length
+  const emptyCount = nonComboProducts.filter((p) => stockStatus(p) === "empty").length
 
   async function applyQty(product: ProductWithCat, newQty: number, notes: string) {
     const clamped = Math.max(0, newQty)
@@ -908,6 +925,54 @@ export function EstoqueClient({ products: initial }: Props) {
     const parsed = parseInt(rawValue, 10)
     if (Number.isNaN(parsed) || parsed === product.stock_quantity) return
     await applyQty(product, parsed, "Ajuste manual — digitado no painel admin")
+  }
+
+  // ── Estoque por tipo de arroz (rice_stock_mode === "both") ────────────────
+  // Mesmo padrão de applyQty/adjustQty/commitQtyInput acima, mas mirando
+  // rice_stock_integral/rice_stock_branco via adjust_rice_stock em vez de
+  // stock_quantity via adjust_stock — são colunas independentes, cada uma
+  // com sua própria reserva no checkout (ver reserve_rice_stock).
+  function riceQtyOf(product: ProductWithCat, riceType: "integral" | "branco"): number {
+    return (riceType === "integral" ? product.rice_stock_integral : product.rice_stock_branco) ?? 0
+  }
+
+  async function applyRiceQty(product: ProductWithCat, riceType: "integral" | "branco", newQty: number, notes: string) {
+    const clamped = Math.max(0, newQty)
+    const draftKey = `${product.id}:${riceType}`
+    setProducts((prev) => prev.map((p) => {
+      if (p.id !== product.id) return p
+      return riceType === "integral" ? { ...p, rice_stock_integral: clamped } : { ...p, rice_stock_branco: clamped }
+    }))
+    setSaving((prev) => ({ ...prev, [draftKey]: true }))
+    const supabase = createClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.rpc as any)("adjust_rice_stock", {
+      p_product_id: product.id,
+      p_rice_type: riceType,
+      p_new_quantity: clamped,
+      p_notes: notes,
+    })
+    setSaving((prev) => ({ ...prev, [draftKey]: false }))
+    setSaved((prev) => ({ ...prev, [draftKey]: true }))
+    startTransition(() => {
+      setTimeout(() => setSaved((prev) => ({ ...prev, [draftKey]: false })), 1500)
+    })
+  }
+
+  async function adjustRiceQty(product: ProductWithCat, riceType: "integral" | "branco", delta: number) {
+    await applyRiceQty(product, riceType, riceQtyOf(product, riceType) + delta, "Ajuste manual — painel admin")
+  }
+
+  async function commitRiceQtyInput(product: ProductWithCat, riceType: "integral" | "branco", rawValue: string) {
+    const draftKey = `${product.id}:${riceType}`
+    setRiceQtyDraft((prev) => {
+      const next = { ...prev }
+      delete next[draftKey]
+      return next
+    })
+    const parsed = parseInt(rawValue, 10)
+    if (Number.isNaN(parsed) || parsed === riceQtyOf(product, riceType)) return
+    await applyRiceQty(product, riceType, parsed, "Ajuste manual — digitado no painel admin")
   }
 
   const metrics = [
@@ -1028,10 +1093,12 @@ export function EstoqueClient({ products: initial }: Props) {
           {/* Linhas de produtos */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {filtered.map((product) => {
-              const qty      = product.stock_quantity
-              const isCombo  = product.stock_type === "combo"
-              const isEmpty  = !isCombo && qty === 0
-              const isLow    = !isCombo && qty > 0 && qty <= product.min_stock_alert
+              const qty         = product.stock_quantity
+              const isCombo     = product.stock_type === "combo"
+              const isRiceSplit = !isCombo && product.rice_stock_mode === "both"
+              const status      = stockStatus(product)
+              const isEmpty     = !isCombo && status === "empty"
+              const isLow       = !isCombo && status === "low"
               const pill     = isEmpty
                 ? { bg: "rgba(239,68,68,0.08)", color: "#EF4444", label: "Esgotado" }
                 : isLow
@@ -1039,6 +1106,13 @@ export function EstoqueClient({ products: initial }: Props) {
                 : { bg: "rgba(16,185,129,0.08)", color: "#10B981", label: "OK" }
               const isSaving = saving[product.id]
               const isSaved  = saved[product.id]
+              // Pra visualização compacta (barrinha única), usa o menor dos
+              // dois estoques de arroz — é o que primeiro esgota e o que
+              // mais importa sinalizar; os números exatos de cada tipo
+              // aparecem nos steppers rotulados (riceStepperBlock) abaixo.
+              const barQty = isRiceSplit
+                ? Math.min(product.rice_stock_integral ?? 0, product.rice_stock_branco ?? 0)
+                : qty
 
               const editButton = (
                 <button
@@ -1111,6 +1185,84 @@ export function EstoqueClient({ products: initial }: Props) {
                 </div>
               )
 
+              // Estoque de arroz separado (rice_stock_mode === "both"): o
+              // stepper genérico acima mira stock_quantity, que fica travado
+              // em 0 pra esses produtos (ver ProductModal) e nunca é
+              // consultado na baixa de estoque real (reserve_rice_stock mira
+              // rice_stock_integral/rice_stock_branco) — sem este bloco a
+              // lista mostrava sempre "Esgotado" e um stepper sem efeito real.
+              function riceRow(riceType: "integral" | "branco") {
+                const draftKey     = `${product.id}:${riceType}`
+                const riceQty      = riceQtyOf(product, riceType)
+                const isSavingRice = saving[draftKey]
+                const isSavedRice  = saved[draftKey]
+                return (
+                  <div key={riceType} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{
+                      fontFamily: "var(--font-ui)", fontSize: 9, fontWeight: 700,
+                      color: "var(--text-300)", width: 42, flexShrink: 0,
+                    }}>
+                      {riceType === "integral" ? "Integral" : "Branco"}
+                    </span>
+                    <button
+                      onClick={() => adjustRiceQty(product, riceType, -1)}
+                      disabled={riceQty === 0 || isSavingRice}
+                      aria-label={`Diminuir estoque de arroz ${riceType === "integral" ? "integral" : "branco"} de ${product.name}`}
+                      style={{
+                        width: 26, height: 26, borderRadius: 6,
+                        background: "var(--surface-200)", border: "none",
+                        cursor: riceQty === 0 || isSavingRice ? "not-allowed" : "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        opacity: riceQty === 0 || isSavingRice ? 0.35 : 1, flexShrink: 0,
+                      }}
+                    >
+                      <Minus size={11} strokeWidth={2.5} style={{ color: "var(--text-700)" }} />
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      inputMode="numeric"
+                      aria-label={`Quantidade de arroz ${riceType === "integral" ? "integral" : "branco"} de ${product.name}`}
+                      disabled={isSavingRice}
+                      className="no-spinner"
+                      value={riceQtyDraft[draftKey] ?? String(riceQty)}
+                      onChange={(e) => setRiceQtyDraft((prev) => ({ ...prev, [draftKey]: e.target.value }))}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onBlur={(e) => commitRiceQtyInput(product, riceType, e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur() }}
+                      style={{
+                        width: 30, height: 26, border: "none", borderRadius: 6,
+                        background: "transparent",
+                        fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 900, textAlign: "center",
+                        color: isSavedRice ? "#10B981" : "var(--text-950)",
+                        outline: "none",
+                      }}
+                    />
+                    <button
+                      onClick={() => adjustRiceQty(product, riceType, 1)}
+                      disabled={isSavingRice}
+                      aria-label={`Aumentar estoque de arroz ${riceType === "integral" ? "integral" : "branco"} de ${product.name}`}
+                      style={{
+                        width: 26, height: 26, borderRadius: 6,
+                        background: "linear-gradient(135deg, var(--gold-500), var(--gold-600))",
+                        border: "none", cursor: isSavingRice ? "not-allowed" : "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        opacity: isSavingRice ? 0.4 : 1, flexShrink: 0,
+                      }}
+                    >
+                      <Plus size={11} strokeWidth={2.5} style={{ color: "#fff" }} />
+                    </button>
+                  </div>
+                )
+              }
+
+              const riceStepperBlock = (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                  {riceRow("integral")}
+                  {riceRow("branco")}
+                </div>
+              )
+
               const thumbnail = (
                 <div style={{
                   width: 44, height: 44, borderRadius: 10, overflow: "hidden", flexShrink: 0,
@@ -1166,7 +1318,7 @@ export function EstoqueClient({ products: initial }: Props) {
                         {comboTag}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <StockBar qty={qty} min={product.min_stock_alert} />
+                        <StockBar qty={barQty} min={product.min_stock_alert} />
                         {product.sku && (
                           <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, color: "var(--text-300)", flexShrink: 0 }}>
                             {product.sku}
@@ -1180,7 +1332,7 @@ export function EstoqueClient({ products: initial }: Props) {
                       <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, color: "var(--text-300)", flexShrink: 0 }}>
                         Estoque dos componentes
                       </span>
-                    ) : stepper}
+                    ) : isRiceSplit ? riceStepperBlock : stepper}
                   </div>
 
                   {/* ── Mobile: duas linhas ───────────────────────────── */}
@@ -1213,7 +1365,7 @@ export function EstoqueClient({ products: initial }: Props) {
                       <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, color: "var(--text-300)", flexShrink: 0 }}>
                         Estoque dos componentes
                       </span>
-                    ) : stepper}
+                    ) : isRiceSplit ? riceStepperBlock : stepper}
                     </div>
                   </div>
                 </div>
