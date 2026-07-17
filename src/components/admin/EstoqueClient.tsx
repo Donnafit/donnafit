@@ -494,6 +494,13 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    if (!productToEdit) return
+    const supabase = createClient()
+    fetchProductIngredients(supabase, productToEdit.id).then(setIngredientRows)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   async function handleCopyFrom(comboId: string) {
     if (!comboId) return
     const supabase = createClient()

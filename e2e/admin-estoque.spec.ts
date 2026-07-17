@@ -202,6 +202,61 @@ test.describe("Admin — Estoque", () => {
     await sb.from("ingredients").delete().in("name", ["Peito de frango grelhado", "Arroz integral"])
   })
 
+  test("edita ingredientes de um produto existente — adiciona um, remove outro", async ({ page }) => {
+    const productName = `${newProductName} — Edição Ingredientes`
+    const sb = adminClient()
+
+    const { data: product } = await sb.from("products").insert({
+      name: productName, price: 19.9, stock_type: "individual", is_active: true,
+    }).select("id").single()
+    const { data: ingredient } = await sb.from("ingredients")
+      .upsert({ name: "Brócolis no vapor" }, { onConflict: "name" })
+      .select("id").single()
+    await sb.from("product_ingredients").insert({
+      product_id: product!.id, ingredient_id: ingredient!.id, quantity: 80, unit: "g", sort_order: 0,
+    })
+
+    await loginAdmin(page)
+    await page.getByPlaceholder("Buscar por nome ou SKU…").fill(productName)
+    await page.getByRole("button", { name: `Editar ${productName}` }).click()
+
+    await expect(page.getByTestId("ingredient-row").filter({ hasText: "Brócolis no vapor" })).toBeVisible()
+
+    // Adiciona um segundo ingrediente.
+    await page.getByRole("button", { name: /adicionar ingrediente/i }).click()
+    await page.getByRole("combobox").click()
+    await page.getByRole("option", { name: "+ Novo ingrediente…" }).click()
+    await page.getByPlaceholder("Nome do novo ingrediente").fill("Cenoura")
+    await page.getByPlaceholder("Quantidade").fill("50")
+    await page.getByPlaceholder("Unidade").fill("g")
+    await page.getByRole("button", { name: "Adicionar", exact: true }).click()
+    await expect(page.getByTestId("ingredient-row").filter({ hasText: "Cenoura" })).toBeVisible()
+
+    // Remove o primeiro.
+    await page.getByRole("button", { name: "Remover Brócolis no vapor" }).click()
+
+    await page.getByRole("button", { name: /salvar altera/i }).click()
+    await expect(page.getByText("Edite os detalhes do produto abaixo")).not.toBeVisible({ timeout: 8000 })
+
+    const { data: rows } = await sb
+      .from("product_ingredients")
+      .select("quantity, ingredients(name)")
+      .eq("product_id", product!.id)
+    expect(rows).toHaveLength(1)
+    expect((rows as any[])[0].ingredients.name).toBe("Cenoura")
+
+    const { data: updated } = await sb.from("products").select("description").eq("id", product!.id).single()
+    expect(updated?.description).toBe("Cenoura (50g)")
+
+    await sb.from("products").delete().eq("id", product!.id)
+    // "Cenoura" é criada via insert simples (não upsert) pelo fluxo de "+ Novo
+    // ingrediente…" da UI — catálogo é global e "name" é UNIQUE, então sem
+    // isso a 2ª execução falha ao tentar recriá-la (mesmo problema que a Task 3
+    // já teve que contornar). "Brócolis no vapor" fica no catálogo de propósito
+    // (é upsert acima, então recriá-la em execuções futuras é inofensivo).
+    await sb.from("ingredients").delete().eq("name", "Cenoura")
+  })
+
   test("edita produto existente e persiste ingredientes/modo de preparo alterados", async ({ page }) => {
     await loginAdmin(page)
     await page.getByPlaceholder("Buscar por nome ou SKU…").fill(fx.product.name)
