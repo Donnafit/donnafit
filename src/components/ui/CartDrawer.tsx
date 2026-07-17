@@ -278,7 +278,7 @@ export function CartDrawer({ open, onClose }: Props) {
                 <path strokeLinecap="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontSize: 11, color: "#5A6B2A", fontWeight: 600 }}>
-                Pague no PIX e ganhe 5% de desconto
+                Pague no PIX e ganhe 2% de desconto
               </span>
             </div>
 

@@ -52,15 +52,16 @@ async function addToCartAndGoToCheckout(page: import("@playwright/test").Page) {
 }
 
 test.describe("Cardápio — frete reconhecido pelo endereço (sem seleção manual de bairro)", () => {
-  test("não existe select de bairro — só um campo de endereço livre", async ({ page }) => {
+  test("não existe select de bairro — campo de endereço livre + complemento opcional em campo separado", async ({ page }) => {
     await addToCartAndGoToCheckout(page)
     await expect(page.locator("select")).toHaveCount(0)
-    await expect(page.getByPlaceholder(/rua, número, bairro, complemento/i)).toBeVisible()
+    await expect(page.getByPlaceholder(/rua, número, bairro/i)).toBeVisible()
+    await expect(page.getByPlaceholder(/apto, bloco, casa/i)).toBeVisible()
   })
 
   test("endereço com bairro reconhecido calcula o frete automaticamente e habilita o envio", async ({ page }) => {
     await addToCartAndGoToCheckout(page)
-    await page.getByPlaceholder(/rua, número, bairro, complemento/i).fill("Rua Presidente Faria, 100, Batel")
+    await page.getByPlaceholder(/rua, número, bairro/i).fill("Rua Presidente Faria, 100, Batel")
 
     await expect(page.getByText(/bairro identificado: batel/i)).toBeVisible({ timeout: 3000 })
     await expect(page.getByText(/frete r\$\s?12,00/i)).toBeVisible()
@@ -70,7 +71,7 @@ test.describe("Cardápio — frete reconhecido pelo endereço (sem seleção man
 
   test("endereço sem bairro reconhecível bloqueia o envio e orienta o cliente", async ({ page }) => {
     await addToCartAndGoToCheckout(page)
-    await page.getByPlaceholder(/rua, número, bairro, complemento/i).fill("Rua Inventada Sem Bairro Nenhum, 42")
+    await page.getByPlaceholder(/rua, número, bairro/i).fill("Rua Inventada Sem Bairro Nenhum, 42")
 
     await expect(page.getByText(/não conseguimos identificar o bairro/i)).toBeVisible({ timeout: 3000 })
     await expect(page.getByRole("button", { name: /confirmar e abrir whatsapp/i })).toBeDisabled()
@@ -126,21 +127,22 @@ test.describe("API /api/orders — frete nunca confia no valor do cliente", () =
 })
 
 test.describe("Endereço com complemento não deve atrapalhar o reconhecimento do bairro", () => {
-  test("endereço sem bairro escrito, mas com complemento 'Sala X', geocodifica corretamente", async ({ page }) => {
+  test("endereço sem bairro escrito, mas com complemento 'Sala X' no campo separado, geocodifica corretamente", async ({ page }) => {
     await addToCartAndGoToCheckout(page)
-    await page.getByPlaceholder(/rua, número, bairro, complemento/i)
-      .fill("Rua Marechal Deodoro, 630 - Sala 12")
+    await page.getByPlaceholder(/rua, número, bairro/i).fill("Rua Marechal Deodoro, 630")
+    await page.getByPlaceholder(/apto, bloco, casa/i).fill("Sala 12")
 
-    // Sem stripping, o Nominatim recebe a query poluída pelo complemento e
-    // não geocodifica nada — o teste fica preso em "não conseguimos identificar".
+    // O campo de complemento é separado do de endereço — o geocoding roda só
+    // sobre o texto do endereço, então o complemento nunca deveria poluir a
+    // query enviada ao Nominatim.
     await expect(page.getByText(/bairro identificado: centro/i)).toBeVisible({ timeout: 8000 })
     await expect(page.getByText(/frete r\$\s?10,00/i)).toBeVisible()
   })
 
-  test("endereço sem bairro escrito, mas com complemento 'apto 302', geocodifica corretamente", async ({ page }) => {
+  test("endereço sem bairro escrito, mas com complemento 'apto 302' no campo separado, geocodifica corretamente", async ({ page }) => {
     await addToCartAndGoToCheckout(page)
-    await page.getByPlaceholder(/rua, número, bairro, complemento/i)
-      .fill("Rua Padre Anchieta, 2000, apto 302")
+    await page.getByPlaceholder(/rua, número, bairro/i).fill("Rua Padre Anchieta, 2000")
+    await page.getByPlaceholder(/apto, bloco, casa/i).fill("apto 302")
 
     // Esse trecho da Rua Padre Anchieta fica bem na divisa entre Campina do
     // Siqueira e Bigorrilho — o Nominatim (serviço público, múltiplos

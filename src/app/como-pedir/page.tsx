@@ -17,7 +17,7 @@ const STEPS = [
   {
     num: "03",
     title: "Finalize o pedido",
-    desc: 'Clique em "Finalizar Pedido", preencha seus dados (nome, telefone e endereço de entrega se necessário) e escolha a forma de pagamento. PIX tem 5% de desconto!',
+    desc: 'Clique em "Finalizar Pedido", preencha seus dados (nome, telefone e endereço de entrega se necessário) e escolha a forma de pagamento. PIX tem 2% de desconto!',
   },
   {
     num: "04",

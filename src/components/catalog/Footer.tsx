@@ -181,9 +181,9 @@ export function Footer() {
               <span style={{ background: "#00BDAE", color: "#fff", borderRadius: 7, padding: "5px 12px", fontSize: 12, fontWeight: 800, fontFamily: "var(--font-montserrat, Montserrat)", letterSpacing: "0.5px" }}>
                 PIX
               </span>
-              {/* 5% desconto badge */}
+              {/* 2% desconto badge */}
               <span style={{ background: "rgba(0,189,174,0.12)", color: "#00BDAE", borderRadius: 7, padding: "5px 10px", fontSize: 11, fontWeight: 600, border: "1px solid rgba(0,189,174,0.25)" }}>
-                5% desconto
+                2% desconto
               </span>
               {/* Crédito */}
               <span style={{ background: "rgba(255,255,255,0.05)", color: "#777", borderRadius: 7, padding: "5px 12px", fontSize: 11, fontWeight: 600, border: "1px solid rgba(255,255,255,0.1)" }}>

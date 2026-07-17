@@ -54,7 +54,7 @@ test.describe("Checkout — frete mínimo de 8 marmitas", () => {
     const entregaBtn = page.getByRole("button", { name: /^Entrega/ })
     await expect(entregaBtn).toBeEnabled()
     await entregaBtn.click()
-    await expect(page.getByPlaceholder(/rua, número, bairro, complemento/i)).toBeVisible()
+    await expect(page.getByPlaceholder(/rua, número, bairro/i)).toBeVisible()
   })
 
   test("aviso de frete mínimo também aparece no resumo do carrinho no cardápio", async ({ page }) => {

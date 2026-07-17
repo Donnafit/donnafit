@@ -83,6 +83,7 @@ export function CheckoutForm() {
   const [phoneState, setPhoneState] = useState<"idle" | "valid" | "invalid">("idle")
   const [delivery, setDelivery] = useState<"pickup" | "delivery">("pickup")
   const [address, setAddress] = useState("")
+  const [complement, setComplement] = useState("")
   const [addressState, setAddressState] = useState<"idle" | "valid" | "invalid">("idle")
   const [zones, setZones] = useState<{ name: string; fee: number }[]>([])
   const [pixDiscountRate, setPixDiscountRate] = useState(DEFAULT_PIX_DISCOUNT_RATE)
@@ -250,7 +251,9 @@ export function CheckoutForm() {
     try {
       const computedRiceChoices = finalRiceChoices()
       const activeRiceChoices = Object.keys(computedRiceChoices).length > 0 ? computedRiceChoices : undefined
-      const fullAddress = delivery === "delivery" ? address.trim() : undefined
+      const fullAddress = delivery === "delivery"
+        ? [address.trim(), complement.trim()].filter(Boolean).join(" - ")
+        : undefined
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -487,50 +490,69 @@ export function CheckoutForm() {
           </div>
         )}
 
-        {/* Campo de endereço — aparece somente quando Entrega está selecionada */}
+        {/* Campos de endereço e complemento — aparecem somente quando Entrega está selecionada */}
         {delivery === "delivery" && (
-          <div style={{ marginTop: 16 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-              </svg>
-              Endereço de entrega
-            </label>
-            <input
-              type="text"
-              className={`form-input ${addressState === "valid" ? "input-valid" : addressState === "invalid" ? "input-invalid" : ""}`}
-              value={address}
-              onChange={e => {
-                const val = e.target.value
-                setAddress(val)
-                if (val.length > 0) setAddressState(val.trim().length >= 10 ? "valid" : "invalid")
-                else setAddressState("idle")
-              }}
-              placeholder="Rua, número, bairro, complemento"
-              autoComplete="street-address"
-            />
-            <p className={`error-msg ${addressState === "invalid" ? "show" : ""}`}>
-              Informe o endereço completo para entrega
-            </p>
+          <div className="checkout-address-grid" style={{ marginTop: 16 }}>
+            <div>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                Endereço de entrega
+              </label>
+              <input
+                type="text"
+                className={`form-input ${addressState === "valid" ? "input-valid" : addressState === "invalid" ? "input-invalid" : ""}`}
+                value={address}
+                onChange={e => {
+                  const val = e.target.value
+                  setAddress(val)
+                  if (val.length > 0) setAddressState(val.trim().length >= 10 ? "valid" : "invalid")
+                  else setAddressState("idle")
+                }}
+                placeholder="Rua, número, bairro"
+                autoComplete="street-address"
+              />
+              <p className={`error-msg ${addressState === "invalid" ? "show" : ""}`}>
+                Informe o endereço completo para entrega
+              </p>
+            </div>
+
+            <div>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                Complemento (opcional)
+              </label>
+              <input
+                type="text"
+                className="form-input"
+                value={complement}
+                onChange={e => setComplement(e.target.value)}
+                placeholder="Apto, bloco, casa"
+                autoComplete="address-line2"
+              />
+            </div>
+
             {addressState === "valid" && (
-              matchedZone ? (
-                <p style={{ fontSize: 12, color: "#5A6B2A", fontWeight: 600, marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                  <Check size={13} /> Bairro identificado: {matchedZone.name} — frete {formatCurrency(matchedZone.fee)}
-                </p>
-              ) : geocoding ? (
-                <p style={{ fontSize: 12, color: "#888", fontWeight: 600, marginTop: 8 }}>
-                  Identificando o bairro pelo endereço...
-                </p>
-              ) : (
-                <p style={{ fontSize: 12, color: "#B45309", fontWeight: 600, marginTop: 8 }}>
-                  Não conseguimos identificar o bairro no endereço. Inclua o nome do bairro
-                  ou fale pelo{" "}
-                  <a href="https://wa.me/5541999154720" target="_blank" rel="noopener noreferrer" style={{ color: "#5A6B2A", textDecoration: "underline" }}>
-                    WhatsApp
-                  </a>.
-                </p>
-              )
+              <div style={{ gridColumn: "1 / -1" }}>
+                {matchedZone ? (
+                  <p style={{ fontSize: 12, color: "#5A6B2A", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                    <Check size={13} /> Bairro identificado: {matchedZone.name} — frete {formatCurrency(matchedZone.fee)}
+                  </p>
+                ) : geocoding ? (
+                  <p style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>
+                    Identificando o bairro pelo endereço...
+                  </p>
+                ) : (
+                  <p style={{ fontSize: 12, color: "#B45309", fontWeight: 600 }}>
+                    Não conseguimos identificar o bairro no endereço. Inclua o nome do bairro
+                    ou fale pelo{" "}
+                    <a href="https://wa.me/5541999154720" target="_blank" rel="noopener noreferrer" style={{ color: "#5A6B2A", textDecoration: "underline" }}>
+                      WhatsApp
+                    </a>.
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}

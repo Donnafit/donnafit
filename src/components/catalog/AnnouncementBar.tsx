@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 const FALLBACK = [
   "Marmitas saudáveis feitas com ingredientes frescos todos os dias",
   "Peça até as 18h e receba no dia seguinte",
-  "Pague no PIX e ganhe 5% de desconto no pedido",
+  "Pague no PIX e ganhe 2% de desconto no pedido",
   "Opções low carb, veganas e sem glúten disponíveis",
 ]
 

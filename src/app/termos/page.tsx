@@ -41,7 +41,7 @@ export default function TermosPage() {
         <Section title="3. Pedidos e pagamento">
           <ul style={{ paddingLeft: 20, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
             <li>Pedidos realizados pelo site são confirmados via WhatsApp por nossa equipe.</li>
-            <li>Pagamentos podem ser realizados via PIX (com 5% de desconto), cartão de crédito, débito ou dinheiro na entrega.</li>
+            <li>Pagamentos podem ser realizados via PIX (com 2% de desconto), cartão de crédito, débito ou dinheiro na entrega.</li>
             <li>O pedido só é confirmado após validação de disponibilidade e confirmação do pagamento.</li>
             <li>Nos reservamos o direito de recusar pedidos em casos de indisponibilidade de estoque.</li>
           </ul>

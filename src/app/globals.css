@@ -475,6 +475,15 @@ body {
   .kitchen-search-wrap { min-width: 0; }
 }
 
+.checkout-address-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .checkout-address-grid { grid-template-columns: 63fr 33fr; }
+}
+
 /* =============================================
    BRAND SYSTEM — DONNA FIT ADMIN
    ============================================= */
