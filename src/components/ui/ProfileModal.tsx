@@ -350,7 +350,9 @@ export function ProfileModal({ open, onClose }: Props) {
     if (!forgotEmail) { setError("Digite seu e-mail."); return }
     setFormLoading(true); setError(null)
     const supabase = createClient()
-    await supabase.auth.resetPasswordForEmail(forgotEmail)
+    await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/redefinir-senha`,
+    })
     setFormLoading(false)
     setForgotSent(true)
   }
