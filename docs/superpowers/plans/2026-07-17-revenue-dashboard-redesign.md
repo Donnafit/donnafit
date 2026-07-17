@@ -1012,13 +1012,15 @@ No mesmo `test.describe` de `e2e/admin-revenue-dashboard.spec.ts`, adicionar:
     const dayButton = calendarPanel.getByRole("button").filter({ hasText: new RegExp(`^${day}$`) })
     await expect(dayButton).toBeVisible()
 
+    // Um clique já forma um range de 1 dia (from = to = dia clicado) quando
+    // não há seleção prévia — react-day-picker fecha o popover imediatamente.
     const responsePromise = page.waitForResponse(
       (res) => res.url().includes("/api/dashboard/revenue") && res.url().includes("from=")
     )
     await dayButton.click()
-    await dayButton.click()
     await responsePromise
 
+    await expect(page.getByTestId("date-range-trigger")).not.toHaveText("Selecionar período")
     await expect(page.locator('[data-testid="revenue-chart"]')).toBeVisible({ timeout: 5000 })
   })
 ```

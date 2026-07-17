@@ -95,4 +95,48 @@ test.describe("Admin — Dashboard de Faturamento", () => {
     expect(typeof json.previousPeriod?.totalItems).toBe("number")
     expect(typeof json.previousPeriod?.totalRevenue).toBe("number")
   })
+
+  test("filtro personalizado seleciona intervalo pelo calendário", async ({ page, request }) => {
+    await createTestOrder(request, `Pedido Custom E2E ${testRunId}`)
+    await loginAdmin(page)
+
+    await page.getByRole("button", { name: "Ver dashboard de faturamento" }).click()
+    await expect(page.getByRole("heading", { name: "Faturamento", exact: true })).toBeVisible()
+
+    await page.getByRole("button", { name: "Personalizado", exact: true }).click()
+    await expect(page.getByTestId("date-range-trigger")).toBeVisible()
+
+    await page.getByTestId("date-range-trigger").click()
+    const calendarPanel = page.getByTestId("date-range-calendar")
+    await expect(calendarPanel).toBeVisible()
+
+    const day = String(new Date().getDate())
+    const dayButton = calendarPanel.getByRole("button").filter({ hasText: new RegExp(`^${day}$`) })
+    await expect(dayButton).toBeVisible()
+
+    // Um clique já forma um range de 1 dia (from = to = dia clicado) quando
+    // não há seleção prévia — react-day-picker fecha o popover imediatamente.
+    const responsePromise = page.waitForResponse(
+      (res) => res.url().includes("/api/dashboard/revenue") && res.url().includes("from=")
+    )
+    await dayButton.click()
+    await responsePromise
+
+    await expect(page.getByTestId("date-range-trigger")).not.toHaveText("Selecionar período")
+    await expect(page.locator('[data-testid="revenue-chart"]')).toBeVisible({ timeout: 5000 })
+  })
+
+  test("popup de faturamento não gera overflow horizontal em mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await loginAdmin(page)
+
+    await page.getByRole("button", { name: "Ver dashboard de faturamento" }).click()
+    await expect(page.getByRole("heading", { name: "Faturamento", exact: true })).toBeVisible()
+    await expect(page.locator('[data-testid="revenue-chart"]')).toBeVisible({ timeout: 5000 })
+
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth
+    )
+    expect(hasHorizontalOverflow).toBe(false)
+  })
 })
