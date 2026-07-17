@@ -1079,6 +1079,7 @@ export function EstoqueClient({ products: initial }: Props) {
                     inputMode="numeric"
                     aria-label={`Quantidade de ${product.name}`}
                     disabled={isSaving}
+                    className="no-spinner"
                     value={qtyDraft[product.id] ?? String(qty)}
                     onChange={(e) => setQtyDraft((prev) => ({ ...prev, [product.id]: e.target.value }))}
                     onFocus={(e) => e.currentTarget.select()}

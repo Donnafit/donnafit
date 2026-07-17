@@ -466,6 +466,14 @@ body {
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
 }
+.no-spinner {
+  -moz-appearance: textfield;
+}
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 @media (max-width: 640px) {
   /* Reserve space so the next tab always peeks in, hinting there's more to scroll */
   .tabs-scroll-wrap { max-width: calc(100% - 16px); }
