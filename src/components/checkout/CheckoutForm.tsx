@@ -204,7 +204,9 @@ export function CheckoutForm() {
   // Se o texto não tem o nome do bairro, cai pro geocoding (Nominatim) como
   // fallback — só chamado quando o reconhecimento gratuito falhou (ver useEffect abaixo).
   const matchedZone = localMatchedZone ?? geocodedZone
-  const deliveryFee = matchedZone ? matchedZone.fee : 0
+  // Number(): fee vem do Supabase (coluna numeric) e pode chegar como string —
+  // sem isso, `subtotal + deliveryFee` vira concatenação em vez de soma.
+  const deliveryFee = matchedZone ? Number(matchedZone.fee) : 0
   const pixDiscount = payment === "pix" ? subtotal * pixDiscountRate : 0
   const pixDiscountPercentLabel = `${(pixDiscountRate * 100).toFixed(pixDiscountRate * 100 % 1 === 0 ? 0 : 1)}%`
   const finalTotal = subtotal + deliveryFee - pixDiscount
