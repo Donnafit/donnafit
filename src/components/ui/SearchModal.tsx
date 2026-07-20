@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useCart } from "@/hooks/useCart"
 import { formatCurrency, resolveImageSrc } from "@/lib/utils"
+import { isProductSoldOut } from "@/lib/stock"
 
 interface SearchResult {
   id: string
@@ -11,7 +12,11 @@ interface SearchResult {
   description: string | null
   price: number
   image_url: string | null
+  stock_type: "individual" | "combo"
   stock_quantity: number
+  rice_stock_mode: "none" | "integral" | "branco" | "both"
+  rice_stock_integral: number | null
+  rice_stock_branco: number | null
   is_active: boolean
   categories?: { name: string } | null
 }
@@ -52,7 +57,9 @@ export function SearchModal({ open, onClose }: Props) {
     const supabase = createClient()
     const { data } = await supabase
       .from("products")
-      .select("id, name, description, price, image_url, stock_quantity, is_active, categories(name)")
+      .select(
+        "id, name, description, price, image_url, stock_type, stock_quantity, rice_stock_mode, rice_stock_integral, rice_stock_branco, is_active, categories(name)"
+      )
       .eq("is_active", true)
       .or(`name.ilike.%${q}%,description.ilike.%${q}%`)
       .order("sort_order")
@@ -85,7 +92,7 @@ export function SearchModal({ open, onClose }: Props) {
 
   function handleAdd(e: React.MouseEvent, product: SearchResult) {
     e.stopPropagation()
-    if (product.stock_quantity <= 0) return
+    if (isProductSoldOut(product)) return
     addItem(product as any)
     setAddedId(product.id)
     setTimeout(() => setAddedId(null), 1200)
@@ -189,7 +196,7 @@ export function SearchModal({ open, onClose }: Props) {
         {results.length > 0 && (
           <div style={{ maxHeight: 400, overflowY: "auto" }}>
             {results.map((p, i) => {
-              const soldOut = p.stock_quantity <= 0
+              const soldOut = isProductSoldOut(p)
               const isSelected = selectedIndex === i
               const isAdded = addedId === p.id
               return (

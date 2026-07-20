@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useCart } from "@/hooks/useCart"
 import { formatCurrency } from "@/lib/utils"
+import { isProductSoldOut } from "@/lib/stock"
 import type { Product } from "@/types"
 
 interface ProductWithCategory extends Product {
@@ -13,10 +14,7 @@ export function ProductDetailClient({ product }: { product: ProductWithCategory 
   const { items, addItem, updateQuantity } = useCart()
   const cartItem = items.find((i) => i.product.id === product.id)
   const qty = cartItem?.quantity ?? 0
-  // Combo não usa stock_quantity própria desde o C16 (a fonte de verdade
-  // virou combo_items) — a reserva real acontece no back-end na hora do
-  // pedido, então aqui só travamos por is_active.
-  const soldOut = !product.is_active || (product.stock_type !== "combo" && product.stock_quantity <= 0)
+  const soldOut = isProductSoldOut(product)
   const [added, setAdded] = useState(false)
 
   function handleAdd() {
