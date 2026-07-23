@@ -210,6 +210,7 @@ export interface ImageUploaderProps {
 export function ImageUploader({ value, onChange }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false)
   const [urlError, setUrlError]   = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [dragging, setDragging]   = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -217,6 +218,7 @@ export function ImageUploader({ value, onChange }: ImageUploaderProps) {
     if (!file.type.startsWith("image/")) return
     setUploading(true)
     setUrlError(false)
+    setUploadError(null)
     try {
       const supabase = createClient()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -229,7 +231,7 @@ export function ImageUploader({ value, onChange }: ImageUploaderProps) {
       onChange(data.publicUrl)
     } catch (err) {
       console.error(err)
-      setUrlError(true)
+      setUploadError(err instanceof Error ? err.message : "Erro ao enviar imagem. Tente novamente.")
     } finally {
       setUploading(false)
     }
@@ -311,7 +313,11 @@ export function ImageUploader({ value, onChange }: ImageUploaderProps) {
           onChange={(e) => handleFiles(e.target.files)} style={{ display: "none" }} />
       </div>
 
-
+      {uploadError && (
+        <p style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "#B91C1C", marginTop: 8 }}>
+          {uploadError}
+        </p>
+      )}
 
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
