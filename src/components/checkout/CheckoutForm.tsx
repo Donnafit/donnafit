@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useCart, MIN_DELIVERY_ITEMS } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import { buildWhatsAppMessage, buildWhatsAppURL } from "@/lib/whatsapp"
 import { matchDeliveryZone } from "@/lib/deliveryZones"
 import { formatCurrency } from "@/lib/utils"
+import { getMarmitasPerUnit } from "@/lib/stock"
 import { Store, Truck, QrCode, CreditCard, Check, Link2, Info } from "lucide-react"
 
 const DEFAULT_PIX_DISCOUNT_RATE = 0.02
@@ -142,6 +143,11 @@ export function CheckoutForm() {
 
   const [payment, setPayment] = useState<"pix" | "card" | "card_link">("pix")
   const [loading, setLoading] = useState(false)
+  // Guarda síncrona contra duplo clique/duplo toque — `loading` só reflete
+  // no DOM depois de um re-render, então dois cliques muito rápidos (comum
+  // em mobile) podiam passar pelo `disabled={loading}` e disparar dois
+  // pedidos concorrentes antes do primeiro re-render acontecer.
+  const isSubmittingRef = useRef(false)
   const [submitError, setSubmitError] = useState("")
   const [riceChoices, setRiceChoices] = useState<Record<string, "integral" | "branco">>({})
   const [riceMode, setRiceMode] = useState<"same" | "individual">("same")
@@ -181,7 +187,12 @@ export function CheckoutForm() {
     const auto = Object.fromEntries(autoBrancoRiceItems.map(item => [item.product.id, "branco" as const]))
     return { ...chosen, ...auto }
   }
-  const totalQty = cartItems.reduce((sum, item) => sum + item.quantity, 0)
+  // Marmitas reais no carrinho — um combo conta pela composição real dele,
+  // não como 1 unidade (senão a trava de frete mínimo fica incorreta).
+  const totalQty = cartItems.reduce(
+    (sum, item) => sum + getMarmitasPerUnit(item.product) * item.quantity,
+    0
+  )
   const deliveryLocked = totalQty < MIN_DELIVERY_ITEMS
 
   // Se o carrinho cair abaixo do mínimo (item removido, ou auto-preenchimento
@@ -241,6 +252,10 @@ export function CheckoutForm() {
   }
 
   async function doSubmit() {
+    // Guarda síncrona: se já tem um envio em andamento, ignora — evita
+    // pedido duplicado por clique/toque duplo antes do primeiro re-render.
+    if (isSubmittingRef.current) return
+    isSubmittingRef.current = true
     // Precisa abrir a aba AGORA, ainda dentro do clique síncrono do usuário —
     // se abrir só depois do await fetch(), navegadores mobile (principalmente
     // iOS Safari) bloqueiam o popup silenciosamente por perder a associação
@@ -248,6 +263,12 @@ export function CheckoutForm() {
     const waWindow = window.open("", "_blank")
     setLoading(true)
     setSubmitError("")
+    // Sem isso, uma chamada de rede que trava sem resolver nem rejeitar
+    // (API lenta, geocoding externo pendurado, conexão instável) deixava o
+    // botão preso em "Enviando pedido..." pra sempre — relatado por
+    // clientes como o botão "travando".
+    const timeoutController = new AbortController()
+    const timeoutId = setTimeout(() => timeoutController.abort(), 20000)
     try {
       const computedRiceChoices = finalRiceChoices()
       const activeRiceChoices = Object.keys(computedRiceChoices).length > 0 ? computedRiceChoices : undefined
@@ -267,6 +288,7 @@ export function CheckoutForm() {
           total: finalTotal,
           riceChoices: activeRiceChoices,
         }),
+        signal: timeoutController.signal,
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || data.error || "Erro ao criar pedido")
@@ -326,9 +348,16 @@ export function CheckoutForm() {
       router.push(`/confirmacao?order=${data.orderNumber}&wa=${encodedWa}`)
     } catch (err) {
       waWindow?.close()
-      setSubmitError(err instanceof Error ? err.message : "Erro ao enviar pedido. Tente novamente.")
+      const timedOut = err instanceof Error && err.name === "AbortError"
+      setSubmitError(
+        timedOut
+          ? "A solicitação demorou demais para responder. Verifique sua conexão e tente novamente."
+          : err instanceof Error ? err.message : "Erro ao enviar pedido. Tente novamente."
+      )
     } finally {
+      clearTimeout(timeoutId)
       setLoading(false)
+      isSubmittingRef.current = false
     }
   }
 

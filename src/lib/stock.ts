@@ -17,3 +17,16 @@ export function isProductSoldOut(product: StockCheckable): boolean {
   }
   return product.stock_quantity <= 0
 }
+
+// Quantas marmitas 1 unidade deste produto representa. Um combo conta pela
+// composição real (combo_marmitas_count, mantido em sincronia por trigger a
+// partir de combo_items) — não como 1 unidade, senão regras como o mínimo
+// de frete ficam incorretas para pedidos com combo. Combo sem composição
+// cadastrada ainda conta como 1, pra não travar a venda por um problema de
+// cadastro.
+export function getMarmitasPerUnit(
+  product: Pick<Product, "stock_type" | "combo_marmitas_count">
+): number {
+  if (product.stock_type !== "combo") return 1
+  return product.combo_marmitas_count > 0 ? product.combo_marmitas_count : 1
+}

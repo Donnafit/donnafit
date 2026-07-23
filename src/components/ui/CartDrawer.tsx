@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useCart, MIN_DELIVERY_ITEMS } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import { formatCurrency, resolveImageSrc } from "@/lib/utils"
+import { getMarmitasPerUnit } from "@/lib/stock"
 
 function CartItemImage({ src, alt }: { src: string | null | undefined; alt: string }) {
   const [imgSrc, setImgSrc] = useState(resolveImageSrc(src))
@@ -53,6 +54,12 @@ export function CartDrawer({ open, onClose }: Props) {
   const displayItems = mounted ? items : []
   const totalAmount = mounted ? total() : 0
   const itemCount = displayItems.reduce((s, i) => s + i.quantity, 0)
+  // Marmitas reais no carrinho — um combo conta pela composição real dele,
+  // não como 1 unidade (senão o aviso de frete mínimo fica incorreto).
+  const marmitasCount = displayItems.reduce(
+    (s, i) => s + getMarmitasPerUnit(i.product) * i.quantity,
+    0
+  )
 
   return (
     <>
@@ -249,7 +256,7 @@ export function CartDrawer({ open, onClose }: Props) {
                 {formatCurrency(totalAmount)}
               </span>
             </div>
-            {itemCount > 0 && itemCount < MIN_DELIVERY_ITEMS && (
+            {marmitasCount > 0 && marmitasCount < MIN_DELIVERY_ITEMS && (
               <div style={{
                 background: "#FFF7E6", border: "1.5px solid #F5D98B",
                 borderRadius: 10, padding: "9px 12px", marginBottom: 14,
@@ -259,7 +266,7 @@ export function CartDrawer({ open, onClose }: Props) {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                 </svg>
                 <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontSize: 11, color: "#92400E", fontWeight: 600 }}>
-                  Frete a partir de {MIN_DELIVERY_ITEMS} marmitas — faltam {MIN_DELIVERY_ITEMS - itemCount} para liberar a entrega
+                  Frete a partir de {MIN_DELIVERY_ITEMS} marmitas — faltam {MIN_DELIVERY_ITEMS - marmitasCount} para liberar a entrega
                 </span>
               </div>
             )}

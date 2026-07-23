@@ -170,6 +170,7 @@ export type Database = {
           rice_stock_mode: "none" | "integral" | "branco" | "both"
           rice_stock_integral: number | null
           rice_stock_branco: number | null
+          combo_marmitas_count: number
           created_at: string
           updated_at: string
         }
@@ -191,6 +192,7 @@ export type Database = {
           rice_stock_mode?: "none" | "integral" | "branco" | "both"
           rice_stock_integral?: number | null
           rice_stock_branco?: number | null
+          combo_marmitas_count?: number
           created_at?: string
           updated_at?: string
         }
@@ -212,6 +214,7 @@ export type Database = {
           rice_stock_mode?: "none" | "integral" | "branco" | "both"
           rice_stock_integral?: number | null
           rice_stock_branco?: number | null
+          combo_marmitas_count?: number
           created_at?: string
           updated_at?: string
         }

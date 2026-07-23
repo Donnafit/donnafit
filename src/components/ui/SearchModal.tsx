@@ -17,6 +17,7 @@ interface SearchResult {
   rice_stock_mode: "none" | "integral" | "branco" | "both"
   rice_stock_integral: number | null
   rice_stock_branco: number | null
+  combo_marmitas_count: number
   is_active: boolean
   categories?: { name: string } | null
 }
@@ -58,7 +59,7 @@ export function SearchModal({ open, onClose }: Props) {
     const { data } = await supabase
       .from("products")
       .select(
-        "id, name, description, price, image_url, stock_type, stock_quantity, rice_stock_mode, rice_stock_integral, rice_stock_branco, is_active, categories(name)"
+        "id, name, description, price, image_url, stock_type, stock_quantity, rice_stock_mode, rice_stock_integral, rice_stock_branco, combo_marmitas_count, is_active, categories(name)"
       )
       .eq("is_active", true)
       .or(`name.ilike.%${q}%,description.ilike.%${q}%`)

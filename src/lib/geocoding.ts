@@ -26,10 +26,17 @@ export async function geocodeToBairro(address: string): Promise<string | null> {
   const query = `${stripAddressComplement(address)}, Curitiba, PR, Brasil`
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&addressdetails=1&countrycodes=br&limit=1`
 
+  // Sem timeout, uma instância pública lenta/instável do Nominatim podia
+  // deixar POST /api/orders pendurado indefinidamente — e, por tabela, o
+  // botão "Confirmar e Abrir WhatsApp" travado em loading pra sempre, já
+  // que o fetch do checkout nunca resolvia nem rejeitava.
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 5000)
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": "DonnaFIT-Checkout/1.0 (contato: donnafit)" },
       cache: "no-store",
+      signal: controller.signal,
     })
     if (!res.ok) return null
     const results: NominatimResult[] = await res.json()
@@ -39,5 +46,7 @@ export async function geocodeToBairro(address: string): Promise<string | null> {
     return address_.suburb ?? address_.neighbourhood ?? address_.city_district ?? null
   } catch {
     return null
+  } finally {
+    clearTimeout(timeoutId)
   }
 }

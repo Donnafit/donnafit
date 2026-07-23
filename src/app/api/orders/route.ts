@@ -51,17 +51,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Endereço de entrega obrigatório" }, { status: 400 })
   }
 
-  // Mesmo princípio de nunca confiar só na validação do front — o carrinho
-  // já bloqueia entrega abaixo do mínimo, mas isso é só cosmético sem essa
-  // checagem espelhada aqui.
-  const totalQty = body.items.reduce((sum, item) => sum + item.quantity, 0)
-  if (body.deliveryType === "delivery" && totalQty < MIN_DELIVERY_ITEMS) {
-    return NextResponse.json(
-      { error: `Frete disponível apenas a partir de ${MIN_DELIVERY_ITEMS} marmitas` },
-      { status: 400 }
-    )
-  }
-
   // Remover máscara do telefone antes de salvar
   const cleanPhone = body.customerPhone.replace(/\D/g, "")
 
@@ -87,6 +76,75 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: `Produto(s) indisponível(is): ${unavailable.map((i) => i.product.name).join(", ")}` },
       { status: 409 }
+    )
+  }
+
+  // Itens "combo" não têm stock_quantity própria — sua composição real
+  // (combo_items) é o que define quantas marmitas ela realmente representa
+  // (usado no cálculo do frete mínimo abaixo) e, mais adiante, o que baixa
+  // de estoque na hora de reservar.
+  const comboProductIds = body.items
+    .map((item) => item.product.id)
+    .filter((id) => freshById.get(id)?.stock_type === "combo")
+
+  const comboItemsByComboId = new Map<string, { component_product_id: string; quantity: number }[]>()
+  const componentIds = new Set<string>()
+  if (comboProductIds.length > 0) {
+    const { data: comboItemsData, error: comboItemsErr } = await supabase
+      .from("combo_items")
+      .select("combo_product_id, component_product_id, quantity")
+      .in("combo_product_id", comboProductIds)
+
+    if (comboItemsErr) {
+      return NextResponse.json({ error: "Erro ao validar composição do combo", detail: comboItemsErr.message }, { status: 500 })
+    }
+    for (const ci of comboItemsData ?? []) {
+      const list = comboItemsByComboId.get(ci.combo_product_id) ?? []
+      list.push({ component_product_id: ci.component_product_id, quantity: ci.quantity })
+      comboItemsByComboId.set(ci.combo_product_id, list)
+      componentIds.add(ci.component_product_id)
+    }
+  }
+
+  // Dados dos componentes de combo (nome + modo de estoque de arroz) —
+  // precisos tanto pra baixar o estoque certo (ver stockOps abaixo — um
+  // componente "both" mira rice_stock_integral/branco, não stock_quantity,
+  // que fica sempre 0 nesse modo) quanto pra apontar no erro qual marmita
+  // específica está esgotada, em vez do nome do combo inteiro.
+  const componentInfoById = new Map<string, any>()
+  if (componentIds.size > 0) {
+    const { data: componentsData, error: componentsErr } = await supabase
+      .from("products")
+      .select("id, name, rice_stock_mode")
+      .in("id", [...componentIds])
+    if (componentsErr) {
+      return NextResponse.json({ error: "Erro ao validar componentes do combo", detail: componentsErr.message }, { status: 500 })
+    }
+    for (const c of componentsData ?? []) componentInfoById.set(c.id, c)
+  }
+
+  // Quantidade real de marmitas por item: um combo conta pelas marmitas que
+  // ele realmente contém (soma dos componentes cadastrados), não como 1
+  // unidade — senão o mínimo de frete fica incorreto pra pedidos com combo.
+  // Combo sem composição cadastrada conta como 1 (mesmo comportamento
+  // anterior), pra não travar o pedido por um problema de cadastro.
+  const marmitasCount = (item: (typeof body.items)[number]): number => {
+    const fresh = freshById.get(item.product.id)
+    if (fresh?.stock_type !== "combo") return item.quantity
+    const components = comboItemsByComboId.get(item.product.id) ?? []
+    if (components.length === 0) return item.quantity
+    const perCombo = components.reduce((sum, c) => sum + c.quantity, 0)
+    return perCombo * item.quantity
+  }
+
+  // Mesmo princípio de nunca confiar só na validação do front — o carrinho
+  // já bloqueia entrega abaixo do mínimo, mas isso é só cosmético sem essa
+  // checagem espelhada aqui.
+  const totalQty = body.items.reduce((sum, item) => sum + marmitasCount(item), 0)
+  if (body.deliveryType === "delivery" && totalQty < MIN_DELIVERY_ITEMS) {
+    return NextResponse.json(
+      { error: `Frete disponível apenas a partir de ${MIN_DELIVERY_ITEMS} marmitas` },
+      { status: 400 }
     )
   }
 
@@ -215,29 +273,8 @@ export async function POST(req: Request) {
   }
 
   // Itens "combo" não têm stock_quantity própria — a baixa mira cada
-  // componente individual (combo_items), multiplicando a quantidade do
-  // componente pela quantidade do combo no pedido.
-  const comboProductIds = body.items
-    .map((item) => item.product.id)
-    .filter((id) => freshById.get(id)?.stock_type === "combo")
-
-  const comboItemsByComboId = new Map<string, { component_product_id: string; quantity: number }[]>()
-  if (comboProductIds.length > 0) {
-    const { data: comboItemsData, error: comboItemsErr } = await supabase
-      .from("combo_items")
-      .select("combo_product_id, component_product_id, quantity")
-      .in("combo_product_id", comboProductIds)
-
-    if (comboItemsErr) {
-      return NextResponse.json({ error: "Erro ao validar composição do combo", detail: comboItemsErr.message }, { status: 500 })
-    }
-    for (const ci of comboItemsData ?? []) {
-      const list = comboItemsByComboId.get(ci.combo_product_id) ?? []
-      list.push({ component_product_id: ci.component_product_id, quantity: ci.quantity })
-      comboItemsByComboId.set(ci.combo_product_id, list)
-    }
-  }
-
+  // componente individual (combo_items, já buscados acima), multiplicando a
+  // quantidade do componente pela quantidade do combo no pedido.
   const stockOps: StockOp[] = body.items.flatMap((item) => {
     const fresh = freshById.get(item.product.id)
     if (fresh.stock_type === "combo") {
@@ -250,12 +287,29 @@ export async function POST(req: Request) {
         // pra ficar visível em produção.
         console.warn(`Combo ${item.product.id} (${item.product.name}) sem combo_items configurados — venda não baixou estoque de nenhum componente.`)
       }
-      return components.map((comp) => ({
-        kind: "simple" as const,
-        productId: comp.component_product_id,
-        quantity: comp.quantity * item.quantity,
-        label: item.product.name,
-      }))
+      return components.map((comp) => {
+        const componentInfo = componentInfoById.get(comp.component_product_id)
+        const quantity = comp.quantity * item.quantity
+        const label = componentInfo?.name ?? item.product.name
+        // Componente com estoque dividido por tipo de arroz (rice_stock_mode
+        // "both") não usa stock_quantity — essa coluna fica sempre em 0
+        // nesse modo (ver EstoqueClient.tsx), então mirar reserve_stock nele
+        // sempre falhava com "estoque insuficiente" mesmo com arroz de
+        // sobra (causa real do combo aparecendo esgotado no checkout). Não
+        // existe hoje escolha de tipo de arroz por componente de combo no
+        // checkout, então assume "branco" — mesmo default usado quando o
+        // cliente não escolhe explicitamente em outros pontos deste arquivo.
+        if (componentInfo?.rice_stock_mode === "both") {
+          return {
+            kind: "rice" as const,
+            productId: comp.component_product_id,
+            quantity,
+            riceType: "branco" as const,
+            label,
+          }
+        }
+        return { kind: "simple" as const, productId: comp.component_product_id, quantity, label }
+      })
     }
     if (fresh.rice_stock_mode === "both") return [buildRiceOp(item)]
     return [{ kind: "simple" as const, productId: item.product.id, quantity: item.quantity, label: item.product.name }]
