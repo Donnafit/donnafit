@@ -1,15 +1,24 @@
 "use client"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import {
   IconLock, ErrorMsg, SuccessMsg, Field, EyeBtn, PrimaryBtn, BrandHeader,
 } from "@/components/ui/AuthFormKit"
 
 export default function RedefinirSenhaPage() {
+  return (
+    <Suspense fallback={null}>
+      <RedefinirSenhaForm />
+    </Suspense>
+  )
+}
+
+function RedefinirSenhaForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [ready, setReady] = useState(false)
-  const [invalidLink, setInvalidLink] = useState(false)
+  const [invalidLink, setInvalidLink] = useState(searchParams.get("erro") === "link_invalido")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -17,8 +26,8 @@ export default function RedefinirSenhaPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  // O link de recuperação chega com o token na URL — o client do Supabase
-  // troca esse token por sessão automaticamente e dispara PASSWORD_RECOVERY.
+  // A sessão já é criada em /auth/confirm (server-side, via verifyOtp) antes de
+  // chegar aqui; getSession() pega essa sessão pelos cookies compartilhados.
   useEffect(() => {
     let sessionFound = false
     const supabase = createClient()
