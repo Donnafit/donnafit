@@ -41,22 +41,25 @@ function buildReceiptHTML(order: OrderWithItems): string {
     @page { margin: 4mm; size: 80mm auto; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 10pt;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11pt;
+      font-weight: 600;
       width: 72mm;
       color: #000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     .center  { text-align: center; }
     .right   { text-align: right; }
-    .bold    { font-weight: bold; }
-    .sep     { border-top: 1px dashed #000; margin: 5px 0; }
-    .logo    { font-size: 14pt; font-weight: bold; letter-spacing: 2px; }
-    .sub     { font-size: 8pt; margin-top: 1px; }
+    .bold    { font-weight: 800; }
+    .sep     { border-top: 2px dashed #000; margin: 5px 0; }
+    .logo    { font-size: 15pt; font-weight: 800; letter-spacing: 2px; }
+    .sub     { font-size: 9pt; margin-top: 1px; font-weight: 600; }
     table    { width: 100%; border-collapse: collapse; }
-    td       { padding: 1px 0; font-size: 9pt; vertical-align: top; }
-    .label   { font-size: 8pt; color: #555; }
-    .total-row td { font-size: 12pt; font-weight: bold; padding-top: 4px; }
-    .footer  { font-size: 8pt; margin-top: 8px; }
+    td       { padding: 1px 0; font-size: 10pt; font-weight: 600; vertical-align: top; }
+    .label   { font-size: 9pt; color: #000; font-weight: 700; }
+    .total-row td { font-size: 13pt; font-weight: 800; padding-top: 4px; }
+    .footer  { font-size: 9pt; margin-top: 8px; font-weight: 600; }
   </style>
 </head>
 <body>
