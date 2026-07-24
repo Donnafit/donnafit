@@ -39,16 +39,11 @@ export function ProductDetailClient({ product }: { product: ProductWithCategory 
         {product.name}
       </h1>
 
-      {/* Descrição curta */}
-      {product.description && (
-        <p style={{ fontSize: 14, color: "#888", lineHeight: 1.65, marginBottom: 24 }}>
-          {product.description.slice(0, 120)}
-          {product.description.length > 120 ? "…" : ""}
-        </p>
-      )}
+      {/* Descrição completa fica só no card "Descrição" abaixo, na página —
+          repetir aqui (truncada) duplicava o mesmo texto duas vezes. */}
 
       {/* Divider */}
-      <div style={{ borderTop: "1px solid #F0EDE8", marginBottom: 24 }} />
+      <div style={{ borderTop: "1px solid #F0EDE8", marginTop: 4, marginBottom: 24 }} />
 
       {/* Preço */}
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 28 }}>
