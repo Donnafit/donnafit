@@ -2,13 +2,28 @@
 import { useState, useRef } from "react"
 import { ChefHat, Search, Plus, CheckCircle2, AlertTriangle, XCircle, Clock, X } from "lucide-react"
 
+type RiceStockMode = "none" | "integral" | "branco" | "both"
+
 interface Product {
   id: string
   name: string
   sku: string | null
   stock_quantity: number
   min_stock_alert: number
+  rice_stock_mode: RiceStockMode
+  rice_stock_integral: number | null
+  rice_stock_branco: number | null
   categories: { name: string } | null
+}
+
+// Marmitas com rice_stock_mode "both" nunca guardam a quantidade real em
+// stock_quantity (fica sempre 0) — a soma dos dois tipos de arroz é o
+// estoque de verdade pra elas. Sem isso, essas marmitas apareceriam pra
+// sempre como "esgotadas" nos cards de alerta e na lista de reposição.
+function effectiveQty(p: Product): number {
+  return p.rice_stock_mode === "both"
+    ? (p.rice_stock_integral ?? 0) + (p.rice_stock_branco ?? 0)
+    : p.stock_quantity
 }
 
 interface RestockLog {
@@ -25,7 +40,7 @@ interface PendingRequest {
   product_id: string
   requested_quantity: number
   created_at: string
-  product: { name: string; sku: string | null } | null
+  product: { name: string; sku: string | null; rice_stock_mode: RiceStockMode } | null
 }
 
 interface Props {
@@ -60,11 +75,12 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog, pe
   const [flash, setFlash]           = useState<string | null>(null)
   const [error, setError]           = useState<string | null>(null)
   const [actualQty, setActualQty]   = useState<Record<string, string>>({})
+  const [actualQtyRice, setActualQtyRice] = useState<Record<string, { integral: string; branco: string }>>({})
   const [completingId, setCompletingId] = useState<string | null>(null)
   const qtyRef = useRef<HTMLInputElement>(null)
 
-  const empty = products.filter((p) => p.stock_quantity === 0)
-  const low   = products.filter((p) => p.stock_quantity > 0 && p.stock_quantity <= p.min_stock_alert)
+  const empty = products.filter((p) => effectiveQty(p) === 0)
+  const low   = products.filter((p) => effectiveQty(p) > 0 && effectiveQty(p) <= p.min_stock_alert)
 
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -112,40 +128,73 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog, pe
     }
   }
 
+  function isRiceSplitRequest(request: PendingRequest) {
+    return request.product?.rice_stock_mode === "both"
+  }
+
   async function handleComplete(request: PendingRequest) {
-    const amount = parseInt(actualQty[request.id] ?? "", 10)
-    if (!amount || amount <= 0) return
+    const riceSplit = isRiceSplitRequest(request)
+    let body: Record<string, number>
+    let totalForLog: number
+
+    if (riceSplit) {
+      const vals = actualQtyRice[request.id] ?? { integral: "", branco: "" }
+      const integral = parseInt(vals.integral, 10) || 0
+      const branco = parseInt(vals.branco, 10) || 0
+      if (integral <= 0 && branco <= 0) return
+      body = { actualQuantityIntegral: integral, actualQuantityBranco: branco }
+      totalForLog = integral + branco
+    } else {
+      const amount = parseInt(actualQty[request.id] ?? "", 10)
+      if (!amount || amount <= 0) return
+      body = { actualQuantity: amount }
+      totalForLog = amount
+    }
+
     setCompletingId(request.id)
     setError(null)
     try {
       const res = await fetch(`/api/kitchen/requests/${request.id}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actualQuantity: amount }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
       setProducts((prev) =>
-        prev.map((p) => p.id === request.product_id ? { ...p, stock_quantity: data.newQuantity } : p)
+        prev.map((p) => {
+          if (p.id !== request.product_id) return p
+          return riceSplit
+            ? { ...p, rice_stock_integral: data.newRiceIntegral, rice_stock_branco: data.newRiceBranco }
+            : { ...p, stock_quantity: data.newQuantity }
+        })
       )
       setPending((prev) => prev.filter((r) => r.id !== request.id))
       setLog((prev) => [{
         id: `local-${Date.now()}`,
         product_id: request.product_id,
-        quantity: amount,
+        quantity: totalForLog,
         notes: null,
         created_at: new Date().toISOString(),
         product: request.product,
       }, ...prev])
 
-      setFlash(`+${amount} ${data.productName}`)
+      setFlash(`+${totalForLog} ${data.productName}`)
       setTimeout(() => setFlash(null), 2500)
-      setActualQty((prev) => {
-        const next = { ...prev }
-        delete next[request.id]
-        return next
-      })
+      if (riceSplit) {
+        setActualQtyRice((prev) => {
+          const next = { ...prev }
+          delete next[request.id]
+          return next
+        })
+      } else {
+        setActualQty((prev) => {
+          const next = { ...prev }
+          delete next[request.id]
+          return next
+        })
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao concluir produção.")
     } finally {
@@ -253,7 +302,8 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog, pe
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {[...empty, ...low].map((p) => {
-                const isEmpty = p.stock_quantity === 0
+                const qty = effectiveQty(p)
+                const isEmpty = qty === 0
                 return (
                   <div
                     key={p.id}
@@ -269,13 +319,13 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog, pe
                         {p.name}
                       </p>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-                        <StockBar qty={p.stock_quantity} min={p.min_stock_alert} />
+                        <StockBar qty={qty} min={p.min_stock_alert} />
                         <span style={{
                           fontFamily: "var(--font-ui)", fontSize: 11, fontWeight: 700,
                           color: isEmpty ? "#EF4444" : "#F59E0B",
                           flexShrink: 0,
                         }}>
-                          {p.stock_quantity}/{p.min_stock_alert} mín
+                          {qty}/{p.min_stock_alert} mín
                         </span>
                       </div>
                     </div>
@@ -323,7 +373,15 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog, pe
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {pending.map((r) => (
+              {pending.map((r) => {
+                const riceSplit = isRiceSplitRequest(r)
+                const riceVals = actualQtyRice[r.id] ?? { integral: "", branco: "" }
+                const riceIntegral = parseInt(riceVals.integral, 10) || 0
+                const riceBranco = parseInt(riceVals.branco, 10) || 0
+                const canComplete = riceSplit
+                  ? riceIntegral > 0 || riceBranco > 0
+                  : !!actualQty[r.id] && parseInt(actualQty[r.id]) > 0
+                return (
                 <div
                   key={r.id}
                   style={{
@@ -342,26 +400,59 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog, pe
                     </p>
                   </div>
 
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder="Qtd real"
-                    value={actualQty[r.id] ?? ""}
-                    onChange={(e) => setActualQty((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                    onKeyDown={(e) => e.key === "Enter" && handleComplete(r)}
-                    style={{
-                      width: 90, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700,
-                      color: "var(--text-950)",
-                      background: "var(--surface-50)",
-                      border: "1px solid var(--surface-200)",
-                      borderRadius: 9, padding: "9px 12px", outline: "none",
-                      textAlign: "center",
-                    }}
-                  />
+                  {riceSplit ? (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {(["integral", "branco"] as const).map((type) => (
+                        <div key={type} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                          <label style={{ fontFamily: "var(--font-ui)", fontSize: 9, fontWeight: 700, textTransform: "uppercase", color: "var(--text-300)" }}>
+                            {type === "integral" ? "Integral" : "Branco"}
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="Qtd"
+                            value={riceVals[type]}
+                            onChange={(e) =>
+                              setActualQtyRice((prev) => ({
+                                ...prev,
+                                [r.id]: { ...riceVals, [type]: e.target.value },
+                              }))
+                            }
+                            onKeyDown={(e) => e.key === "Enter" && handleComplete(r)}
+                            style={{
+                              width: 72, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700,
+                              color: "var(--text-950)",
+                              background: "var(--surface-50)",
+                              border: "1px solid var(--surface-200)",
+                              borderRadius: 9, padding: "9px 10px", outline: "none",
+                              textAlign: "center",
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="Qtd real"
+                      value={actualQty[r.id] ?? ""}
+                      onChange={(e) => setActualQty((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                      onKeyDown={(e) => e.key === "Enter" && handleComplete(r)}
+                      style={{
+                        width: 90, fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700,
+                        color: "var(--text-950)",
+                        background: "var(--surface-50)",
+                        border: "1px solid var(--surface-200)",
+                        borderRadius: 9, padding: "9px 12px", outline: "none",
+                        textAlign: "center",
+                      }}
+                    />
+                  )}
 
                   <button
                     onClick={() => handleComplete(r)}
-                    disabled={completingId === r.id || !actualQty[r.id] || parseInt(actualQty[r.id]) <= 0}
+                    disabled={completingId === r.id || !canComplete}
                     style={{
                       display: "flex", alignItems: "center", gap: 6,
                       padding: "10px 16px", borderRadius: 9, border: "none",
@@ -369,7 +460,7 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog, pe
                       color: "#fff",
                       fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700,
                       cursor: "pointer", flexShrink: 0,
-                      opacity: completingId === r.id || !actualQty[r.id] || parseInt(actualQty[r.id]) <= 0 ? 0.45 : 1,
+                      opacity: completingId === r.id || !canComplete ? 0.45 : 1,
                     }}
                   >
                     <CheckCircle2 size={13} strokeWidth={2.5} />
@@ -389,7 +480,8 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog, pe
                     <X size={14} strokeWidth={2} />
                   </button>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -450,7 +542,9 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog, pe
                   boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
                   zIndex: 30, maxHeight: 240, overflowY: "auto",
                 }}>
-                  {filteredProducts.slice(0, 8).map((p) => (
+                  {filteredProducts.slice(0, 8).map((p) => {
+                    const qty = effectiveQty(p)
+                    return (
                     <button
                       key={p.id}
                       onMouseDown={() => { setSelectedId(p.id); setSearch("") }}
@@ -471,13 +565,14 @@ export function KitchenClient({ products: initial, todayRestocks: initialLog, pe
                       }}>{p.name}</span>
                       <span style={{
                         fontFamily: "var(--font-ui)", fontSize: 11,
-                        color: p.stock_quantity === 0 ? "#EF4444" : p.stock_quantity <= p.min_stock_alert ? "#F59E0B" : "var(--text-300)",
+                        color: qty === 0 ? "#EF4444" : qty <= p.min_stock_alert ? "#F59E0B" : "var(--text-300)",
                         fontWeight: 600, flexShrink: 0, marginLeft: 8,
                       }}>
-                        {p.stock_quantity} unid
+                        {qty} unid
                       </span>
                     </button>
-                  ))}
+                    )
+                  })}
                   {filteredProducts.length === 0 && (
                     <p style={{ padding: "12px 14px", fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-300)" }}>
                       Nenhum produto encontrado

@@ -16,7 +16,7 @@ export default async function CozinhaPage() {
   const [{ data: productsRaw }, { data: restocksRaw }, { data: pendingRaw }] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, sku, stock_quantity, min_stock_alert, categories(name)")
+      .select("id, name, sku, stock_quantity, min_stock_alert, rice_stock_mode, rice_stock_integral, rice_stock_branco, categories(name)")
       .eq("is_active", true)
       .order("stock_quantity", { ascending: true }), // mais urgentes primeiro
     supabase
@@ -27,7 +27,7 @@ export default async function CozinhaPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("production_requests")
-      .select("id, product_id, requested_quantity, created_at, product:products(name, sku)")
+      .select("id, product_id, requested_quantity, created_at, product:products(name, sku, rice_stock_mode)")
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
   ])
@@ -38,6 +38,9 @@ export default async function CozinhaPage() {
     sku: string | null
     stock_quantity: number
     min_stock_alert: number
+    rice_stock_mode: "none" | "integral" | "branco" | "both"
+    rice_stock_integral: number | null
+    rice_stock_branco: number | null
     categories: { name: string } | null
   }[]
 
@@ -55,7 +58,7 @@ export default async function CozinhaPage() {
     product_id: string
     requested_quantity: number
     created_at: string
-    product: { name: string; sku: string | null } | null
+    product: { name: string; sku: string | null; rice_stock_mode: "none" | "integral" | "branco" | "both" } | null
   }[]
 
   return (
