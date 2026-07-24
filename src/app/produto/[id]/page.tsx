@@ -112,7 +112,12 @@ export default async function ProductPage({ params }: { params: { id: string } }
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr",
+            // minmax(0, 1fr), não "1fr" puro — a imagem tem aspect-ratio
+            // fixo (4/3) + minHeight, e o tamanho mínimo automático de um
+            // item de grid herda a largura "transferida" desse aspect-ratio;
+            // sem o minmax(0, ...) a coluna cresce além do container no
+            // mobile e empurra badge/título/descrição pra fora da tela.
+            gridTemplateColumns: "minmax(0, 1fr)",
             gap: 32,
             background: "#fff",
             borderRadius: 24,
@@ -123,7 +128,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
           className="product-detail-hero"
         >
           {/* Imagem */}
-          <div style={{ position: "relative", aspectRatio: "4/3", minHeight: 300 }}>
+          <div style={{ position: "relative", aspectRatio: "4/3", minHeight: 300, width: "100%", minWidth: 0 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={resolveImageSrc(product.image_url, 800)}

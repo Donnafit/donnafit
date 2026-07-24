@@ -429,7 +429,7 @@ body {
 /* Product detail hero — desktop: 2 colunas */
 @media (min-width: 768px) {
   .product-detail-hero {
-    grid-template-columns: 1fr 1fr !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
   }
 }
 
