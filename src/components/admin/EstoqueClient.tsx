@@ -5,6 +5,7 @@ import { Package, Search, CheckCircle2, AlertTriangle, XCircle, Minus, Plus,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { resolveImageSrc } from "@/lib/utils"
+import { compressImage } from "@/lib/imageCompression"
 import { IngredientBuilder } from "./IngredientBuilder"
 import {
   createIngredient,
@@ -213,12 +214,13 @@ export function ImageUploader({ value, onChange }: ImageUploaderProps) {
   const [dragging, setDragging]   = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  async function uploadFile(file: File) {
-    if (!file.type.startsWith("image/")) return
+  async function uploadFile(rawFile: File) {
+    if (!rawFile.type.startsWith("image/")) return
     setUploading(true)
     setUrlError(false)
     setUploadError(null)
     try {
+      const file = await compressImage(rawFile)
       const supabase = createClient()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sb = supabase as any
@@ -303,7 +305,7 @@ export function ImageUploader({ value, onChange }: ImageUploaderProps) {
                 Clique ou arraste a foto aqui
               </p>
               <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 2 }}>
-                JPG, PNG, WebP · máx. 5MB
+                JPG, PNG, WebP — comprimida automaticamente
               </p>
             </div>
           </div>
