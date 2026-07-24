@@ -9,6 +9,18 @@ import { matchDeliveryZone } from "@/lib/deliveryZones"
 import { formatCurrency } from "@/lib/utils"
 import { getMarmitasPerUnit } from "@/lib/stock"
 import { Store, Truck, QrCode, CreditCard, Check, Link2, Info } from "lucide-react"
+import type { CartItem } from "@/types"
+
+// rice_stock_mode é a fonte de verdade de qual arroz o produto serve.
+// Itens antigos salvos no carrinho (localStorage) antes desse campo existir
+// não têm rice_stock_mode — usa a descrição/rice_integral_available como
+// fallback pra não perder a pergunta desses itens.
+function riceModeOf(item: CartItem): "none" | "integral" | "branco" | "both" {
+  if (item.product.rice_stock_mode) return item.product.rice_stock_mode
+  const mentionsRice = item.product.description?.toLowerCase().includes("arroz")
+  if (!mentionsRice) return "none"
+  return item.product.rice_integral_available === false ? "branco" : "both"
+}
 
 const DEFAULT_PIX_DISCOUNT_RATE = 0.02
 
@@ -155,16 +167,11 @@ export function CheckoutForm() {
   const [showRiceModal, setShowRiceModal] = useState(false)
 
   const cartItems = mounted ? items : []
-  const allRiceItems = cartItems.filter(item =>
-    item.product.description?.toLowerCase().includes("arroz")
-  )
-  // Alguns pratos só servem arroz branco — não faz sentido perguntar.
-  // !== false (em vez de checar truthy) é proposital: carrinho é persistido em
-  // localStorage, então um item adicionado antes desse campo existir chega aqui
-  // com rice_integral_available undefined — precisa continuar perguntando (padrão
-  // seguro), só pular a pergunta quando o banco confirmar explicitamente que é false.
-  const riceItems = allRiceItems.filter(item => item.product.rice_integral_available !== false)
-  const autoBrancoRiceItems = allRiceItems.filter(item => item.product.rice_integral_available === false)
+  // Só pergunta pros itens com os dois tipos de arroz em estoque separado
+  // ("both"). Pratos com um único tipo têm o arroz preenchido automaticamente.
+  const riceItems = cartItems.filter(item => riceModeOf(item) === "both")
+  const autoBrancoRiceItems = cartItems.filter(item => riceModeOf(item) === "branco")
+  const autoIntegralRiceItems = cartItems.filter(item => riceModeOf(item) === "integral")
   const allRiceChosen = riceMode === "same"
     ? sameRiceType !== null
     : riceItems.every(item => !!riceChoices[item.product.id])
@@ -184,8 +191,9 @@ export function CheckoutForm() {
     const chosen = riceMode === "same" && sameRiceType
       ? Object.fromEntries(riceItems.map(item => [item.product.id, sameRiceType]))
       : riceChoices
-    const auto = Object.fromEntries(autoBrancoRiceItems.map(item => [item.product.id, "branco" as const]))
-    return { ...chosen, ...auto }
+    const autoBranco = Object.fromEntries(autoBrancoRiceItems.map(item => [item.product.id, "branco" as const]))
+    const autoIntegral = Object.fromEntries(autoIntegralRiceItems.map(item => [item.product.id, "integral" as const]))
+    return { ...chosen, ...autoBranco, ...autoIntegral }
   }
   // Marmitas reais no carrinho — um combo conta pela composição real dele,
   // não como 1 unidade (senão a trava de frete mínimo fica incorreta).
