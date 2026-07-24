@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useMemo, useState } from "react"
+import { Eye, EyeOff } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -58,9 +59,11 @@ const PERIOD_OPTIONS: { key: Period; label: string }[] = [
 interface Props {
   open: boolean
   onClose: () => void
+  hideRevenue: boolean
+  onToggleHideRevenue: () => void
 }
 
-export function RevenueDashboardModal({ open, onClose }: Props) {
+export function RevenueDashboardModal({ open, onClose, hideRevenue, onToggleHideRevenue }: Props) {
   const [period, setPeriod] = useState<Period>("today")
   const [customFrom, setCustomFrom] = useState("")
   const [customTo, setCustomTo] = useState("")
@@ -116,8 +119,17 @@ export function RevenueDashboardModal({ open, onClose }: Props) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-2xl rounded-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="flex-row items-center justify-between space-y-0">
           <DialogTitle className="text-xl font-black font-display">Faturamento</DialogTitle>
+          <button
+            type="button"
+            onClick={onToggleHideRevenue}
+            aria-label={hideRevenue ? "Mostrar faturamento" : "Ocultar faturamento"}
+            aria-pressed={hideRevenue}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-full hover:bg-gray-100 text-gray-400 mr-6"
+          >
+            {hideRevenue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
         </DialogHeader>
 
         <div className="space-y-5 mt-2">
@@ -186,6 +198,7 @@ export function RevenueDashboardModal({ open, onClose }: Props) {
               valueTestId="stat-total-revenue"
               trendTestId="stat-total-revenue-trend"
               valueClassName="text-brand-gold"
+              blurred={hideRevenue}
             />
           </div>
 
@@ -201,7 +214,7 @@ export function RevenueDashboardModal({ open, onClose }: Props) {
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
-              <RevenueChart data={summary?.series ?? []} loading={loading} />
+              <RevenueChart data={summary?.series ?? []} loading={loading} blurred={hideRevenue} />
             </CardContent>
           </Card>
         </div>

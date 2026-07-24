@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Clock, Flame, CheckCircle2, TrendingUp } from "lucide-react"
+import { Clock, Flame, CheckCircle2, TrendingUp, Eye, EyeOff } from "lucide-react"
 import { useStaffName } from "@/hooks/useStaffName"
 import { useAuth } from "@/hooks/useAuth"
 import { createClient } from "@/lib/supabase/client"
@@ -10,6 +10,27 @@ import { RevenueDashboardModal } from "./RevenueDashboardModal"
 
 const OPEN_HOUR  = 10
 const CLOSE_HOUR = 22
+
+// Preferência "ocultar faturamento" (estilo apps de banco) — só cosmética
+// (o valor real continua no DOM), persistida por dispositivo/navegador.
+const HIDE_REVENUE_KEY = "donna-fit-hide-revenue"
+
+function getHideRevenuePreference(): boolean {
+  try {
+    return localStorage.getItem(HIDE_REVENUE_KEY) === "1"
+  } catch {
+    return false
+  }
+}
+
+function setHideRevenuePreference(hidden: boolean) {
+  try {
+    if (hidden) localStorage.setItem(HIDE_REVENUE_KEY, "1")
+    else localStorage.removeItem(HIDE_REVENUE_KEY)
+  } catch {
+    // localStorage indisponível (modo privado etc.) — só não persiste.
+  }
+}
 
 async function getStoreHours() {
   try {
@@ -42,10 +63,13 @@ function getTodayLabel() {
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })
 
-function CurrencyValue({ value }: { value: number }) {
+function CurrencyValue({ value, blurred }: { value: number; blurred?: boolean }) {
   const parts = currencyFormatter.formatToParts(value)
   return (
-    <>
+    <span
+      aria-label={blurred ? "Faturamento oculto" : undefined}
+      style={blurred ? { filter: "blur(7px)", userSelect: "none" } : undefined}
+    >
       {parts.map((part, i) =>
         part.type === "currency" ? (
           <span key={i} style={{ fontSize: 16 }}>{part.value}</span>
@@ -53,7 +77,7 @@ function CurrencyValue({ value }: { value: number }) {
           part.value
         )
       )}
-    </>
+    </span>
   )
 }
 
@@ -80,6 +104,19 @@ export function AdminHero({
   const [profileName, setProfileName] = useState("")
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   const [showRevenueDashboard, setShowRevenueDashboard] = useState(false)
+  const [hideRevenue, setHideRevenue] = useState(false)
+
+  useEffect(() => {
+    setHideRevenue(getHideRevenuePreference())
+  }, [])
+
+  function toggleHideRevenue() {
+    setHideRevenue((prev) => {
+      const next = !prev
+      setHideRevenuePreference(next)
+      return next
+    })
+  }
 
   useEffect(() => {
     if (staffName) setProfileName(staffName)
@@ -301,6 +338,33 @@ export function AdminHero({
                 cursor: isRevenueTile ? "pointer" : "default",
               }}
             >
+              {/* Toggle ocultar faturamento */}
+              {isRevenueTile && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); toggleHideRevenue() }}
+                  aria-label={hideRevenue ? "Mostrar faturamento" : "Ocultar faturamento"}
+                  aria-pressed={hideRevenue}
+                  style={{
+                    position: "absolute",
+                    top: 12, right: 46,
+                    width: 24, height: 24,
+                    borderRadius: 7,
+                    border: "none",
+                    background: "rgba(255,255,255,0.06)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    zIndex: 1,
+                  }}
+                >
+                  {hideRevenue
+                    ? <EyeOff size={12} strokeWidth={2} style={{ color: "rgba(255,255,255,0.5)" }} />
+                    : <Eye size={12} strokeWidth={2} style={{ color: "rgba(255,255,255,0.5)" }} />}
+                </button>
+              )}
+
               {/* Icon badge */}
               <div style={{
                 position: "absolute",
@@ -337,7 +401,7 @@ export function AdminHero({
                 lineHeight: 1,
                 marginBottom: 5,
               }}>
-                {stat.isString ? <CurrencyValue value={stat.value as number} /> : stat.value}
+                {stat.isString ? <CurrencyValue value={stat.value as number} blurred={hideRevenue} /> : stat.value}
               </p>
 
               {/* Sub-label */}
@@ -383,6 +447,8 @@ export function AdminHero({
     <RevenueDashboardModal
       open={showRevenueDashboard}
       onClose={() => setShowRevenueDashboard(false)}
+      hideRevenue={hideRevenue}
+      onToggleHideRevenue={toggleHideRevenue}
     />
     </>
   )

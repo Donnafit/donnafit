@@ -15,6 +15,7 @@ interface RevenueStatCardProps {
   valueTestId?: string
   trendTestId?: string
   valueClassName?: string
+  blurred?: boolean
 }
 
 export function RevenueStatCard({
@@ -26,6 +27,7 @@ export function RevenueStatCard({
   valueTestId,
   trendTestId,
   valueClassName,
+  blurred,
 }: RevenueStatCardProps) {
   if (loading) {
     return (
@@ -87,6 +89,8 @@ export function RevenueStatCard({
         <CardTitle
           className={cn("text-2xl font-black font-display text-gray-900", valueClassName)}
           data-testid={valueTestId}
+          aria-label={blurred ? `${label} oculto` : undefined}
+          style={blurred ? { filter: "blur(7px)", userSelect: "none" } : undefined}
         >
           {value}
         </CardTitle>

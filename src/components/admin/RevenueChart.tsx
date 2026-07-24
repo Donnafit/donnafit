@@ -13,6 +13,7 @@ import type { RevenueDayPoint } from "@/types"
 interface Props {
   data: RevenueDayPoint[]
   loading?: boolean
+  blurred?: boolean
 }
 
 const chartConfig = {
@@ -27,7 +28,7 @@ export function formatDayLabel(dateStr: string): string {
   return `${d}/${m}`
 }
 
-export function RevenueChart({ data, loading }: Props) {
+export function RevenueChart({ data, loading, blurred }: Props) {
   if (loading) {
     return <Skeleton className="h-72 w-full rounded-2xl" data-testid="revenue-chart-skeleton" />
   }
@@ -58,7 +59,7 @@ export function RevenueChart({ data, loading }: Props) {
           tick={{ fontSize: 11, fill: "#9CA3AF" }}
         />
         <YAxis
-          tickFormatter={(v: number) => formatCurrency(v)}
+          tickFormatter={(v: number) => (blurred ? "••••" : formatCurrency(v))}
           tickLine={false}
           axisLine={false}
           tick={{ fontSize: 11, fill: "#9CA3AF" }}
@@ -68,7 +69,7 @@ export function RevenueChart({ data, loading }: Props) {
           content={
             <ChartTooltipContent
               labelFormatter={(label) => formatDayLabel(String(label))}
-              formatter={(value) => formatCurrency(Number(value))}
+              formatter={(value) => (blurred ? "••••" : formatCurrency(Number(value)))}
             />
           }
         />
