@@ -6,19 +6,47 @@ import type { RevenueDayPoint, RevenueSummary } from "@/types"
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const MAX_RANGE_DAYS = 366
 
-/** Constrói uma Date à meia-noite local a partir de "YYYY-MM-DD" (evita
- * o parsing UTC que `new Date("YYYY-MM-DD")` faz por padrão). */
-function parseLocalDate(dateStr: string): Date {
+// América/São_Paulo é UTC-3 fixo (sem horário de verão desde 2019) — o
+// popup calcula "hoje"/os filtros no browser do admin (Brasília), mas
+// essa rota roda no servidor (Vercel/Node em UTC). Sem isso, meia-noite
+// local do servidor ≠ meia-noite em Brasília, e pedidos feitos entre
+// ~21h-23h59 (horário de loja) caem no bucket de dia ERRADO — era a
+// causa do popup "dessincronizado" com os dados reais.
+const BR_UTC_OFFSET_MS = 3 * 60 * 60 * 1000
+
+/** Converte "YYYY-MM-DD" (data de calendário em Brasília) no instante UTC
+ * correspondente à meia-noite (ou 23:59:59.999 se `endOfDay`) em Brasília. */
+function brasiliaBoundaryToUtc(dateStr: string, endOfDay = false): Date {
   const [y, m, d] = dateStr.split("-").map(Number)
-  return new Date(y, m - 1, d)
+  const ms = endOfDay
+    ? Date.UTC(y, m - 1, d, 23, 59, 59, 999)
+    : Date.UTC(y, m - 1, d, 0, 0, 0, 0)
+  return new Date(ms + BR_UTC_OFFSET_MS)
 }
 
-/** Chave de dia local "YYYY-MM-DD" — mesma convenção usada no bucket. */
-function toDayKey(date: Date): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, "0")
-  const d = String(date.getDate()).padStart(2, "0")
+/** Data "de calendário" pura (sem hora), usada só pra aritmética de dias
+ * (contagem de intervalo, iteração de buckets) — não representa um
+ * instante real, por isso construída em UTC puro pra não depender do
+ * timezone do processo Node. */
+function calendarDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  return new Date(Date.UTC(y, m - 1, d))
+}
+
+function calendarDayKey(date: Date): string {
+  const y = date.getUTCFullYear()
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0")
+  const d = String(date.getUTCDate()).padStart(2, "0")
   return `${y}-${m}-${d}`
+}
+
+/** Chave de dia em Brasília "YYYY-MM-DD" a partir de um timestamp UTC real
+ * (`orders.created_at`) — desloca pelo offset antes de ler os campos UTC,
+ * assim um pedido feito às 23h de Brasília não vaza pro bucket do dia
+ * seguinte só porque em UTC já virou o dia seguinte. */
+function toBrasiliaDayKey(isoString: string): string {
+  const shifted = new Date(new Date(isoString).getTime() - BR_UTC_OFFSET_MS)
+  return calendarDayKey(shifted)
 }
 
 /** Soma pedidos (excluindo cancelados, já filtrado na query) em totais agregados. */
@@ -57,8 +85,8 @@ export async function GET(req: Request) {
     )
   }
 
-  const fromDate = parseLocalDate(from)
-  const toDate = parseLocalDate(to)
+  const fromDate = calendarDate(from)
+  const toDate = calendarDate(to)
 
   if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
     return NextResponse.json({ error: "Datas inválidas" }, { status: 400 })
@@ -75,20 +103,19 @@ export async function GET(req: Request) {
     )
   }
 
-  // Fim do dia (23:59:59.999) local do parâmetro 'to', pra incluir o dia inteiro.
-  const rangeEnd = new Date(
-    toDate.getFullYear(), toDate.getMonth(), toDate.getDate(), 23, 59, 59, 999
-  )
+  // Início/fim do intervalo como instantes reais em Brasília (não no
+  // timezone do processo Node).
+  const rangeStart = brasiliaBoundaryToUtc(from)
+  const rangeEnd = brasiliaBoundaryToUtc(to, true)
 
   // Período anterior equivalente: mesma duração, terminando no dia
   // imediatamente antes de 'from'. Usado pelos badges de tendência.
   const prevToDate = new Date(fromDate)
-  prevToDate.setDate(prevToDate.getDate() - 1)
+  prevToDate.setUTCDate(prevToDate.getUTCDate() - 1)
   const prevFromDate = new Date(prevToDate)
-  prevFromDate.setDate(prevFromDate.getDate() - (rangeDays - 1))
-  const prevRangeEnd = new Date(
-    prevToDate.getFullYear(), prevToDate.getMonth(), prevToDate.getDate(), 23, 59, 59, 999
-  )
+  prevFromDate.setUTCDate(prevFromDate.getUTCDate() - (rangeDays - 1))
+  const prevRangeStart = brasiliaBoundaryToUtc(calendarDayKey(prevFromDate))
+  const prevRangeEnd = brasiliaBoundaryToUtc(calendarDayKey(prevToDate), true)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = createAdminClient() as any
@@ -98,13 +125,13 @@ export async function GET(req: Request) {
       .from("orders")
       .select("id, total, created_at, order_items(quantity)")
       .not("status", "eq", "cancelled")
-      .gte("created_at", fromDate.toISOString())
+      .gte("created_at", rangeStart.toISOString())
       .lte("created_at", rangeEnd.toISOString()),
     supabase
       .from("orders")
       .select("id, total, order_items(quantity)")
       .not("status", "eq", "cancelled")
-      .gte("created_at", prevFromDate.toISOString())
+      .gte("created_at", prevRangeStart.toISOString())
       .lte("created_at", prevRangeEnd.toISOString()),
   ])
 
@@ -125,9 +152,9 @@ export async function GET(req: Request) {
   for (
     let d = new Date(fromDate);
     d.getTime() <= toDate.getTime();
-    d.setDate(d.getDate() + 1)
+    d.setUTCDate(d.getUTCDate() + 1)
   ) {
-    const key = toDayKey(d)
+    const key = calendarDayKey(d)
     buckets.set(key, { date: key, revenue: 0, orders: 0 })
   }
 
@@ -136,7 +163,7 @@ export async function GET(req: Request) {
   let totalRevenue = 0
 
   for (const order of orders) {
-    const dayKey = toDayKey(new Date(order.created_at))
+    const dayKey = toBrasiliaDayKey(order.created_at)
     const bucket = buckets.get(dayKey)
     const orderTotal = Number(order.total) || 0
     const orderItemsQty = ((order.order_items ?? []) as { quantity: number }[]).reduce(
