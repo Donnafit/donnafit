@@ -10,16 +10,6 @@ export interface IngredientRow {
   unit: string
 }
 
-// Mesmo texto gerado nos dois pontos de save (ProductModal e ManualClient)
-// — função única pra nunca divergir o formato entre os dois formulários.
-// Ex: "Peito de frango grelhado (150g), Arroz integral (180g)". Lista
-// vazia retorna null (equivalente a "sem descrição").
-export function buildIngredientsDescription(rows: IngredientRow[]): string | null {
-  const valid = rows.filter((r) => r.ingredientId && r.name && Number(r.quantity) > 0)
-  if (valid.length === 0) return null
-  return valid.map((r) => `${r.name} (${r.quantity}${r.unit})`).join(", ")
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function fetchIngredientCatalog(supabase: any): Promise<IngredientCatalogEntry[]> {
   const { data } = await supabase.from("ingredients").select("id, name").order("name")

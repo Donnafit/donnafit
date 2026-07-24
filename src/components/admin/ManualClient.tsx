@@ -5,7 +5,6 @@ import { resolveImageSrc } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { ImageUploader } from "./EstoqueClient"
 import {
-  buildIngredientsDescription,
   createIngredient,
   fetchIngredientCatalog,
   fetchProductIngredients,
@@ -146,22 +145,11 @@ export function ManualClient({ products: initialProducts }: Props) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = supabase as any
 
-    const generatedDescription = buildIngredientsDescription(editIngredientRows)
+    // Descrição não é editada aqui — é um texto livre próprio, editado em
+    // Admin → Estoque. Esta tela mexe só em imagem/preparo/ingredientes.
     const updatePayload: Record<string, unknown> = {
       image_url: editImageUrl.trim() || null,
       prep_instructions: editPrep.trim() || null,
-    }
-    // Mesma regra do ProductModal: só sobrescreve description se a lista
-    // não estiver vazia OU se o produto já tinha ingredientes estruturados
-    // antes desta sessão de edição (ingredientRows — estado de visualização,
-    // carregado à parte de editIngredientRows, ainda reflete o que estava
-    // salvo antes do usuário mexer). Esvaziar a lista de um produto já
-    // migrado precisa limpar a description gerada também, senão ela fica
-    // presa com ingredientes que não existem mais. Só preserva a description
-    // como está quando o produto é genuinamente legado (nunca teve lista
-    // estruturada) e continua sem nenhum ingrediente agora.
-    if (generatedDescription !== null || ingredientRows.length > 0) {
-      updatePayload.description = generatedDescription
     }
 
     const { data, error } = await sb

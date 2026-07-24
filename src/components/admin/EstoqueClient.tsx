@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/client"
 import { resolveImageSrc } from "@/lib/utils"
 import { IngredientBuilder } from "./IngredientBuilder"
 import {
-  buildIngredientsDescription,
   createIngredient,
   fetchIngredientCatalog,
   fetchProductIngredients,
@@ -441,6 +440,7 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
 
   const [form, setForm] = useState({
     name: productToEdit?.name ?? "",
+    description: productToEdit?.description ?? "",
     prep_instructions: productToEdit?.prep_instructions ?? "",
     sku: productToEdit?.sku ?? "",
     price: productToEdit?.price?.toString() ?? "",
@@ -462,12 +462,6 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
   const [comboOptions, setComboOptions]           = useState<SimpleProductOption[]>([])
   const [ingredientRows, setIngredientRows] = useState<IngredientRow[]>([])
   const [ingredientCatalog, setIngredientCatalog] = useState<IngredientCatalogEntry[]>([])
-  // Capturado uma vez, na carga inicial de edição — não muda conforme
-  // `ingredientRows` é editado na sessão atual. Distingue "produto que já
-  // tinha ingredientes estruturados antes deste save" (esvaziar a lista
-  // deve limpar a description gerada também) de "produto legado que nunca
-  // teve" (lista vazia não deve mexer na description livre existente).
-  const [hadIngredientsInitially, setHadIngredientsInitially] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -509,10 +503,7 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
   useEffect(() => {
     if (!productToEdit) return
     const supabase = createClient()
-    fetchProductIngredients(supabase, productToEdit.id).then((rows) => {
-      setIngredientRows(rows)
-      setHadIngredientsInitially(rows.length > 0)
-    })
+    fetchProductIngredients(supabase, productToEdit.id).then(setIngredientRows)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -572,9 +563,9 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
     const sb = supabase as any
 
     const isRiceSplit = !isCombo && form.rice_stock_mode === "both"
-    const generatedDescription = buildIngredientsDescription(ingredientRows)
     const payload = {
       name: form.name.trim(),
+      description: form.description.trim() || null,
       prep_instructions: form.prep_instructions.trim() || null,
       sku: form.sku.trim().toUpperCase() || null,
       price: Number(Number(form.price).toFixed(2)),
@@ -588,16 +579,6 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
       rice_stock_integral: isRiceSplit ? Math.max(0, parseInt(form.rice_stock_integral) || 0) : null,
       rice_stock_branco: isRiceSplit ? Math.max(0, parseInt(form.rice_stock_branco) || 0) : null,
       rice_integral_available: isCombo ? true : form.rice_stock_mode !== "branco",
-      // Produto novo sempre grava a description gerada (mesmo null, igual ao
-      // comportamento anterior de "sem descrição"). Produto existente só
-      // sobrescreve quando há pelo menos 1 ingrediente OU quando ele já
-      // tinha ingredientes estruturados antes deste save — esse segundo
-      // caso importa pra esvaziar a lista limpar também a description
-      // gerada anteriormente (senão ela ficava presa com o texto de
-      // ingredientes que não existem mais). Só preserva a description como
-      // está quando o produto é genuinamente legado (nunca teve lista
-      // estruturada) e continua sem nenhum ingrediente agora.
-      ...(generatedDescription !== null || !productToEdit || hadIngredientsInitially ? { description: generatedDescription } : {}),
     }
 
     let query = sb.from("products")
@@ -725,6 +706,18 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               required />
+          </div>
+
+          {/* Descrição */}
+          <div>
+            <label style={labelStyle}>Descrição</label>
+            <textarea className="modal-input" style={{ ...inputStyle, resize: "vertical", minHeight: 72 }}
+              placeholder="Ex: Um clássico saudável, leve e cheio de sabor."
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 6 }}>
+              Texto exibido para os clientes no cardápio.
+            </p>
           </div>
 
           {/* Ingredientes */}

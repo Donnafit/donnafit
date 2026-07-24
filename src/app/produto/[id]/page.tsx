@@ -63,6 +63,29 @@ export default async function ProductPage({ params }: { params: { id: string } }
   const category = (product as any).categories
   const desc = parseDescription(product.description ?? "")
 
+  let comboComposition: { name: string; quantity: number }[] = []
+  if (product.stock_type === "combo") {
+    const { data: comboItems } = await supabase
+      .from("combo_items")
+      .select("quantity, component_product_id")
+      .eq("combo_product_id", product.id)
+
+    if (comboItems && comboItems.length > 0) {
+      const componentIds = comboItems.map((item: any) => item.component_product_id)
+      const { data: components } = await supabase
+        .from("products")
+        .select("id, name")
+        .in("id", componentIds)
+
+      comboComposition = comboItems
+        .map((item: any) => ({
+          name: components?.find((c: any) => c.id === item.component_product_id)?.name ?? "Item",
+          quantity: item.quantity as number,
+        }))
+        .sort((a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name))
+    }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "linear-gradient(160deg, #FFFDF8 0%, #FBF6EE 50%, #F5EDD8 100%)" }}>
       <AnnouncementBar />
@@ -254,6 +277,67 @@ export default async function ProductPage({ params }: { params: { id: string } }
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* ── Composição do combo ───────────────────────────── */}
+        {comboComposition.length > 0 && (
+          <div style={{
+            background: "#fff",
+            borderRadius: 20,
+            overflow: "hidden",
+            boxShadow: "0 2px 16px rgba(0,0,0,0.06)",
+            marginTop: 20,
+          }}>
+            <div style={{
+              padding: "20px 24px 16px",
+              borderBottom: "1px solid #F5F2EE",
+            }}>
+              <h2 style={{
+                fontFamily: "var(--font-switzer), sans-serif",
+                fontWeight: 900,
+                fontSize: 11,
+                color: "#C89B3C",
+                textTransform: "uppercase",
+                letterSpacing: "0.14em",
+                margin: 0,
+              }}>
+                Composição do Combo
+              </h2>
+            </div>
+
+            <div style={{ padding: "8px 24px 20px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <tbody>
+                  {comboComposition.map((item, i) => (
+                    <tr key={i} style={{ borderBottom: i < comboComposition.length - 1 ? "1px solid #F5F2EE" : "none" }}>
+                      <td style={{
+                        padding: "12px 0",
+                        fontSize: 14,
+                        color: "#333",
+                        fontFamily: "var(--font-switzer), sans-serif",
+                      }}>
+                        {item.name}
+                      </td>
+                      <td style={{ padding: "12px 0", textAlign: "right" }}>
+                        <span style={{
+                          display: "inline-block",
+                          background: "#F8F5F0",
+                          color: "#5A6B2A",
+                          fontWeight: 800,
+                          fontSize: 12,
+                          borderRadius: 100,
+                          padding: "4px 12px",
+                          fontFamily: "var(--font-switzer), sans-serif",
+                        }}>
+                          {item.quantity}x
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
