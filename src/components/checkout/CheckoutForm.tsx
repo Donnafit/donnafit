@@ -165,13 +165,91 @@ export function CheckoutForm() {
   const [riceMode, setRiceMode] = useState<"same" | "individual">("same")
   const [sameRiceType, setSameRiceType] = useState<"integral" | "branco" | null>(null)
   const [showRiceModal, setShowRiceModal] = useState(false)
+  // IDs dos combos no carrinho que contêm algum componente com arroz dividido
+  // ("both"). Preenchido pelo effect abaixo (a composição do combo não vem no
+  // Product do carrinho). `comboRiceLoading` segura o envio enquanto essa
+  // composição ainda está sendo buscada, pra um cliente com formulário
+  // auto-preenchido não conseguir enviar antes de sabermos se o combo precisa
+  // perguntar o arroz (senão o guard do servidor recusaria sem saída).
+  const [comboRiceIds, setComboRiceIds] = useState<Set<string>>(new Set())
+  const [comboRiceLoading, setComboRiceLoading] = useState(false)
 
   const cartItems = mounted ? items : []
-  // Só pergunta pros itens com os dois tipos de arroz em estoque separado
-  // ("both"). Pratos com um único tipo têm o arroz preenchido automaticamente.
-  const riceItems = cartItems.filter(item => riceModeOf(item) === "both")
+
+  // Combos guardam rice_stock_mode "none" (o estoque de arroz mora nos
+  // componentes), então riceModeOf() nunca marca um combo como "both" e o
+  // checkout não perguntava o tipo de arroz — o cliente fechava combo com
+  // arroz sem escolher e a API caía no default silencioso "branco". Aqui
+  // buscamos a composição (leitura anônima liberada na migration 033) pra
+  // descobrir quais combos têm componente com arroz dividido e passam a
+  // perguntar. Chave estável (ids ordenados) evita refetch a cada render.
+  const comboIdsKey = cartItems
+    .filter(item => item.product.stock_type === "combo")
+    .map(item => item.product.id)
+    .sort()
+    .join(",")
+
+  useEffect(() => {
+    const comboIds = comboIdsKey ? comboIdsKey.split(",") : []
+    if (comboIds.length === 0) { setComboRiceIds(new Set()); setComboRiceLoading(false); return }
+    const supabase = createClient()
+    let cancelled = false
+    setComboRiceLoading(true)
+    ;(async () => {
+      try {
+        const { data: comboItems } = await supabase
+          .from("combo_items")
+          .select("combo_product_id, component_product_id")
+          .in("combo_product_id", comboIds)
+        if (!comboItems || comboItems.length === 0) {
+          if (!cancelled) setComboRiceIds(new Set())
+          return
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const componentIds = [...new Set(comboItems.map((ci: any) => ci.component_product_id))]
+        const { data: components } = await supabase
+          .from("products")
+          .select("id, rice_stock_mode")
+          .in("id", componentIds)
+        const riceComponentIds = new Set(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (components ?? []).filter((c: any) => c.rice_stock_mode === "both").map((c: any) => c.id)
+        )
+        const need = new Set<string>()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for (const ci of comboItems as any[]) {
+          if (riceComponentIds.has(ci.component_product_id)) need.add(ci.combo_product_id)
+        }
+        if (!cancelled) setComboRiceIds(need)
+      } finally {
+        if (!cancelled) setComboRiceLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [comboIdsKey])
+
+  // Um item precisa da pergunta de arroz se é um prato com os dois tipos em
+  // estoque separado ("both") OU um combo que contém componente "both" (uma
+  // escolha vale pro combo inteiro). Pratos de tipo único têm o arroz
+  // preenchido automaticamente (autoBranco/autoIntegral abaixo).
+  const needsRiceChoice = (item: CartItem): boolean =>
+    item.product.stock_type === "combo"
+      ? comboRiceIds.has(item.product.id)
+      : riceModeOf(item) === "both"
+  const riceItems = cartItems.filter(needsRiceChoice)
   const autoBrancoRiceItems = cartItems.filter(item => riceModeOf(item) === "branco")
   const autoIntegralRiceItems = cartItems.filter(item => riceModeOf(item) === "integral")
+
+  // Trava o scroll da página enquanto o modal de arroz está aberto — sem isso,
+  // no mobile o gesto de rolar escorregava pra página atrás (o modal é
+  // position:fixed) em vez de rolar o próprio modal, e a tela parecia
+  // "travada". Declarado depois de showRiceModal pra evitar TDZ na deps array.
+  useEffect(() => {
+    if (!showRiceModal) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => { document.body.style.overflow = prev }
+  }, [showRiceModal])
   const allRiceChosen = riceMode === "same"
     ? sameRiceType !== null
     : riceItems.every(item => !!riceChoices[item.product.id])
@@ -379,6 +457,9 @@ export function CheckoutForm() {
     if (delivery === "delivery") setAddressState(addressOk ? "valid" : "invalid")
 
     if (!nameOk || !phoneOk || !addressOk || cartItems.length === 0) return
+    // Ainda descobrindo se algum combo precisa perguntar o arroz — não envia
+    // até saber (o botão já fica desabilitado nesse curto intervalo).
+    if (comboRiceLoading) return
 
     if (riceItems.length > 0) {
       setShowRiceModal(true)
@@ -775,13 +856,13 @@ export function CheckoutForm() {
       {/* Botao WhatsApp */}
       <button
         type="button"
-        disabled={loading || cartItems.length === 0 || !isFormValid()}
+        disabled={loading || cartItems.length === 0 || !isFormValid() || comboRiceLoading}
         onClick={handleSubmit}
         className="btn-primary whatsapp-btn"
         style={{
           height: 60, fontSize: 16,
-          opacity: loading || cartItems.length === 0 || !isFormValid() ? 0.65 : 1,
-          cursor: loading || cartItems.length === 0 || !isFormValid() ? "not-allowed" : "pointer",
+          opacity: loading || cartItems.length === 0 || !isFormValid() || comboRiceLoading ? 0.65 : 1,
+          cursor: loading || cartItems.length === 0 || !isFormValid() || comboRiceLoading ? "not-allowed" : "pointer",
         }}
       >
         {loading ? (
@@ -833,6 +914,15 @@ export function CheckoutForm() {
               width: "100%", maxWidth: 440,
               boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
               pointerEvents: "auto",
+              // Sem isto o modal crescia além da tela (vários itens no modo
+              // individual) sem nenhuma área rolável — os itens de baixo e o
+              // botão de confirmar ficavam inacessíveis e a tela parecia
+              // travada. overscrollBehavior evita que o scroll escorregue pra
+              // página atrás. Mesmo padrão dos outros modais do app.
+              maxHeight: "calc(100dvh - 40px)",
+              overflowY: "auto",
+              overscrollBehavior: "contain",
+              WebkitOverflowScrolling: "touch",
             }}>
               {/* Header */}
               <div style={{ textAlign: "center", marginBottom: 24 }}>

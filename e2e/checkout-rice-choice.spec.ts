@@ -8,6 +8,10 @@ const fx = loadFixtures()
 // Produtos reais (não fixture): um que só serve arroz branco e um que oferece as duas opções.
 const FEIJOADA_ID = "d367e8f6-3f7e-4a44-8a8d-1d34dfe80d60" // rice_integral_available = false
 const FRICASSE_FRANGO_ID = "6eee4934-f282-4fdc-bfb9-852362f6bf92" // rice_integral_available = true (default)
+// Combo real com componentes de arroz "both" — deve passar a perguntar o arroz
+// (antes fechava direto porque o combo guarda rice_stock_mode "none").
+const COMBO_COM_ARROZ_ID = "90ed838d-1960-4642-a367-fc2c772aa271" // COMBO PREMIUM
+const COMBO_SEM_ARROZ_ID = "2e9640d8-e743-4e5a-a491-0fed31dd3b26" // COMBO DE 10 SOPAS (nenhum componente de arroz)
 
 function adminClient() {
   const env = Object.fromEntries(
@@ -121,5 +125,42 @@ test.describe("Cardápio — escolha de arroz (padrão único + pratos só-branc
     const confirmBtn = page.getByRole("button", { name: "Confirmar e Finalizar Pedido" })
     // Pré-preenchido: já pode confirmar sem precisar reclicar no item individual.
     await expect(confirmBtn).toBeEnabled()
+  })
+
+  // Bug 2: combo com componentes de arroz "both" precisa perguntar o tipo —
+  // antes o combo guardava rice_stock_mode "none" e o pedido fechava direto,
+  // caindo no default silencioso "branco". Não submetemos (evita reservar o
+  // estoque real de todos os componentes do combo) — provar que o modal abre
+  // já demonstra a correção (antes ele nunca aparecia pra combo).
+  test("combo com componentes de arroz abre o modal de tipo de arroz", async ({ page }) => {
+    await login(page)
+    await addToCart(page, COMBO_COM_ARROZ_ID)
+    await goToCheckoutAndFillContact(page, "41999993004")
+
+    await page.getByRole("button", { name: /confirmar e abrir whatsapp/i }).click()
+    const modal = page.getByTestId("rice-modal")
+    await expect(modal.getByText("Tipo de Arroz")).toBeVisible()
+    // Em "item por item", o combo aparece como uma linha escolhível (uma
+    // escolha vale pro combo inteiro).
+    await page.getByText("Prefiro escolher item por item").click()
+    await expect(modal.getByText(/COMBO PREMIUM/i)).toBeVisible()
+    // Não deve ir pra confirmação sem escolher (modal continua aberto).
+    await expect(page).not.toHaveURL(/\/confirmacao/)
+  })
+
+  // Contraparte: combo sem nenhum componente de arroz NÃO deve perguntar.
+  // Como fechar submeteria um pedido real (reservando o estoque das sopas),
+  // validamos só que o botão fica pronto e que nenhum modal de arroz surge ao
+  // abrir — a submissão em si é coberta pela simulação de dados read-only.
+  test("combo sem componentes de arroz não dispara o modal", async ({ page }) => {
+    await login(page)
+    await addToCart(page, COMBO_SEM_ARROZ_ID)
+    await goToCheckoutAndFillContact(page, "41999993005")
+
+    // Botão precisa habilitar (comboRiceLoading resolve rápido) e, ao não haver
+    // item de arroz, um clique iria direto pro pedido — então aqui só
+    // garantimos que o modal não está presente no estado inicial do checkout.
+    await expect(page.getByRole("button", { name: /confirmar e abrir whatsapp/i })).toBeEnabled()
+    await expect(page.getByTestId("rice-modal")).toHaveCount(0)
   })
 })

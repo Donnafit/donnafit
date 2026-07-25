@@ -115,12 +115,38 @@ export async function POST(req: Request) {
   if (componentIds.size > 0) {
     const { data: componentsData, error: componentsErr } = await supabase
       .from("products")
-      .select("id, name, rice_stock_mode")
+      .select("id, name, rice_stock_mode, is_active")
       .in("id", [...componentIds])
     if (componentsErr) {
       return NextResponse.json({ error: "Erro ao validar componentes do combo", detail: componentsErr.message }, { status: 500 })
     }
     for (const c of componentsData ?? []) componentInfoById.set(c.id, c)
+  }
+
+  // Guard: combo com componente de arroz dividido ("both") exige escolha
+  // explícita do tipo de arroz (uma escolha por combo, keyed pelo id do
+  // combo). Sem isso o cliente conseguia fechar combo com arroz sem escolher
+  // e caía no default silencioso "branco" (bug reportado). Nunca confiar só
+  // na validação do front — mesmo princípio de preço/estoque acima.
+  // Só componentes ATIVOS contam — é o que o checkout (cliente anônimo) enxerga
+  // pela RLS (products_anon_read_active), então cliente e servidor concordam
+  // sobre quais combos precisam perguntar. Sem esse alinhamento, um combo cujo
+  // único componente de arroz estivesse inativo travaria o pedido aqui sem o
+  // cliente ter tido como perguntar.
+  const combosMissingRice = comboProductIds.filter((comboId) => {
+    const components = comboItemsByComboId.get(comboId) ?? []
+    const hasRiceComponent = components.some((c) => {
+      const info = componentInfoById.get(c.component_product_id)
+      return info?.rice_stock_mode === "both" && info?.is_active
+    })
+    return hasRiceComponent && !body.riceChoices?.[comboId]
+  })
+  if (combosMissingRice.length > 0) {
+    const names = [...new Set(combosMissingRice.map((id) => freshById.get(id)?.name ?? id))]
+    return NextResponse.json(
+      { error: `Escolha o tipo de arroz para: ${names.join(", ")}` },
+      { status: 400 }
+    )
   }
 
   // Quantidade real de marmitas por item: um combo conta pelas marmitas que
@@ -295,16 +321,20 @@ export async function POST(req: Request) {
         // "both") não usa stock_quantity — essa coluna fica sempre em 0
         // nesse modo (ver EstoqueClient.tsx), então mirar reserve_stock nele
         // sempre falhava com "estoque insuficiente" mesmo com arroz de
-        // sobra (causa real do combo aparecendo esgotado no checkout). Não
-        // existe hoje escolha de tipo de arroz por componente de combo no
-        // checkout, então assume "branco" — mesmo default usado quando o
-        // cliente não escolhe explicitamente em outros pontos deste arquivo.
+        // sobra (causa real do combo aparecendo esgotado no checkout). O
+        // checkout pergunta UMA escolha de arroz por combo (riceChoices
+        // keyed pelo id do combo) e ela vale pra todos os componentes "both"
+        // dele. Sem escolha, cai em "branco" — mesmo default de segurança
+        // usado nos outros pontos deste arquivo (e o guard acima já barra
+        // combo com arroz sem escolha explícita).
         if (componentInfo?.rice_stock_mode === "both") {
+          const requested = body.riceChoices?.[item.product.id]
+          const riceType: "integral" | "branco" = requested === "integral" ? "integral" : "branco"
           return {
             kind: "rice" as const,
             productId: comp.component_product_id,
             quantity,
-            riceType: "branco" as const,
+            riceType,
             label,
           }
         }
