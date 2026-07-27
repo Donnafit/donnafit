@@ -183,6 +183,44 @@ test.describe("API /api/orders — bairro com complemento também é resolvido n
     expect(Number(order?.total)).toBeCloseTo(fx.product.price * 8 + 10, 2)
   })
 
+  test("complemento com texto livre (ponto de referência) não deve quebrar o geocoding do bairro (regressão)", async ({ request }) => {
+    // Bug relatado: cliente digitava um ponto de referência livre no campo de
+    // complemento (ex: "perto do mercado, portão azul") — texto que não bate
+    // em nenhuma das palavras-chave de stripAddressComplement (apto/bloco/
+    // casa/etc) e por isso ia inteiro, sem filtro, pra dentro da query do
+    // Nominatim junto com o endereço. Confirmado ao vivo: a mesma rua/número
+    // que geocodifica certo sozinha retorna ZERO resultados do Nominatim
+    // assim que esse texto solto é anexado — o serviço trata a frase como
+    // parte do endereço e não encontra nada. Resultado: o checkout mostrava
+    // "Bairro identificado" (o geocoding do CLIENTE roda só sobre o campo de
+    // endereço, sem o complemento) mas o POST /api/orders falhava com "não
+    // foi possível identificar o bairro", porque geocodeToBairro rodava sobre
+    // o endereço JÁ concatenado com esse texto livre do complemento.
+    const res = await request.post("/api/orders", {
+      data: {
+        customerName: "Teste Complemento Livre E2E",
+        customerPhone: "41999992222",
+        deliveryType: "delivery",
+        address: "Rua Marechal Deodoro, 630",
+        deliveryAddress: "Rua Marechal Deodoro, 630 - perto do mercado, portão azul",
+        paymentMethod: "card",
+        items: [{
+          product: { id: fx.product.id, name: fx.product.name, sku: `E2E-TEST-${fx.runTag}`, price: fx.product.price, stock_type: "avulso", category_id: null },
+          quantity: 8,
+        }],
+        total: fx.product.price * 8,
+      },
+    })
+    expect(res.ok(), await res.text()).toBeTruthy()
+    const body = await res.json()
+    const { data: order } = await adminClient().from("orders").select("total, delivery_address").eq("id", body.orderId).single()
+    // Frete real do Centro (R$ 10) — só é possível se o servidor identificou
+    // o bairro a partir do endereço puro, ignorando o texto livre do complemento.
+    expect(Number(order?.total)).toBeCloseTo(fx.product.price * 8 + 10, 2)
+    // O endereço completo (com o complemento) continua salvo no pedido.
+    expect(order?.delivery_address).toContain("perto do mercado")
+  })
+
   test("bairro escrito DEPOIS do complemento também é resolvido (regressão)", async ({ request }) => {
     // stripAddressComplement cortava tudo que vinha depois da palavra-chave
     // de complemento — quando o bairro aparecia depois do "apto"/"bloco"/etc

@@ -14,6 +14,7 @@ interface OrderBody {
   customerPhone: string
   deliveryType: "delivery" | "pickup"
   paymentMethod: "pix" | "card" | "card_link"
+  address?: string
   deliveryAddress?: string
   deliveryFee?: number
   items: CartItem[]
@@ -179,18 +180,30 @@ export async function POST(req: Request) {
   // usado para preço/estoque de produto). O cliente nunca escolhe o bairro
   // manualmente, então isso também é a única fonte de verdade, não só uma
   // checagem contra manipulação.
+  //
+  // Reconhece a partir de `address` (endereço puro, sem complemento) — o
+  // mesmo texto que o checkout já usou pra mostrar "Bairro identificado" ao
+  // cliente — e NUNCA de `deliveryAddress` (que inclui o complemento livre
+  // digitado pelo cliente). Anexar o complemento à query do geocoding externo
+  // podia fazê-la retornar vazio mesmo quando o endereço sozinho resolve
+  // certinho (ex: "Rua X, 630" acha o bairro, "Rua X, 630 - perto do mercado,
+  // portão azul" não acha nada) — bug relatado: cliente via "identificado" na
+  // tela e o pedido falhava com "não foi possível identificar o bairro" ao
+  // fechar. `deliveryAddress` como fallback é só pra chamadas antigas/diretas
+  // à API que não mandam `address` separado.
   let deliveryFee = 0
   if (body.deliveryType === "delivery") {
+    const addressForZoneMatch = body.address?.trim() || body.deliveryAddress!
     const { data: activeZones } = await supabase
       .from("delivery_zones")
       .select("name, fee")
       .eq("active", true)
       .order("name")
-    let zone = matchDeliveryZone(body.deliveryAddress!, activeZones ?? [])
+    let zone = matchDeliveryZone(addressForZoneMatch, activeZones ?? [])
     if (!zone) {
       // Endereço sem o nome do bairro escrito — tenta resolver via geocoding
       // (mesmo fallback usado no checkout) antes de recusar o pedido.
-      const geocodedBairro = await geocodeToBairro(body.deliveryAddress!)
+      const geocodedBairro = await geocodeToBairro(addressForZoneMatch)
       if (geocodedBairro) zone = matchDeliveryZone(geocodedBairro, activeZones ?? [])
     }
     if (!zone) {

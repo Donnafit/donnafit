@@ -368,6 +368,13 @@ export function CheckoutForm() {
           customerName: name.trim(),
           customerPhone: phone.trim(),
           deliveryType: delivery,
+          // Endereço "puro" (sem complemento) — o servidor reconhece o bairro
+          // a partir dele, nunca do fullAddress abaixo. É o mesmo texto que já
+          // foi usado aqui no cliente pra identificar o bairro (match local e
+          // fallback de geocoding), então o servidor concorda com o que a
+          // tela mostrou. O complemento é texto livre (ponto de referência,
+          // etc.) e pode confundir o geocoding externo se for anexado à query.
+          address: delivery === "delivery" ? address.trim() : undefined,
           deliveryAddress: fullAddress,
           paymentMethod: payment,
           items: cartItems,
