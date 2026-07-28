@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireStaff } from "@/lib/auth"
-import type { RevenueDayPoint, RevenueSummary } from "@/types"
+import { getMarmitasPerUnit } from "@/lib/stock"
+import type { Product, RevenueDayPoint, RevenueSummary } from "@/types"
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const MAX_RANGE_DAYS = 366
@@ -49,6 +50,21 @@ function toBrasiliaDayKey(isoString: string): string {
   return calendarDayKey(shifted)
 }
 
+type OrderItemRow = {
+  quantity: number
+  product: Pick<Product, "stock_type" | "combo_marmitas_count"> | null
+}
+
+/** Quantidade de marmitas de um order_item — combos contam pela composição
+ * real (getMarmitasPerUnit), não como 1 unidade, senão o card "Marmitas
+ * vendidas" subestima o total quando há combos no pedido. Produto deletado
+ * (product null, order_items.product_id ON DELETE SET NULL) cai no fallback
+ * de item avulso, já que não há mais como saber a composição do combo. */
+function marmitasQty(item: OrderItemRow): number {
+  const marmitasPerUnit = item.product ? getMarmitasPerUnit(item.product) : 1
+  return Number(item.quantity) * marmitasPerUnit
+}
+
 /** Soma pedidos (excluindo cancelados, já filtrado na query) em totais agregados. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function aggregateOrders(orders: any[]) {
@@ -57,8 +73,8 @@ function aggregateOrders(orders: any[]) {
   let totalRevenue = 0
 
   for (const order of orders) {
-    const orderItemsQty = ((order.order_items ?? []) as { quantity: number }[]).reduce(
-      (sum, item) => sum + Number(item.quantity),
+    const orderItemsQty = ((order.order_items ?? []) as OrderItemRow[]).reduce(
+      (sum, item) => sum + marmitasQty(item),
       0
     )
     totalOrders += 1
@@ -123,13 +139,13 @@ export async function GET(req: Request) {
   const [{ data, error }, { data: prevData, error: prevError }] = await Promise.all([
     supabase
       .from("orders")
-      .select("id, total, created_at, order_items(quantity)")
+      .select("id, total, created_at, order_items(quantity, product:products(stock_type, combo_marmitas_count))")
       .not("status", "eq", "cancelled")
       .gte("created_at", rangeStart.toISOString())
       .lte("created_at", rangeEnd.toISOString()),
     supabase
       .from("orders")
-      .select("id, total, order_items(quantity)")
+      .select("id, total, order_items(quantity, product:products(stock_type, combo_marmitas_count))")
       .not("status", "eq", "cancelled")
       .gte("created_at", prevRangeStart.toISOString())
       .lte("created_at", prevRangeEnd.toISOString()),
@@ -166,8 +182,8 @@ export async function GET(req: Request) {
     const dayKey = toBrasiliaDayKey(order.created_at)
     const bucket = buckets.get(dayKey)
     const orderTotal = Number(order.total) || 0
-    const orderItemsQty = ((order.order_items ?? []) as { quantity: number }[]).reduce(
-      (sum, item) => sum + Number(item.quantity),
+    const orderItemsQty = ((order.order_items ?? []) as OrderItemRow[]).reduce(
+      (sum, item) => sum + marmitasQty(item),
       0
     )
 
