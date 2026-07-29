@@ -15,6 +15,7 @@ import {
   type IngredientCatalogEntry,
   type IngredientRow,
 } from "@/lib/productIngredients"
+import { createCategory } from "@/lib/productCategories"
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface ProductWithCat {
@@ -41,7 +42,10 @@ interface CategoryOption {
   id: string
   name: string
   slug: string
+  sort_order: number
 }
+
+const NEW_CATEGORY_VALUE = "__new_category__"
 
 interface Props {
   products: ProductWithCat[]
@@ -439,6 +443,9 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
   const [categories, setCategories] = useState<CategoryOption[]>([])
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState<string | null>(null)
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [creatingCategory, setCreatingCategory] = useState(false)
+  const [categoryError, setCategoryError] = useState<string | null>(null)
 
   const [form, setForm] = useState({
     name: productToEdit?.name ?? "",
@@ -468,7 +475,7 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
   useEffect(() => {
     const supabase = createClient()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(supabase as any).from("categories").select("id,name,slug").order("sort_order")
+    ;(supabase as any).from("categories").select("id,name,slug,sort_order").order("sort_order")
       .then(({ data }: { data: CategoryOption[] | null }) => { if (data) setCategories(data) })
   }, [])
 
@@ -529,6 +536,27 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
     return created
   }
 
+  async function handleCreateCategory() {
+    setCategoryError(null)
+    const trimmed = newCategoryName.trim()
+    if (!trimmed) {
+      setCategoryError("Informe o nome da nova categoria.")
+      return
+    }
+    setCreatingCategory(true)
+    try {
+      const supabase = createClient()
+      const created = await createCategory(supabase, trimmed, categories)
+      setCategories((prev) => [...prev, created])
+      setForm((f) => ({ ...f, category_id: created.id }))
+      setNewCategoryName("")
+    } catch (err) {
+      setCategoryError(err instanceof Error ? err.message : "Erro ao criar categoria.")
+    } finally {
+      setCreatingCategory(false)
+    }
+  }
+
   // Bloqueia scroll do body ao abrir modal
   useEffect(() => {
     document.body.style.overflow = "hidden"
@@ -538,6 +566,7 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
   const catOptions: DropdownOption[] = [
     { value: "", label: "Sem categoria" },
     ...categories.map((c) => ({ value: c.id, label: c.name })),
+    { value: NEW_CATEGORY_VALUE, label: "+ Nova categoria…" },
   ]
 
   const typeOptions: DropdownOption[] = [
@@ -558,6 +587,8 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
     if (!form.name.trim()) return setError("O nome do produto é obrigatório.")
     if (!form.price || isNaN(Number(form.price)) || Number(form.price) <= 0)
       return setError("Informe um preço válido maior que zero.")
+    if (form.category_id === NEW_CATEGORY_VALUE)
+      return setError("Crie a nova categoria (ou selecione outra) antes de salvar o produto.")
 
     setSaving(true)
     const supabase = createClient()
@@ -771,10 +802,46 @@ function ProductModal({ onClose, onSaved, productToEdit }: ProductModalProps) {
               <label style={labelStyle}>Categoria</label>
               <CustomDropdown
                 value={form.category_id}
-                onChange={(v) => setForm((f) => ({ ...f, category_id: v }))}
+                onChange={(v) => {
+                  setCategoryError(null)
+                  setForm((f) => ({ ...f, category_id: v }))
+                }}
                 options={catOptions}
                 placeholder="Sem categoria"
               />
+              {form.category_id === NEW_CATEGORY_VALUE && (
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <input
+                    type="text"
+                    className="modal-input"
+                    style={{ ...inputStyle, flex: 1 }}
+                    placeholder="Nome da nova categoria"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); handleCreateCategory() }
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateCategory}
+                    disabled={creatingCategory}
+                    style={{
+                      flexShrink: 0, padding: "0 14px", borderRadius: 9, border: "none",
+                      background: "var(--gold-500)", color: "#fff", cursor: creatingCategory ? "wait" : "pointer",
+                      fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 700,
+                    }}
+                  >
+                    {creatingCategory ? "Criando…" : "Criar"}
+                  </button>
+                </div>
+              )}
+              {categoryError && (
+                <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "#DC2626", marginTop: 6 }}>
+                  {categoryError}
+                </p>
+              )}
             </div>
             <div>
               <label style={labelStyle}>Tipo de Estoque</label>
