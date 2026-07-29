@@ -33,7 +33,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: "Donna FIT | Marmitas Fitness",
+  title: "Donna FIT | Marmitas Ultra Congeladas",
   description: "Marmitas fitness saudáveis e saborosas entregues na sua porta.",
   icons: {
     icon: "/favicon.svg",

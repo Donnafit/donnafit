@@ -4,8 +4,8 @@ import { AnnouncementBar } from "@/components/catalog/AnnouncementBar"
 import { Header } from "@/components/catalog/Header"
 import { Footer } from "@/components/catalog/Footer"
 import { ProductDetailClient } from "@/components/catalog/ProductDetailClient"
+import { BackToCatalogLink } from "@/components/catalog/BackToCatalogLink"
 import { CartBar } from "@/components/cart/CartBar"
-import Link from "next/link"
 import { resolveImageSrc } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
@@ -95,15 +95,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
 
         {/* Breadcrumb */}
         <div style={{ marginBottom: 24, display: "flex", alignItems: "center", gap: 8 }}>
-          <Link
-            href="/"
-            style={{ color: "#888", fontSize: 13, textDecoration: "none", fontFamily: "var(--font-switzer), sans-serif", display: "flex", alignItems: "center", gap: 6 }}
-          >
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Cardápio
-          </Link>
+          <BackToCatalogLink />
           <span style={{ color: "#CCC", fontSize: 13 }}>›</span>
           <span style={{ color: "#1A1A1A", fontSize: 13, fontFamily: "var(--font-switzer), sans-serif", fontWeight: 600 }}>{product.name}</span>
         </div>

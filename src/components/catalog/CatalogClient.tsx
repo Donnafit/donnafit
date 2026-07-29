@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { CategoryFilter } from "./CategoryFilter"
 import { ProductCard } from "./ProductCard"
 import type { Category, Product } from "@/types"
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function CatalogClient({ categories, products, initialCategory }: Props) {
+  const router = useRouter()
   const resolveId = (slug: string | null | undefined) =>
     slug ? (categories.find((c) => c.slug === slug)?.id ?? null) : null
 
@@ -31,9 +33,14 @@ export function CatalogClient({ categories, products, initialCategory }: Props) 
   }, [initialCategory])
 
   function handleSelect(id: string | null) {
+    const slug = id ? categories.find((c) => c.id === id)?.slug ?? null : null
     startTransition(() => {
       setActiveCategory(id)
       setSearchQuery("")
+      // router.replace (não history.replaceState) para manter o histórico
+      // do Next em sincronia com a URL — é o que garante que voltar da
+      // página de produto restaure a categoria filtrada corretamente.
+      router.replace(slug ? `/?cat=${slug}` : "/", { scroll: false })
     })
   }
 

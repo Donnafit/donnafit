@@ -50,7 +50,7 @@ export function Footer() {
               Alimentação Saudável
             </div>
             <p style={{ fontSize: 13, color: "#777", lineHeight: 1.75, marginBottom: 24, maxWidth: 240 }}>
-              Marmitas fitness frescas e saborosas, preparadas diariamente com ingredientes selecionados para a sua saúde.
+              Marmitas ultracongeladas preparadas com ingredientes selecionados. Sabor e praticidade para o seu dia a dia.
             </p>
 
             {/* WhatsApp CTA */}
@@ -79,8 +79,14 @@ export function Footer() {
             {/* Horário */}
             <div style={{ marginTop: 16, fontSize: 12, color: "#555", lineHeight: 1.8 }}>
               <div style={{ color: "#666", fontWeight: 600, marginBottom: 4 }}>Horário de atendimento</div>
-              <div>Seg – Sex: 10h às 19h</div>
-              <div>Sábado: 10h às 15h</div>
+              <div>Seg – Sex: 9h às 18h</div>
+              <div>Sábado: 9h às 13h</div>
+            </div>
+
+            {/* Endereço */}
+            <div style={{ marginTop: 16, fontSize: 12, color: "#555", lineHeight: 1.8 }}>
+              <div style={{ color: "#666", fontWeight: 600, marginBottom: 4 }}>Endereço</div>
+              <div>Rua Charles Dickens, 337 – Abranches</div>
             </div>
           </div>
 
