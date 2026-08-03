@@ -102,6 +102,10 @@ export function CheckoutForm() {
   const [pixDiscountRate, setPixDiscountRate] = useState(DEFAULT_PIX_DISCOUNT_RATE)
   const [pickupAddress, setPickupAddress] = useState("")
   const [geocodedZone, setGeocodedZone] = useState<{ name: string; fee: number } | null>(null)
+  // true quando geocodedZone veio da zona cadastrada mais próxima (endereço
+  // não bate com nenhuma zona por nome) — o frete é uma estimativa, não uma
+  // identificação exata do bairro.
+  const [geocodedApproximate, setGeocodedApproximate] = useState(false)
   const [geocoding, setGeocoding] = useState(false)
 
   useEffect(() => {
@@ -130,6 +134,7 @@ export function CheckoutForm() {
   // já falhou (evita bater no Nominatim a cada tecla).
   useEffect(() => {
     setGeocodedZone(null)
+    setGeocodedApproximate(false)
     if (delivery !== "delivery" || address.trim().length < 10) return
     if (matchDeliveryZone(address, zones)) return
 
@@ -142,7 +147,10 @@ export function CheckoutForm() {
           body: JSON.stringify({ address }),
         })
         const data = await res.json()
-        if (data.zone) setGeocodedZone(data.zone)
+        if (data.zone) {
+          setGeocodedZone(data.zone)
+          setGeocodedApproximate(!!data.approximate)
+        }
       } catch {
         // silencioso — cai na mensagem de "não conseguimos identificar"
       } finally {
@@ -342,11 +350,6 @@ export function CheckoutForm() {
     // pedido duplicado por clique/toque duplo antes do primeiro re-render.
     if (isSubmittingRef.current) return
     isSubmittingRef.current = true
-    // Precisa abrir a aba AGORA, ainda dentro do clique síncrono do usuário —
-    // se abrir só depois do await fetch(), navegadores mobile (principalmente
-    // iOS Safari) bloqueiam o popup silenciosamente por perder a associação
-    // com o gesto do usuário, e o cliente vê a tela "travar" sem o WhatsApp abrir.
-    const waWindow = window.open("", "_blank")
     setLoading(true)
     setSubmitError("")
     // Sem isso, uma chamada de rede que trava sem resolver nem rejeitar
@@ -436,11 +439,15 @@ export function CheckoutForm() {
       }
 
       clearCart()
-      if (waWindow) waWindow.location.href = waUrl
-      else window.open(waUrl, "_blank")
+      // A abertura do WhatsApp fica a cargo do botão na página de confirmação
+      // (link <a> real, clicado pelo próprio cliente) — um window.open()
+      // pré-aberto aqui e navegado depois do fetch chegou a sequestrar a
+      // navegação inteira da página em navegadores restritos (in-app browser
+      // do WhatsApp/Instagram), impedindo o cliente de sequer chegar na
+      // etapa 3 de confirmação. Preferir sempre completar o pedido a
+      // garantir a abertura automática do WhatsApp.
       router.push(`/confirmacao?order=${data.orderNumber}&wa=${encodedWa}`)
     } catch (err) {
-      waWindow?.close()
       const timedOut = err instanceof Error && err.name === "AbortError"
       setSubmitError(
         timedOut
@@ -660,7 +667,12 @@ export function CheckoutForm() {
 
             {addressState === "valid" && (
               <div style={{ gridColumn: "1 / -1" }}>
-                {matchedZone ? (
+                {matchedZone && !localMatchedZone && geocodedApproximate ? (
+                  <p style={{ fontSize: 12, color: "#5A6B2A", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                    <Check size={13} /> Bairro sem zona própria cadastrada — frete estimado pela zona mais
+                    próxima ({matchedZone.name}): {formatCurrency(matchedZone.fee)}
+                  </p>
+                ) : matchedZone ? (
                   <p style={{ fontSize: 12, color: "#5A6B2A", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
                     <Check size={13} /> Bairro identificado: {matchedZone.name} — frete {formatCurrency(matchedZone.fee)}
                   </p>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { geocodeToBairro } from "@/lib/geocoding"
-import { matchDeliveryZone } from "@/lib/deliveryZones"
+import { geocodeAddress } from "@/lib/geocoding"
+import { matchDeliveryZone, nearestDeliveryZone } from "@/lib/deliveryZones"
 
 // Só é chamado pelo checkout quando o reconhecimento gratuito por texto
 // (matchDeliveryZone contra o próprio endereço digitado) já falhou — evita
@@ -12,15 +12,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Endereço obrigatório" }, { status: 400 })
   }
 
-  const geocodedBairro = await geocodeToBairro(address)
-  if (!geocodedBairro) {
+  const geocoded = await geocodeAddress(address)
+  if (!geocoded) {
     return NextResponse.json({ zone: null })
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = createAdminClient() as any
-  const { data: zones } = await supabase.from("delivery_zones").select("name, fee").eq("active", true).order("name")
-  const zone = matchDeliveryZone(geocodedBairro, zones ?? [])
+  const { data: zones } = await supabase.from("delivery_zones").select("name, fee, lat, lng").eq("active", true).order("name")
 
-  return NextResponse.json({ zone: zone ?? null, geocodedBairro })
+  let zone = geocoded.bairro ? matchDeliveryZone(geocoded.bairro, zones ?? []) : null
+  // Bairro/cidade sem zona cadastrada: usa a taxa da zona mais próxima em
+  // vez de recusar — o cliente vê que o frete é uma estimativa, não uma
+  // zona identificada com certeza.
+  let approximate = false
+  if (!zone) {
+    zone = nearestDeliveryZone(geocoded.lat, geocoded.lng, zones ?? [])
+    approximate = zone !== null
+  }
+
+  return NextResponse.json({ zone: zone ?? null, geocodedBairro: geocoded.bairro, approximate })
 }

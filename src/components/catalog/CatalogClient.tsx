@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { CategoryFilter } from "./CategoryFilter"
 import { ProductCard } from "./ProductCard"
+import { isProductSoldOut } from "@/lib/stock"
 import type { Category, Product } from "@/types"
 
 interface ProductWithCategory extends Product {
@@ -59,9 +60,11 @@ export function CatalogClient({ categories, products, initialCategory }: Props) 
   }
 
   const filtered = useMemo(() => {
-    let list = activeCategory === null
-      ? products
-      : products.filter((p) => p.category_id === activeCategory)
+    // Itens esgotados ficam ocultos na navegação normal do cardápio — a
+    // busca (SearchModal) continua mostrando-os com o badge "Esgotado",
+    // pra quem já sabe o que quer conseguir achar mesmo assim.
+    let list = products.filter((p) => !isProductSoldOut(p))
+    if (activeCategory !== null) list = list.filter((p) => p.category_id === activeCategory)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
       list = list.filter((p) =>

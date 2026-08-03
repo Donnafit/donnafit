@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { matchDeliveryZone } from "@/lib/deliveryZones"
-import { geocodeToBairro } from "@/lib/geocoding"
+import { matchDeliveryZone, nearestDeliveryZone } from "@/lib/deliveryZones"
+import { geocodeAddress } from "@/lib/geocoding"
 import type { Database } from "@/lib/supabase/database.types"
 import type { CartItem } from "@/types"
 import { MIN_DELIVERY_ITEMS } from "@/hooks/useCart"
@@ -196,15 +196,20 @@ export async function POST(req: Request) {
     const addressForZoneMatch = body.address?.trim() || body.deliveryAddress!
     const { data: activeZones } = await supabase
       .from("delivery_zones")
-      .select("name, fee")
+      .select("name, fee, lat, lng")
       .eq("active", true)
       .order("name")
     let zone = matchDeliveryZone(addressForZoneMatch, activeZones ?? [])
     if (!zone) {
       // Endereço sem o nome do bairro escrito — tenta resolver via geocoding
       // (mesmo fallback usado no checkout) antes de recusar o pedido.
-      const geocodedBairro = await geocodeToBairro(addressForZoneMatch)
-      if (geocodedBairro) zone = matchDeliveryZone(geocodedBairro, activeZones ?? [])
+      const geocoded = await geocodeAddress(addressForZoneMatch)
+      if (geocoded?.bairro) zone = matchDeliveryZone(geocoded.bairro, activeZones ?? [])
+      // Bairro/cidade real mas ainda sem zona própria cadastrada (ex: uma
+      // rua homônima existe tanto num bairro cadastrado quanto numa cidade
+      // vizinha sem zona) — cobra pela zona cadastrada mais próxima em vez
+      // de recusar o pedido, mesma regra usada na exibição do checkout.
+      if (!zone && geocoded) zone = nearestDeliveryZone(geocoded.lat, geocoded.lng, activeZones ?? [])
     }
     if (!zone) {
       return NextResponse.json({ error: "Não foi possível identificar o bairro no endereço informado" }, { status: 400 })
