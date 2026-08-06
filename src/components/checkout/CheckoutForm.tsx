@@ -110,9 +110,16 @@ export function CheckoutForm() {
 
   useEffect(() => {
     const supabase = createClient()
+    // active=true: bairro desativado no admin não pode ser reconhecido nem
+    // cobrado aqui — igual ao filtro já usado em /api/orders e
+    // /api/geocode-address. Sem isso, o checkout mostrava/cobrava a taxa de
+    // um bairro que o admin tinha desativado, e só na hora de fechar o
+    // pedido (recalculado no servidor com só zonas ativas) o valor mudava
+    // ou o pedido era recusado — cliente relatou 06/08/2026.
     supabase
       .from("delivery_zones")
       .select("name, fee")
+      .eq("active", true)
       .order("name")
       .then(({ data }) => setZones(data ?? []))
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -389,6 +396,15 @@ export function CheckoutForm() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || data.error || "Erro ao criar pedido")
 
+      // O servidor recalcula frete/total do zero com a config ATUAL do admin
+      // (ver /api/orders). Usar esses valores em vez dos que o navegador
+      // calculou antes do envio evita mostrar/mandar pro WhatsApp uma taxa
+      // de bairro desatualizada — ex: admin muda a taxa enquanto o cliente
+      // já está com o checkout aberto. Fallback pro valor local só se por
+      // algum motivo o servidor não devolver (não deveria acontecer).
+      const confirmedDeliveryFee = typeof data.deliveryFee === "number" ? data.deliveryFee : deliveryFee
+      const confirmedTotal = typeof data.total === "number" ? data.total : finalTotal
+
       const msg = buildWhatsAppMessage({
         orderNumber: data.orderNumber,
         customerName: name.trim(),
@@ -398,8 +414,8 @@ export function CheckoutForm() {
         pickupAddress,
         paymentMethod: payment,
         items: cartItems,
-        total: finalTotal,
-        deliveryFee,
+        total: confirmedTotal,
+        deliveryFee: confirmedDeliveryFee,
         riceChoices: activeRiceChoices,
         pixDiscountPercentLabel,
       })
@@ -411,10 +427,10 @@ export function CheckoutForm() {
         localStorage.setItem("donna-fit-order-summary", JSON.stringify({
           items: cartItems.map(i => ({ name: i.product.name, qty: i.quantity, price: i.product.price * i.quantity })),
           deliveryType: delivery,
-          deliveryFee,
+          deliveryFee: confirmedDeliveryFee,
           paymentMethod: payment,
           pixDiscountPercentLabel,
-          total: finalTotal,
+          total: confirmedTotal,
         }))
         if (!user) {
           localStorage.setItem("donna-fit-guest", JSON.stringify({

@@ -480,5 +480,15 @@ export async function POST(req: Request) {
   return NextResponse.json({
     orderId: order.id,
     orderNumber: order.order_number,
+    // Valores recalculados aqui a partir da config ATUAL do admin (preço dos
+    // produtos, taxa da zona de entrega, desconto pix) — o cliente deve usar
+    // estes, e não os que ele mesmo calculou antes de enviar, na mensagem de
+    // WhatsApp e no resumo pós-pedido. Sem isso, se o admin alterasse uma
+    // taxa de bairro entre a tela de checkout abrir e o pedido ser enviado,
+    // o valor exibido ficava desatualizado mesmo com o valor certo já
+    // gravado no pedido. Bug relatado 06/08/2026.
+    deliveryFee,
+    subtotal: calculatedSubtotal,
+    total: calculatedTotal,
   })
 }
