@@ -754,14 +754,15 @@ export async function addToCartAndGoToCheckout(page: Page) {
 }
 ```
 
-Em `e2e/checkout-delivery-fee.spec.ts`, remover as definições locais de
-`login`/`addToCartAndGoToCheckout` (linhas 22-52) e os imports que só
-serviam a elas (`createClient`, `fs` — checar se `adminClient()`, usado mais
-abaixo no arquivo, também depende deles; se sim, manter `createClient`/`fs`
-só pra `adminClient()`), substituindo por:
+Em `e2e/checkout-delivery-fee.spec.ts`, remover só as definições locais de
+`login`/`addToCartAndGoToCheckout` (linhas 22-52), adicionando o import:
 ```ts
 import { login, addToCartAndGoToCheckout } from "./helpers"
 ```
+Manter `import { createClient } from "@supabase/supabase-js"` e `import fs
+from "fs"` (linhas 2-3) — `adminClient()` (linhas 8-16), usado no resto do
+arquivo (`e2e/checkout-delivery-fee.spec.ts:102,180,216,245`), continua
+dependendo dos dois.
 
 - [ ] **Step 2: Escrever o teste E2E do fluxo novo (falha — componente/integração não existem)**
 
