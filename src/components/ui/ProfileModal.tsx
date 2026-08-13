@@ -10,6 +10,14 @@ import type { Product } from "@/types"
 import {
   IconEmail, IconLock, ErrorMsg, SuccessMsg, Field, EyeBtn, PrimaryBtn, BrandHeader,
 } from "@/components/ui/AuthFormKit"
+import AddressFields from "@/components/checkout/AddressFields"
+import type { DeliveryZone } from "@/lib/deliveryZones"
+import {
+  emptyDeliveryAddress,
+  deliveryAddressFromUserMetadata,
+  deliveryAddressToUserMetadataPatch,
+  type DeliveryAddressData,
+} from "@/lib/deliveryAddressMetadata"
 
 type View = "login" | "register" | "forgot" | "profile" | "orders" | "editProfile"
 
@@ -200,13 +208,25 @@ export function ProfileModal({ open, onClose }: Props) {
 
   const [editName, setEditName] = useState("")
   const [editPhone, setEditPhone] = useState("")
-  const [editAddress, setEditAddress] = useState("")
+  const [editDeliveryAddress, setEditDeliveryAddress] = useState<DeliveryAddressData>(emptyDeliveryAddress())
+  const [editAddressBlocked, setEditAddressBlocked] = useState(false)
+  const [zones, setZones] = useState<DeliveryZone[]>([])
   const [editLoading, setEditLoading] = useState(false)
   const [editSuccess, setEditSuccess] = useState<string | null>(null)
   const [editError, setEditError] = useState<string | null>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [editAvatarUrl, setEditAvatarUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from("delivery_zones")
+      .select("name, fee")
+      .eq("active", true)
+      .order("name")
+      .then(({ data }) => setZones(data ?? []))
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -235,7 +255,7 @@ export function ProfileModal({ open, onClose }: Props) {
     if (view === "editProfile" && user) {
       setEditName(user.user_metadata?.name ?? "")
       setEditPhone(formatPhone(user.user_metadata?.phone ?? ""))
-      setEditAddress(user.user_metadata?.delivery_address ?? "")
+      setEditDeliveryAddress(deliveryAddressFromUserMetadata(user.user_metadata))
       setEditError(null)
       setEditSuccess(null)
       setEditAvatarUrl(user.user_metadata?.avatar_url ?? null)
@@ -380,6 +400,7 @@ export function ProfileModal({ open, onClose }: Props) {
   async function handleEditProfile(e: React.FormEvent) {
     e.preventDefault()
     if (!editName.trim()) { setEditError("Informe seu nome."); return }
+    if (editAddressBlocked) { setEditError("Endereço fora da nossa área de entrega."); return }
     setEditLoading(true); setEditError(null)
     const supabase = createClient()
     const cleanPhone = editPhone.replace(/\D/g, "")
@@ -403,7 +424,12 @@ export function ProfileModal({ open, onClose }: Props) {
     }
 
     const { error: err } = await supabase.auth.updateUser({
-      data: { name: editName.trim(), phone: cleanPhone, avatar_url: newAvatarUrl, delivery_address: editAddress.trim() || undefined },
+      data: {
+        name: editName.trim(),
+        phone: cleanPhone,
+        avatar_url: newAvatarUrl,
+        ...deliveryAddressToUserMetadataPatch(editDeliveryAddress),
+      },
     })
     setEditLoading(false)
     if (err) { setEditError("Erro ao salvar. Tente novamente."); return }
@@ -802,21 +828,16 @@ export function ProfileModal({ open, onClose }: Props) {
                   autoComplete="tel"
                   icon={<IconPhone />}
                 />
-                <Field
-                  label="Endereço de entrega"
-                  value={editAddress}
-                  onChange={setEditAddress}
-                  placeholder="Rua, número, bairro, cidade"
-                  autoComplete="street-address"
-                  icon={
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  }
+                <AddressFields
+                  zones={zones}
+                  value={editDeliveryAddress}
+                  onChange={setEditDeliveryAddress}
+                  onZoneResolved={() => {}}
+                  onBlockedChange={(blocked) => setEditAddressBlocked(blocked)}
+                  showFeeHint={false}
                 />
                 <div style={{ marginTop: 8 }}>
-                  <PrimaryBtn label="Salvar alterações" loading={editLoading} />
+                  <PrimaryBtn label="Salvar alterações" loading={editLoading} disabled={editAddressBlocked} />
                 </div>
               </form>
             </div>
