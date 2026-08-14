@@ -18,6 +18,29 @@ test.describe("deliveryAddressFromUserMetadata", () => {
     expect(result.cep).toBe("")
   })
 
+  test("salvou pelo perfil sem escolher bairro: lê o formato novo, nunca volta pro delivery_address velho", () => {
+    // Cenário real: cliente legado abre o perfil, corrige só a rua e salva sem
+    // tocar no select de bairro (o perfil não exige bairro). O patch grava
+    // delivery_street novo e delivery_bairro "". Se o gate do formato novo
+    // fosse o bairro, a leitura cairia no delivery_address antigo (que nada
+    // apaga) e a correção do cliente sumiria pra sempre.
+    const result = deliveryAddressFromUserMetadata({
+      delivery_address: "Rua X, 123, Batel",
+      delivery_street: "Rua Y, 500",
+      delivery_bairro: "",
+    })
+    expect(result.street).toBe("Rua Y, 500")
+    expect(result.bairro).toBe("")
+
+    // Mesmo caso, com delivery_bairro ausente em vez de vazio.
+    const semBairro = deliveryAddressFromUserMetadata({
+      delivery_address: "Rua X, 123, Batel",
+      delivery_street: "Rua Y, 500",
+    })
+    expect(semBairro.street).toBe("Rua Y, 500")
+    expect(semBairro.bairro).toBe("")
+  })
+
   test("formato novo (delivery_bairro presente) lê os 4 campos estruturados", () => {
     const result = deliveryAddressFromUserMetadata({
       delivery_cep: "80010-000",

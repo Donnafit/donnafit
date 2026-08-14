@@ -1,5 +1,15 @@
 import { test, expect } from "@playwright/test"
 import { login } from "./helpers"
+import { loadFixtures, clearCustomerDeliveryMetadata } from "./fixtures"
+
+const fx = loadFixtures()
+
+// Este spec grava endereço no perfil do cliente de teste, que é compartilhado
+// com os specs de checkout (lá o endereço salvo é autopreenchido). Limpar no
+// fim mantém os outros arquivos independentes da ordem de execução.
+test.afterAll(async () => {
+  await clearCustomerDeliveryMetadata(fx.customer.id)
+})
 
 test.describe("Perfil — endereço estruturado", () => {
   test("cliente logado salva CEP/bairro/complemento e vê tudo preenchido ao reabrir", async ({ page }) => {

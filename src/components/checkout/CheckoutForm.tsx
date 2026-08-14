@@ -71,7 +71,13 @@ export function CheckoutForm() {
             setPhoneState(validatePhone(guest.phone) ? "valid" : "idle")
           }
           if (guest.address && !deliveryAddress.street) {
-            setDeliveryAddress((prev) => ({ ...prev, street: guest.address }))
+            setDeliveryAddress((prev) => ({
+              ...prev,
+              street: guest.address,
+              cep: typeof guest.cep === "string" ? guest.cep : prev.cep,
+              bairro: typeof guest.bairro === "string" ? guest.bairro : prev.bairro,
+              complement: typeof guest.complement === "string" ? guest.complement : prev.complement,
+            }))
             setDelivery("delivery")
           }
         }
@@ -335,8 +341,20 @@ export function CheckoutForm() {
     try {
       const computedRiceChoices = finalRiceChoices()
       const activeRiceChoices = Object.keys(computedRiceChoices).length > 0 ? computedRiceChoices : undefined
+      // `orders.delivery_address` é a ÚNICA cópia do endereço que fica salva
+      // (não há coluna separada de bairro/CEP) e é ela que alimenta o link de
+      // navegação do entregador, a mensagem do WhatsApp e as telas do admin.
+      // Por isso o bairro entra aqui: sem ele o entregador fica com rua+número
+      // ambíguos, exatamente o problema que esse fluxo veio resolver. Quando o
+      // cliente não escolheu o bairro na lista (caiu no fallback de zona mais
+      // próxima), usa o nome da zona resolvida.
       const fullAddress = delivery === "delivery"
-        ? [deliveryAddress.street.trim(), deliveryAddress.complement.trim()].filter(Boolean).join(" - ")
+        ? [
+            deliveryAddress.street.trim(),
+            deliveryAddress.bairro.trim() || matchedZone?.name,
+            deliveryAddress.complement.trim(),
+            deliveryAddress.cep.trim() && `CEP ${deliveryAddress.cep.trim()}`,
+          ].filter(Boolean).join(" - ")
         : undefined
       const res = await fetch("/api/orders", {
         method: "POST",
@@ -397,10 +415,16 @@ export function CheckoutForm() {
           total: confirmedTotal,
         }))
         if (!user) {
+          // Guarda o endereço estruturado inteiro (não só a rua): na volta do
+          // cliente sem conta, o CEP/bairro/complemento voltam preenchidos e
+          // ele não precisa reescolher o bairro a cada pedido.
           localStorage.setItem("donna-fit-guest", JSON.stringify({
             name: name.trim(),
             phone: phone.trim(),
             address: deliveryAddress.street.trim(),
+            cep: deliveryAddress.cep.trim(),
+            bairro: deliveryAddress.bairro.trim() || matchedZone?.name || "",
+            complement: deliveryAddress.complement.trim(),
           }))
         }
       } catch {}
@@ -615,6 +639,15 @@ export function CheckoutForm() {
               }}
               showFeeHint
             />
+            {/* Sem isso o cliente que digitou pouca coisa na rua só via o botão
+                de confirmar desabilitado, sem nenhuma explicação na tela. */}
+            {deliveryAddress.street.trim().length > 0 && deliveryAddress.street.trim().length < 10 && !addressBlocked && (
+              <div style={{ gridColumn: "1 / -1", marginTop: 8 }}>
+                <p style={{ fontSize: 12, color: "#B45309", fontWeight: 600 }}>
+                  Informe o endereço completo (rua e número).
+                </p>
+              </div>
+            )}
             {deliveryAddress.street.trim().length >= 10 && !addressBlocked && (
               <div style={{ gridColumn: "1 / -1", marginTop: 8 }}>
                 {matchedZone && zoneApproximate ? (

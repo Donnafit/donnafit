@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test"
 import { createClient } from "@supabase/supabase-js"
 import fs from "fs"
-import { loadFixtures, resetProductStock } from "./fixtures"
+import { loadFixtures, resetProductStock, clearCustomerDeliveryMetadata } from "./fixtures"
 import { login, addToCartAndGoToCheckout } from "./helpers"
 
 const fx = loadFixtures()
@@ -18,6 +18,10 @@ function adminClient() {
 
 test.beforeAll(async () => {
   await resetProductStock(fx.product.id)
+  // Endereço salvo no perfil do cliente de teste (gravado por outro spec)
+  // autopreencheria rua/bairro no checkout e mascararia o caso "sem bairro
+  // selecionado" abaixo — depende só da ordem dos arquivos, então limpa.
+  await clearCustomerDeliveryMetadata(fx.customer.id)
 })
 
 test.describe("Cardápio — frete reconhecido pelo bairro selecionado (select de bairro cadastrado)", () => {

@@ -13,19 +13,30 @@ export function emptyDeliveryAddress(): DeliveryAddressData {
 // user_metadata (Supabase Auth) no formato antigo só tinha `delivery_address`
 // (string única, rua+bairro juntos, sem CEP/complemento/bairro estruturado).
 // Migra pro novo shape sem perder o texto já digitado pelo cliente — ele só
-// precisa confirmar o bairro uma vez; depois que salvar no formato novo
-// (delivery_bairro presente), essa migração não roda mais pra esse cliente.
+// precisa confirmar o bairro uma vez; depois que salvar no formato novo,
+// essa migração não roda mais pra esse cliente.
+//
+// O gate do formato novo é `delivery_street`, NÃO `delivery_bairro`: o modal de
+// perfil (diferente do checkout) não exige o bairro, e salva
+// delivery_street/delivery_bairro/... sempre juntos — com bairro "" quando o
+// cliente não mexeu no select. Se o gate fosse o bairro, esse save gravaria
+// delivery_street novo mas continuaria caindo no legado `delivery_address`
+// (que nada apaga), e a edição de rua do cliente ficaria perdida pra sempre.
+// Com o gate na rua, qualquer save pelo formulário novo passa a mandar nos
+// campos estruturados — bairro pode vir vazio, e aí a UI pede pra escolher.
 export function deliveryAddressFromUserMetadata(
   meta: Record<string, unknown> | undefined | null
 ): DeliveryAddressData {
   if (!meta) return emptyDeliveryAddress()
 
-  const hasNewFormat = typeof meta.delivery_bairro === "string" && meta.delivery_bairro.length > 0
-  if (hasNewFormat) {
+  // Presença do campo (mesmo string vazia) já marca "salvou pelo formulário
+  // novo" — `deliveryAddressToUserMetadataPatch` sempre grava delivery_street.
+  const newStreet = meta.delivery_street
+  if (typeof newStreet === "string") {
     return {
       cep: typeof meta.delivery_cep === "string" ? meta.delivery_cep : "",
-      street: typeof meta.delivery_street === "string" ? meta.delivery_street : "",
-      bairro: meta.delivery_bairro as string,
+      street: newStreet,
+      bairro: typeof meta.delivery_bairro === "string" ? meta.delivery_bairro : "",
       bairroNotListed: false,
       complement: typeof meta.delivery_complement === "string" ? meta.delivery_complement : "",
     }

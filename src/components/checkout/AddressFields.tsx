@@ -14,7 +14,10 @@ export interface ResolvedZone {
 export interface AddressFieldsProps {
   zones: DeliveryZone[]
   value: DeliveryAddressData
-  onChange: (value: DeliveryAddressData) => void
+  // Aceita também a forma funcional (igual a um setState do React): a resolução
+  // do CEP é assíncrona e precisa mesclar em cima do valor ATUAL, não no que
+  // existia quando o efeito começou.
+  onChange: (value: DeliveryAddressData | ((prev: DeliveryAddressData) => DeliveryAddressData)) => void
   onZoneResolved: (resolved: ResolvedZone) => void
   onBlockedChange: (blocked: boolean, cityText?: string) => void
   // false no modal de perfil (não há carrinho/frete pra mostrar ali, só o
@@ -53,6 +56,17 @@ export default function AddressFields({
     const digits = value.cep.replace(/\D/g, "")
     if (digits.length !== 8) {
       setCepStatus("idle")
+      // Sem isso, o cliente cujo CEP caiu em cidade bloqueada ficava travado:
+      // apagava o CEP pra digitar o endereço na mão e o bloqueio continuava,
+      // porque nenhum dos outros dois efeitos re-roda se o bairro não mudou.
+      // Cada um dos três efeitos sempre define o bloqueio pelo resultado da
+      // PRÓPRIA avaliação, então limpar aqui é consistente com o resto — só
+      // não limpa quando o bloqueio veio do bairro (outra fonte), que continua
+      // valendo independente do CEP.
+      if (!isBlockedCity(value.bairro)) {
+        setBlockedMessage(null)
+        onBlockedChange(false)
+      }
       return
     }
     setCepStatus("loading")
@@ -60,6 +74,12 @@ export default function AddressFields({
       const result = await lookupCep(digits)
       if (!result) {
         setCepStatus("not_found")
+        // CEP não achado não diz nada sobre cidade — não pode manter um
+        // bloqueio vindo de um CEP anterior (mesma ressalva do bairro acima).
+        if (!isBlockedCity(value.bairro)) {
+          setBlockedMessage(null)
+          onBlockedChange(false)
+        }
         return
       }
       setCepStatus("idle")
@@ -71,12 +91,16 @@ export default function AddressFields({
       setBlockedMessage(null)
       onBlockedChange(false)
       const matchedByName = zones.find((z) => normalize(z.name) === normalize(result.bairro))
-      onChange({
-        ...value,
-        street: result.street || value.street,
-        bairro: matchedByName ? matchedByName.name : value.bairro,
-        bairroNotListed: matchedByName ? false : value.bairroNotListed,
-      })
+      // Forma funcional de propósito: entre o debounce e a resposta do ViaCEP
+      // (~500ms + rede) o cliente pode ter digitado complemento, mexido na rua
+      // ou trocado o bairro. Espalhar o `value` capturado no início do efeito
+      // desfazia essas edições em silêncio.
+      onChange((prev) => ({
+        ...prev,
+        street: result.street || prev.street,
+        bairro: matchedByName ? matchedByName.name : prev.bairro,
+        bairroNotListed: matchedByName ? false : prev.bairroNotListed,
+      }))
     }, 500)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps

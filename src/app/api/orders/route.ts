@@ -198,16 +198,16 @@ export async function POST(req: Request) {
   if (body.deliveryType === "delivery") {
     const addressForZoneMatch = body.address?.trim() || body.deliveryAddress!
 
-    // Defesa em profundidade: o client (AddressFields) já deveria ter
-    // bloqueado esse pedido antes de chegar aqui (CEP resolvido ou fallback
-    // manual de bairro). Reconfirma usando tanto o valor que o client mandou
-    // explicitamente quanto o próprio texto do endereço — nunca confia só
-    // no que o client decidiu, mesmo padrão de integridade já usado para
-    // preço/estoque de produto neste arquivo.
-    const cityCandidates = [body.deliveryCityCheck, addressForZoneMatch].filter(
-      (v): v is string => typeof v === "string" && v.length > 0
-    )
-    if (cityCandidates.some((candidate) => isBlockedCity(candidate))) {
+    // Reconfirma o bloqueio de cidade usando SÓ a cidade/bairro que o client
+    // mandou explicitamente (`deliveryCityCheck`, vindo do CEP resolvido ou do
+    // bairro digitado). O texto da rua NÃO entra aqui: rua tem nome de cidade
+    // com frequência ("Rua Araucária" em bairro normal de Curitiba) e checar
+    // isso recusava pedido de cliente que a gente atende — falso positivo que
+    // dói mais que o abuso que evitaria. Isso é regra de disponibilidade
+    // comercial (não integridade financeira como preço/estoque, que seguem
+    // sendo recalculados no servidor logo abaixo); no pior caso entra um
+    // pedido de cidade não atendida e o negócio cancela.
+    if (body.deliveryCityCheck && isBlockedCity(body.deliveryCityCheck)) {
       return NextResponse.json({ error: BLOCKED_CITY_MESSAGE }, { status: 400 })
     }
 
