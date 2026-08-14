@@ -149,4 +149,35 @@ test.describe("Checkout — endereço salvo no pedido", () => {
     expect(order?.delivery_address).toContain("Apto 42")
     expect(order?.delivery_address).toContain("CEP 80010-000")
   })
+
+  test("cliente logado com endereço já salvo (com número) reabre o checkout e o número continua lá", async ({ page }) => {
+    // Cliente relatou 14/08/2026: CEP autopreenche rua/bairro certinho, mas
+    // se o número já foi salvo numa visita anterior, reabrir o perfil OU um
+    // novo pedido "puxa a rua sem o número" — o efeito do CEP rodava de novo
+    // pro CEP JÁ salvo (não digitado agora) e sobrescrevia a rua pela versão
+    // crua do ViaCEP. Diferente do teste anterior (CEP digitado na hora),
+    // este simula a volta do cliente: grava o endereço direto no
+    // user_metadata (como já ficaria salvo de um pedido anterior) e só
+    // confere que o checkout carrega e MANTÉM o número, sem digitar CEP.
+    await adminClient().auth.admin.updateUserById(fx.customer.id, {
+      user_metadata: {
+        delivery_cep: "80010-000",
+        delivery_street: "Rua José Loureiro, 500",
+        delivery_bairro: "Centro",
+        delivery_complement: "Apto 42",
+      },
+    })
+
+    await addToCartAndGoToCheckout(page)
+
+    // Várias amostras ao longo de alguns segundos — o bug original só
+    // aparecia um instante DEPOIS do carregamento (efeito assíncrono),
+    // então checar só uma vez logo após o load não pegaria a regressão.
+    for (let i = 0; i < 5; i++) {
+      await page.waitForTimeout(400)
+      await expect(page.getByPlaceholder("Rua, número")).toHaveValue("Rua José Loureiro, 500")
+    }
+    await expect(page.getByLabel("Bairro")).toHaveText("Centro")
+    await expect(page.getByPlaceholder("Apto, bloco, casa")).toHaveValue("Apto 42")
+  })
 })
