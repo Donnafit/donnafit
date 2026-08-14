@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { matchDeliveryZone, nearestDeliveryZone } from "@/lib/deliveryZones"
 import { geocodeAddress } from "@/lib/geocoding"
+import { isBlockedCity, BLOCKED_CITY_MESSAGE } from "@/lib/blockedCities"
 import type { Database } from "@/lib/supabase/database.types"
 import type { CartItem } from "@/types"
 import { MIN_DELIVERY_ITEMS } from "@/hooks/useCart"
@@ -17,6 +18,8 @@ interface OrderBody {
   address?: string
   deliveryAddress?: string
   deliveryFee?: number
+  deliveryBairro?: string
+  deliveryCityCheck?: string
   items: CartItem[]
   subtotal?: number
   total: number
@@ -194,21 +197,40 @@ export async function POST(req: Request) {
   let deliveryFee = 0
   if (body.deliveryType === "delivery") {
     const addressForZoneMatch = body.address?.trim() || body.deliveryAddress!
+
+    // Reconfirma o bloqueio de cidade usando SÓ a cidade/bairro que o client
+    // mandou explicitamente (`deliveryCityCheck`, vindo do CEP resolvido ou do
+    // bairro digitado). O texto da rua NÃO entra aqui: rua tem nome de cidade
+    // com frequência ("Rua Araucária" em bairro normal de Curitiba) e checar
+    // isso recusava pedido de cliente que a gente atende — falso positivo que
+    // dói mais que o abuso que evitaria. Isso é regra de disponibilidade
+    // comercial (não integridade financeira como preço/estoque, que seguem
+    // sendo recalculados no servidor logo abaixo); no pior caso entra um
+    // pedido de cidade não atendida e o negócio cancela.
+    if (body.deliveryCityCheck && isBlockedCity(body.deliveryCityCheck)) {
+      return NextResponse.json({ error: BLOCKED_CITY_MESSAGE }, { status: 400 })
+    }
+
     const { data: activeZones } = await supabase
       .from("delivery_zones")
       .select("name, fee, lat, lng")
       .eq("active", true)
       .order("name")
-    let zone = matchDeliveryZone(addressForZoneMatch, activeZones ?? [])
+
+    // Bairro já resolvido explicitamente no client (seleção na lista ou
+    // fallback de zona mais próxima já calculado em tela) — usado direto se
+    // bater com uma zona ativa, sem rodar o pipeline de texto de novo.
+    let zone = body.deliveryBairro
+      ? (activeZones ?? []).find((z: { name: string }) => z.name === body.deliveryBairro) ?? null
+      : null
+    if (!zone) zone = matchDeliveryZone(addressForZoneMatch, activeZones ?? [])
     if (!zone) {
       // Endereço sem o nome do bairro escrito — tenta resolver via geocoding
       // (mesmo fallback usado no checkout) antes de recusar o pedido.
       const geocoded = await geocodeAddress(addressForZoneMatch)
       if (geocoded?.bairro) zone = matchDeliveryZone(geocoded.bairro, activeZones ?? [])
-      // Bairro/cidade real mas ainda sem zona própria cadastrada (ex: uma
-      // rua homônima existe tanto num bairro cadastrado quanto numa cidade
-      // vizinha sem zona) — cobra pela zona cadastrada mais próxima em vez
-      // de recusar o pedido, mesma regra usada na exibição do checkout.
+      // Bairro/cidade real mas ainda sem zona própria cadastrada — usa a
+      // taxa da zona cadastrada mais próxima em vez de recusar o pedido.
       if (!zone && geocoded) zone = nearestDeliveryZone(geocoded.lat, geocoded.lng, activeZones ?? [])
     }
     if (!zone) {

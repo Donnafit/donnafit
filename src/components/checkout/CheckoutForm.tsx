@@ -5,11 +5,18 @@ import { useCart, MIN_DELIVERY_ITEMS } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import { createClient } from "@/lib/supabase/client"
 import { buildWhatsAppMessage, buildWhatsAppURL } from "@/lib/whatsapp"
-import { matchDeliveryZone } from "@/lib/deliveryZones"
 import { formatCurrency } from "@/lib/utils"
 import { getMarmitasPerUnit } from "@/lib/stock"
 import { Store, Truck, QrCode, CreditCard, Check, Link2, Info } from "lucide-react"
 import type { CartItem } from "@/types"
+import AddressFields from "./AddressFields"
+import type { DeliveryZone } from "@/lib/deliveryZones"
+import {
+  emptyDeliveryAddress,
+  deliveryAddressFromUserMetadata,
+  deliveryAddressToUserMetadataPatch,
+  type DeliveryAddressData,
+} from "@/lib/deliveryAddressMetadata"
 
 // rice_stock_mode é a fonte de verdade de qual arroz o produto serve.
 // Itens antigos salvos no carrinho (localStorage) antes desse campo existir
@@ -63,9 +70,14 @@ export function CheckoutForm() {
             setPhone(guest.phone)
             setPhoneState(validatePhone(guest.phone) ? "valid" : "idle")
           }
-          if (guest.address && !address) {
-            setAddress(guest.address)
-            setAddressState("valid")
+          if (guest.address && !deliveryAddress.street) {
+            setDeliveryAddress((prev) => ({
+              ...prev,
+              street: guest.address,
+              cep: typeof guest.cep === "string" ? guest.cep : prev.cep,
+              bairro: typeof guest.bairro === "string" ? guest.bairro : prev.bairro,
+              complement: typeof guest.complement === "string" ? guest.complement : prev.complement,
+            }))
             setDelivery("delivery")
           }
         }
@@ -83,9 +95,9 @@ export function CheckoutForm() {
       setPhone(p)
       setPhoneState(validatePhone(p) ? "valid" : "idle")
     }
-    if (meta.delivery_address && !address) {
-      setAddress(meta.delivery_address as string)
-      setAddressState("valid")
+    const savedAddress = deliveryAddressFromUserMetadata(meta)
+    if (savedAddress.street && !deliveryAddress.street) {
+      setDeliveryAddress(savedAddress)
       setDelivery("delivery")
     }
   }, [user])
@@ -95,18 +107,14 @@ export function CheckoutForm() {
   const [nameState, setNameState] = useState<"idle" | "valid" | "invalid">("idle")
   const [phoneState, setPhoneState] = useState<"idle" | "valid" | "invalid">("idle")
   const [delivery, setDelivery] = useState<"pickup" | "delivery">("pickup")
-  const [address, setAddress] = useState("")
-  const [complement, setComplement] = useState("")
-  const [addressState, setAddressState] = useState<"idle" | "valid" | "invalid">("idle")
+  const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddressData>(emptyDeliveryAddress())
+  const [matchedZone, setMatchedZone] = useState<DeliveryZone | null>(null)
+  const [zoneApproximate, setZoneApproximate] = useState(false)
+  const [addressBlocked, setAddressBlocked] = useState(false)
+  const [blockedCityText, setBlockedCityText] = useState("")
   const [zones, setZones] = useState<{ name: string; fee: number }[]>([])
   const [pixDiscountRate, setPixDiscountRate] = useState(DEFAULT_PIX_DISCOUNT_RATE)
   const [pickupAddress, setPickupAddress] = useState("")
-  const [geocodedZone, setGeocodedZone] = useState<{ name: string; fee: number } | null>(null)
-  // true quando geocodedZone veio da zona cadastrada mais próxima (endereço
-  // não bate com nenhuma zona por nome) — o frete é uma estimativa, não uma
-  // identificação exata do bairro.
-  const [geocodedApproximate, setGeocodedApproximate] = useState(false)
-  const [geocoding, setGeocoding] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -135,38 +143,6 @@ export function CheckoutForm() {
         }
       })
   }, [])
-
-  // Fallback pra endereço sem o nome do bairro escrito: só dispara depois de
-  // uma pausa na digitação, e só quando o reconhecimento gratuito por texto
-  // já falhou (evita bater no Nominatim a cada tecla).
-  useEffect(() => {
-    setGeocodedZone(null)
-    setGeocodedApproximate(false)
-    if (delivery !== "delivery" || address.trim().length < 10) return
-    if (matchDeliveryZone(address, zones)) return
-
-    const timer = setTimeout(async () => {
-      setGeocoding(true)
-      try {
-        const res = await fetch("/api/geocode-address", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ address }),
-        })
-        const data = await res.json()
-        if (data.zone) {
-          setGeocodedZone(data.zone)
-          setGeocodedApproximate(!!data.approximate)
-        }
-      } catch {
-        // silencioso — cai na mensagem de "não conseguimos identificar"
-      } finally {
-        setGeocoding(false)
-      }
-    }, 900)
-
-    return () => clearTimeout(timer)
-  }, [address, delivery, zones])
 
   const [payment, setPayment] = useState<"pix" | "card" | "card_link">("pix")
   const [loading, setLoading] = useState(false)
@@ -308,15 +284,10 @@ export function CheckoutForm() {
   useEffect(() => {
     if (deliveryLocked && delivery === "delivery") {
       setDelivery("pickup")
-      setAddressState("idle")
     }
   }, [deliveryLocked, delivery])
 
   const subtotal = mounted ? total() : 0
-  const localMatchedZone = delivery === "delivery" ? matchDeliveryZone(address, zones) : null
-  // Se o texto não tem o nome do bairro, cai pro geocoding (Nominatim) como
-  // fallback — só chamado quando o reconhecimento gratuito falhou (ver useEffect abaixo).
-  const matchedZone = localMatchedZone ?? geocodedZone
   // Number(): fee vem do Supabase (coluna numeric) e pode chegar como string —
   // sem isso, `subtotal + deliveryFee` vira concatenação em vez de soma.
   const deliveryFee = matchedZone ? Number(matchedZone.fee) : 0
@@ -348,7 +319,9 @@ export function CheckoutForm() {
   function isFormValid(): boolean {
     const nameOk = validateName(name)
     const phoneOk = validatePhone(phone)
-    const addressOk = delivery === "pickup" || (address.trim().length >= 10 && !!matchedZone)
+    const addressOk =
+      delivery === "pickup" ||
+      (deliveryAddress.street.trim().length >= 10 && !!matchedZone && !addressBlocked)
     return nameOk && phoneOk && addressOk
   }
 
@@ -368,8 +341,20 @@ export function CheckoutForm() {
     try {
       const computedRiceChoices = finalRiceChoices()
       const activeRiceChoices = Object.keys(computedRiceChoices).length > 0 ? computedRiceChoices : undefined
+      // `orders.delivery_address` é a ÚNICA cópia do endereço que fica salva
+      // (não há coluna separada de bairro/CEP) e é ela que alimenta o link de
+      // navegação do entregador, a mensagem do WhatsApp e as telas do admin.
+      // Por isso o bairro entra aqui: sem ele o entregador fica com rua+número
+      // ambíguos, exatamente o problema que esse fluxo veio resolver. Quando o
+      // cliente não escolheu o bairro na lista (caiu no fallback de zona mais
+      // próxima), usa o nome da zona resolvida.
       const fullAddress = delivery === "delivery"
-        ? [address.trim(), complement.trim()].filter(Boolean).join(" - ")
+        ? [
+            deliveryAddress.street.trim(),
+            deliveryAddress.bairro.trim() || matchedZone?.name,
+            deliveryAddress.complement.trim(),
+            deliveryAddress.cep.trim() && `CEP ${deliveryAddress.cep.trim()}`,
+          ].filter(Boolean).join(" - ")
         : undefined
       const res = await fetch("/api/orders", {
         method: "POST",
@@ -378,14 +363,11 @@ export function CheckoutForm() {
           customerName: name.trim(),
           customerPhone: phone.trim(),
           deliveryType: delivery,
-          // Endereço "puro" (sem complemento) — o servidor reconhece o bairro
-          // a partir dele, nunca do fullAddress abaixo. É o mesmo texto que já
-          // foi usado aqui no cliente pra identificar o bairro (match local e
-          // fallback de geocoding), então o servidor concorda com o que a
-          // tela mostrou. O complemento é texto livre (ponto de referência,
-          // etc.) e pode confundir o geocoding externo se for anexado à query.
-          address: delivery === "delivery" ? address.trim() : undefined,
+          address: delivery === "delivery" ? deliveryAddress.street.trim() : undefined,
           deliveryAddress: fullAddress,
+          deliveryBairro: delivery === "delivery" ? matchedZone?.name : undefined,
+          deliveryCityCheck:
+            delivery === "delivery" ? (blockedCityText || deliveryAddress.bairro.trim() || undefined) : undefined,
           paymentMethod: payment,
           items: cartItems,
           total: finalTotal,
@@ -433,24 +415,26 @@ export function CheckoutForm() {
           total: confirmedTotal,
         }))
         if (!user) {
+          // Guarda o endereço estruturado inteiro (não só a rua): na volta do
+          // cliente sem conta, o CEP/bairro/complemento voltam preenchidos e
+          // ele não precisa reescolher o bairro a cada pedido.
           localStorage.setItem("donna-fit-guest", JSON.stringify({
             name: name.trim(),
             phone: phone.trim(),
-            address: fullAddress ?? "",
+            address: deliveryAddress.street.trim(),
+            cep: deliveryAddress.cep.trim(),
+            bairro: deliveryAddress.bairro.trim() || matchedZone?.name || "",
+            complement: deliveryAddress.complement.trim(),
           }))
         }
       } catch {}
 
-      if (user) {
+      if (user && delivery === "delivery" && matchedZone) {
         try {
           const supabase = createClient()
-          const updateData: Record<string, string> = {}
-          if (delivery === "delivery" && fullAddress) {
-            updateData.delivery_address = fullAddress
-          }
-          if (Object.keys(updateData).length > 0) {
-            await supabase.auth.updateUser({ data: updateData })
-          }
+          await supabase.auth.updateUser({
+            data: deliveryAddressToUserMetadataPatch({ ...deliveryAddress, bairro: matchedZone.name }),
+          })
         } catch {}
       }
 
@@ -480,11 +464,12 @@ export function CheckoutForm() {
   function handleSubmit() {
     const nameOk = validateName(name)
     const phoneOk = validatePhone(phone)
-    const addressOk = delivery === "pickup" || (address.trim().length >= 10 && !!matchedZone)
+    const addressOk =
+      delivery === "pickup" ||
+      (deliveryAddress.street.trim().length >= 10 && !!matchedZone && !addressBlocked)
 
     setNameState(nameOk ? "valid" : "invalid")
     setPhoneState(phoneOk ? "valid" : "invalid")
-    if (delivery === "delivery") setAddressState(addressOk ? "valid" : "invalid")
 
     if (!nameOk || !phoneOk || !addressOk || cartItems.length === 0) return
     // Ainda descobrindo se algum combo precisa perguntar o arroz — não envia
@@ -582,7 +567,7 @@ export function CheckoutForm() {
           {/* Retirada */}
           <button
             type="button"
-            onClick={() => { setDelivery("pickup"); setAddressState("idle") }}
+            onClick={() => setDelivery("pickup")}
             className={`option-card ${delivery === "pickup" ? "selected" : ""}`}
           >
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
@@ -638,52 +623,34 @@ export function CheckoutForm() {
           </div>
         )}
 
-        {/* Campos de endereço e complemento — aparecem somente quando Entrega está selecionada */}
         {delivery === "delivery" && (
-          <div className="checkout-address-grid" style={{ marginTop: 16 }}>
-            <div>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-                Endereço de entrega
-              </label>
-              <input
-                type="text"
-                className={`form-input ${addressState === "valid" ? "input-valid" : addressState === "invalid" ? "input-invalid" : ""}`}
-                value={address}
-                onChange={e => {
-                  const val = e.target.value
-                  setAddress(val)
-                  if (val.length > 0) setAddressState(val.trim().length >= 10 ? "valid" : "invalid")
-                  else setAddressState("idle")
-                }}
-                placeholder="Rua, número, bairro"
-                autoComplete="street-address"
-              />
-              <p className={`error-msg ${addressState === "invalid" ? "show" : ""}`}>
-                Informe o endereço completo para entrega
-              </p>
-            </div>
-
-            <div>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-                Complemento (opcional)
-              </label>
-              <input
-                type="text"
-                className="form-input"
-                value={complement}
-                onChange={e => setComplement(e.target.value)}
-                placeholder="Apto, bloco, casa"
-                autoComplete="address-line2"
-              />
-            </div>
-
-            {addressState === "valid" && (
-              <div style={{ gridColumn: "1 / -1" }}>
-                {matchedZone && !localMatchedZone && geocodedApproximate ? (
+          <>
+            <AddressFields
+              zones={zones}
+              value={deliveryAddress}
+              onChange={setDeliveryAddress}
+              onZoneResolved={({ zone, approximate }) => {
+                setMatchedZone(zone)
+                setZoneApproximate(approximate)
+              }}
+              onBlockedChange={(blocked, cityText) => {
+                setAddressBlocked(blocked)
+                setBlockedCityText(cityText ?? "")
+              }}
+              showFeeHint
+            />
+            {/* Sem isso o cliente que digitou pouca coisa na rua só via o botão
+                de confirmar desabilitado, sem nenhuma explicação na tela. */}
+            {deliveryAddress.street.trim().length > 0 && deliveryAddress.street.trim().length < 10 && !addressBlocked && (
+              <div style={{ gridColumn: "1 / -1", marginTop: 8 }}>
+                <p style={{ fontSize: 12, color: "#B45309", fontWeight: 600 }}>
+                  Informe o endereço completo (rua e número).
+                </p>
+              </div>
+            )}
+            {deliveryAddress.street.trim().length >= 10 && !addressBlocked && (
+              <div style={{ gridColumn: "1 / -1", marginTop: 8 }}>
+                {matchedZone && zoneApproximate ? (
                   <p style={{ fontSize: 12, color: "#5A6B2A", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
                     <Check size={13} /> Bairro sem zona própria cadastrada — frete estimado pela zona mais
                     próxima ({matchedZone.name}): {formatCurrency(matchedZone.fee)}
@@ -692,14 +659,9 @@ export function CheckoutForm() {
                   <p style={{ fontSize: 12, color: "#5A6B2A", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
                     <Check size={13} /> Bairro identificado: {matchedZone.name} — frete {formatCurrency(matchedZone.fee)}
                   </p>
-                ) : geocoding ? (
-                  <p style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>
-                    Identificando o bairro pelo endereço...
-                  </p>
                 ) : (
                   <p style={{ fontSize: 12, color: "#B45309", fontWeight: 600 }}>
-                    Não conseguimos identificar o bairro no endereço. Inclua o nome do bairro
-                    ou fale pelo{" "}
+                    Não conseguimos identificar o bairro. Selecione na lista ou fale pelo{" "}
                     <a href="https://wa.me/5541999154720" target="_blank" rel="noopener noreferrer" style={{ color: "#5A6B2A", textDecoration: "underline" }}>
                       WhatsApp
                     </a>.
@@ -707,7 +669,7 @@ export function CheckoutForm() {
                 )}
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
 

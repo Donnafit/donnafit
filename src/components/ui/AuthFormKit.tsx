@@ -115,19 +115,19 @@ export function EyeBtn({ show, toggle }: { show: boolean; toggle: () => void }) 
   )
 }
 
-export function PrimaryBtn({ label, loading: l }: { label: string; loading: boolean }) {
+export function PrimaryBtn({ label, loading: l, disabled }: { label: string; loading: boolean; disabled?: boolean }) {
   return (
     <button
       type="submit"
-      disabled={l}
+      disabled={l || disabled}
       style={{
         width: "100%", padding: "15px",
-        background: l ? "#9DB08A" : "linear-gradient(135deg, #5A6B2A 0%, #7B9238 100%)",
+        background: l || disabled ? "#9DB08A" : "linear-gradient(135deg, #5A6B2A 0%, #7B9238 100%)",
         color: "#fff", border: "none", borderRadius: 13,
         fontFamily: "var(--font-switzer), sans-serif", fontWeight: 700, fontSize: 15,
-        cursor: l ? "not-allowed" : "pointer",
+        cursor: l || disabled ? "not-allowed" : "pointer",
         display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-        marginTop: 6, boxShadow: l ? "none" : "0 6px 20px rgba(90,107,42,0.3)",
+        marginTop: 6, boxShadow: l || disabled ? "none" : "0 6px 20px rgba(90,107,42,0.3)",
         transition: "all 0.2s", letterSpacing: "0.3px",
       }}
     >

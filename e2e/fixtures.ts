@@ -15,7 +15,7 @@ export function loadFixtures() {
 // produto de teste pra simular corrida/esgotamento. Cada spec que precisa que
 // o produto esteja comprável deve chamar isso no seu beforeAll pra não
 // depender da ordem em que os arquivos de teste rodam.
-export async function resetProductStock(productId: string, quantity = 100) {
+export function serviceClient() {
   const env = Object.fromEntries(
     fs.readFileSync(".env.local", "utf8")
       .split("\n")
@@ -25,8 +25,28 @@ export async function resetProductStock(productId: string, quantity = 100) {
         return [l.slice(0, i), l.slice(i + 1)]
       })
   )
-  const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  return createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
-  await sb.from("products").update({ stock_quantity: quantity, is_active: true }).eq("id", productId)
+}
+
+export async function resetProductStock(productId: string, quantity = 100) {
+  await serviceClient().from("products").update({ stock_quantity: quantity, is_active: true }).eq("id", productId)
+}
+
+// O cliente de teste é compartilhado por todos os specs, e tanto o perfil
+// quanto o checkout gravam o endereço padrão no user_metadata dele. Sem
+// limpar, um spec que salva endereço (ex: profile-address-fields) faz o
+// checkout de OUTRO spec abrir já com rua/bairro preenchidos — o que muda o
+// resultado esperado dependendo da ordem em que os arquivos rodaram.
+export async function clearCustomerDeliveryMetadata(userId: string) {
+  await serviceClient().auth.admin.updateUserById(userId, {
+    user_metadata: {
+      delivery_cep: null,
+      delivery_street: null,
+      delivery_bairro: null,
+      delivery_complement: null,
+      delivery_address: null,
+    },
+  })
 }

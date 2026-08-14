@@ -7,7 +7,7 @@ export interface DeliveryZone {
   lng?: number | null
 }
 
-function normalize(value: string): string {
+export function normalize(value: string): string {
   return value
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "") // remove acentos
