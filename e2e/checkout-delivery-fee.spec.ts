@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test"
 import { createClient } from "@supabase/supabase-js"
 import fs from "fs"
 import { loadFixtures, resetProductStock, clearCustomerDeliveryMetadata } from "./fixtures"
-import { login, addToCartAndGoToCheckout } from "./helpers"
+import { login, addToCartAndGoToCheckout, selectBairro } from "./helpers"
 
 const fx = loadFixtures()
 
@@ -35,7 +35,7 @@ test.describe("Cardápio — frete reconhecido pelo bairro selecionado (select d
   test("bairro selecionado na lista calcula o frete automaticamente e habilita o envio", async ({ page }) => {
     await addToCartAndGoToCheckout(page)
     await page.getByPlaceholder("Rua, número").fill("Rua Presidente Faria, 100")
-    await page.getByLabel("Bairro").selectOption({ label: "Batel" })
+    await selectBairro(page, "Batel")
 
     await expect(page.getByText(/bairro identificado: batel/i)).toBeVisible({ timeout: 3000 })
     await expect(page.getByText(/frete r\$\s?12,00/i)).toBeVisible()
@@ -105,7 +105,7 @@ test.describe("Complemento não deve atrapalhar o reconhecimento do bairro", () 
   test("bairro selecionado na lista, com complemento 'Sala X' no campo separado, mantém o frete correto", async ({ page }) => {
     await addToCartAndGoToCheckout(page)
     await page.getByPlaceholder("Rua, número").fill("Rua Marechal Deodoro, 630")
-    await page.getByLabel("Bairro").selectOption({ label: "Centro" })
+    await selectBairro(page, "Centro")
     await page.getByPlaceholder(/apto, bloco, casa/i).fill("Sala 12")
 
     // O campo de complemento é um estado totalmente separado do de bairro —
@@ -119,7 +119,7 @@ test.describe("Complemento não deve atrapalhar o reconhecimento do bairro", () 
   test("bairro digitado manualmente (fallback 'não está na lista'), com complemento 'apto 302' no campo separado, geocodifica corretamente", async ({ page }) => {
     await addToCartAndGoToCheckout(page)
     await page.getByPlaceholder("Rua, número").fill("Rua Padre Anchieta, 2000")
-    await page.getByLabel("Bairro").selectOption({ label: "Meu bairro não está na lista" })
+    await selectBairro(page, "Meu bairro não está na lista")
     await page.getByPlaceholder("Digite o nome do seu bairro").fill("Rua Padre Anchieta, 2000")
     await page.getByPlaceholder(/apto, bloco, casa/i).fill("apto 302")
 

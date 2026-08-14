@@ -34,3 +34,13 @@ export async function addToCartAndGoToCheckout(page: Page) {
   await page.getByPlaceholder("(41) 99999-9999").fill("41999997777")
   await page.getByRole("button", { name: /^Entrega/ }).click()
 }
+
+// O campo Bairro (AddressFields.tsx) é um Select do shadcn/Radix, não um
+// <select> nativo — abrir/escolher item não usa a API selectOption() do
+// Playwright (exclusiva de <select>), é clicar no gatilho e depois no item
+// na lista flutuante. `exact: true` porque alguns nomes de bairro são
+// substring de outro (ex: "Atuba" vs "Atuba (Colombo)").
+export async function selectBairro(page: Page, label: string) {
+  await page.getByLabel("Bairro").click()
+  await page.getByRole("option", { name: label, exact: true }).click()
+}

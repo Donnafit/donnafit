@@ -21,7 +21,7 @@ test.describe("Perfil — endereço estruturado", () => {
     await page.getByRole("button", { name: /editar perfil/i }).click()
 
     await page.getByPlaceholder("00000-000").fill("80010-000") // Rua José Loureiro, Centro, Curitiba
-    await expect(page.getByLabel("Bairro")).toHaveValue("Centro", { timeout: 8000 })
+    await expect(page.getByLabel("Bairro")).toHaveText("Centro", { timeout: 8000 })
     await page.getByPlaceholder("Apto, bloco, casa").fill("Sala 5")
     await page.getByRole("button", { name: "Salvar alterações" }).click()
     // A mensagem "Perfil atualizado!" é rápida (~1.5s) e já volta sozinha pra
@@ -32,7 +32,7 @@ test.describe("Perfil — endereço estruturado", () => {
     await page.reload()
     await page.getByRole("button", { name: "Perfil" }).click()
     await page.getByRole("button", { name: /editar perfil/i }).click()
-    await expect(page.getByLabel("Bairro")).toHaveValue("Centro")
+    await expect(page.getByLabel("Bairro")).toHaveText("Centro")
     await expect(page.getByPlaceholder("Apto, bloco, casa")).toHaveValue("Sala 5")
   })
 
