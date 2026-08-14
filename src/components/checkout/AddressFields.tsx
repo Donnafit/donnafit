@@ -1,10 +1,19 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { MapPinOff } from "lucide-react"
 import { matchDeliveryZone, normalize, type DeliveryZone } from "@/lib/deliveryZones"
 import { isBlockedCity, BLOCKED_CITY_MESSAGE } from "@/lib/blockedCities"
 import { lookupCep } from "@/lib/cep"
 import type { DeliveryAddressData } from "@/lib/deliveryAddressMetadata"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export interface ResolvedZone {
   zone: DeliveryZone | null
@@ -26,6 +35,33 @@ export interface AddressFieldsProps {
 }
 
 const NOT_LISTED_OPTION = "__not_listed__"
+
+// Select de bairro: usa @/components/ui/select (Radix, já instalado) em vez
+// de <select> nativo — o navegador assume o controle total do visual de um
+// <select> aberto (fonte do sistema, destaque azul, scrollbar padrão), o que
+// quebrava a identidade visual do checkout/perfil. As classes abaixo
+// sobrescrevem o tema cinza padrão do shadcn pelos tokens já usados no resto
+// do formulário (mesma borda/raio/fonte de `.form-input`, verde/dourado da
+// marca), via `tailwind-merge` (cn() em @/lib/utils) — sem CSS novo solto.
+const bairroTriggerClass =
+  "h-auto w-full cursor-pointer justify-between gap-2 rounded-xl border-[1.5px] border-[#E5E0D8] bg-white px-4 py-[14px] text-[15px] text-[#1A1A1A] shadow-none ring-0 ring-offset-0 transition-colors duration-200 focus:outline-none focus:ring-0 focus:border-[#C89B3C] data-[state=open]:border-[#C89B3C] data-[placeholder]:text-[#B0A898] [&_svg]:text-[#B0A898] [&_svg]:transition-transform [&_svg]:duration-200 data-[state=open]:[&_svg]:rotate-180"
+// z-[1300]: o modal de perfil (ProfileModal.tsx) usa zIndex 180 — com o
+// z-50 padrão do shadcn, o painel do Select renderizava POR BAIXO do modal
+// (mesmo contexto de empilhamento, `position: fixed` em ambos, z-index é
+// quem decide) e ficava invisível sempre que caía dentro da área do card do
+// modal. 1300 fica acima de todo modal/drawer do app (maior valor usado
+// hoje é 1200) e abaixo de toasts/alerts (9999).
+// max-h-80 + overflow-y-auto: não depende de
+// --radix-select-content-available-height, que não resolve de forma
+// confiável dentro do modal — o painel vazava pra fora da tela sem isso.
+const bairroContentClass =
+  "z-[1300] max-h-80 overflow-y-auto rounded-2xl border border-[#E5E0D8] bg-white p-1.5 text-[#1A1A1A] shadow-[0_12px_32px_rgba(26,26,26,0.14)]"
+const bairroItemClass =
+  "cursor-pointer rounded-lg py-3 pl-3 pr-8 text-[14.5px] text-[#1A1A1A] focus:bg-[#F5F8F0] focus:text-[#1A1A1A] data-[state=checked]:font-semibold [&_svg]:text-[#5A6B2A]"
+// Não é um bairro de verdade — fica visualmente separado (cor mais neutra +
+// ícone) pra não se misturar com os 74 bairros reais da lista alfabética.
+const bairroFallbackItemClass =
+  "cursor-pointer rounded-lg py-3 pl-3 pr-3 text-[14.5px] text-[#8A8578] focus:bg-[#F5F8F0] focus:text-[#8A8578]"
 
 const labelStyle: React.CSSProperties = {
   display: "flex",
@@ -208,12 +244,9 @@ export default function AddressFields({
       <div>
         <label style={labelStyle}>Bairro</label>
         {!value.bairroNotListed ? (
-          <select
-            className="form-input"
-            aria-label="Bairro"
-            value={value.bairro}
-            onChange={(e) => {
-              const selected = e.target.value
+          <Select
+            value={value.bairro || undefined}
+            onValueChange={(selected) => {
               if (selected === NOT_LISTED_OPTION) {
                 onChange({ ...value, bairro: "", bairroNotListed: true })
               } else {
@@ -221,14 +254,24 @@ export default function AddressFields({
               }
             }}
           >
-            <option value="">Selecione seu bairro</option>
-            {zones.map((z) => (
-              <option key={z.name} value={z.name}>
-                {z.name}
-              </option>
-            ))}
-            <option value={NOT_LISTED_OPTION}>Meu bairro não está na lista</option>
-          </select>
+            <SelectTrigger aria-label="Bairro" className={bairroTriggerClass}>
+              <SelectValue placeholder="Selecione seu bairro" />
+            </SelectTrigger>
+            <SelectContent className={bairroContentClass}>
+              {zones.map((z) => (
+                <SelectItem key={z.name} value={z.name} className={bairroItemClass}>
+                  {z.name}
+                </SelectItem>
+              ))}
+              <SelectSeparator className="mx-1 my-1.5 h-px bg-[#E5E0D8]" />
+              <SelectItem value={NOT_LISTED_OPTION} className={bairroFallbackItemClass}>
+                <span className="flex items-center gap-2">
+                  <MapPinOff size={15} aria-hidden="true" />
+                  Meu bairro não está na lista
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         ) : (
           <>
             <input

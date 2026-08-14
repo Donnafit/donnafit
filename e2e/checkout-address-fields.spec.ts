@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test"
 import { createClient } from "@supabase/supabase-js"
 import fs from "fs"
 import { loadFixtures, resetProductStock, clearCustomerDeliveryMetadata } from "./fixtures"
-import { addToCartAndGoToCheckout } from "./helpers"
+import { addToCartAndGoToCheckout, selectBairro } from "./helpers"
 
 const fx = loadFixtures()
 
@@ -38,14 +38,14 @@ test.describe("Checkout — campos de endereço estruturado", () => {
   test("CEP autopreenche endereço e pré-seleciona o bairro quando existe zona cadastrada", async ({ page }) => {
     await addToCartAndGoToCheckout(page)
     await page.getByPlaceholder("00000-000").fill("80010-000") // Rua José Loureiro, Centro, Curitiba
-    await expect(page.getByLabel("Bairro")).toHaveValue("Centro", { timeout: 8000 })
+    await expect(page.getByLabel("Bairro")).toHaveText("Centro", { timeout: 8000 })
     await expect(page.getByText(/bairro identificado: centro/i)).toBeVisible()
   })
 
   test("bairro fora da lista usa o fallback de zona mais próxima com aviso de estimativa", async ({ page }) => {
     await addToCartAndGoToCheckout(page)
     await page.getByPlaceholder("Rua, número").fill("Rua Euclides da Cunha, 1235")
-    await page.getByLabel("Bairro").selectOption({ label: "Meu bairro não está na lista" })
+    await selectBairro(page, "Meu bairro não está na lista")
     // "Vargem Grande" sozinho (sem ", Pinhais") — o texto não pode conter o
     // nome de nenhuma zona cadastrada por substring (ex: "Pinhais" já é uma
     // zona ativa), senão o match local (matchDeliveryZone) resolve na hora e
@@ -66,7 +66,7 @@ test.describe("Checkout — campos de endereço estruturado", () => {
   test("bairro digitado manualmente contendo cidade bloqueada também recusa", async ({ page }) => {
     await addToCartAndGoToCheckout(page)
     await page.getByPlaceholder("Rua, número").fill("Rua Principal, 50")
-    await page.getByLabel("Bairro").selectOption({ label: "Meu bairro não está na lista" })
+    await selectBairro(page, "Meu bairro não está na lista")
     await page.getByPlaceholder("Digite o nome do seu bairro").fill("Centro, Araucária")
     await expect(page.getByText("Ainda não entregamos em sua região")).toBeVisible({ timeout: 8000 })
   })
@@ -82,7 +82,7 @@ test.describe("Checkout — campos de endereço estruturado", () => {
     // limpar o bloqueio, senão o checkout ficava travado pra sempre.
     await page.getByPlaceholder("00000-000").fill("")
     await expect(page.getByText("Ainda não entregamos em sua região")).toHaveCount(0, { timeout: 8000 })
-    await page.getByLabel("Bairro").selectOption({ label: "Centro" })
+    await selectBairro(page, "Centro")
     await expect(page.getByText(/bairro identificado: centro/i)).toBeVisible({ timeout: 8000 })
     await expect(page.getByRole("button", { name: /confirmar e abrir whatsapp/i })).toBeEnabled()
   })
@@ -106,7 +106,7 @@ test.describe("Checkout — campos de endereço estruturado", () => {
     await page.getByPlaceholder("00000-000").fill("80010-000")
     await page.getByPlaceholder("Apto, bloco, casa").fill("Apto 42")
 
-    await expect(page.getByLabel("Bairro")).toHaveValue("Centro", { timeout: 8000 })
+    await expect(page.getByLabel("Bairro")).toHaveText("Centro", { timeout: 8000 })
     await expect(page.getByPlaceholder("Apto, bloco, casa")).toHaveValue("Apto 42")
   })
 })
@@ -116,7 +116,7 @@ test.describe("Checkout — endereço salvo no pedido", () => {
     await addToCartAndGoToCheckout(page)
     await page.getByPlaceholder("Seu nome e sobrenome").fill(`[E2E_TEST] Endereco ${fx.runTag}`)
     await page.getByPlaceholder("00000-000").fill("80010-000") // Centro, Curitiba
-    await expect(page.getByLabel("Bairro")).toHaveValue("Centro", { timeout: 8000 })
+    await expect(page.getByLabel("Bairro")).toHaveText("Centro", { timeout: 8000 })
     // Só completa o número DEPOIS que o ViaCEP já preencheu a rua — a
     // resolução do CEP sobrescreve o campo de rua com o nome vindo da consulta
     // (sem número), então digitar antes seria desfeito.
