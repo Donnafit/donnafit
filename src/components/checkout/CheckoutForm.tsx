@@ -700,7 +700,7 @@ export function CheckoutForm() {
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
               <QrCode size={24} style={{ color: "#C89B3C" }} />
             </div>
-            <div style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 700, fontSize: 14, color: "#1A1A1A", marginBottom: 4 }}>PIX</div>
+            <div style={{ fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 700, fontSize: 14, color: "#1A1A1A", marginBottom: 4 }}>PIX ou Dinheiro</div>
             <div style={{ fontSize: 11, color: "#5A6B2A", fontWeight: 700, marginBottom: 2 }}>{pixDiscountPercentLabel} de desconto</div>
             <div style={{ fontSize: 11, color: "#888", fontWeight: 500 }}>Chave: 41999154720</div>
             <div className="option-check">
