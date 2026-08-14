@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { MapPinOff } from "lucide-react"
 import { matchDeliveryZone, normalize, type DeliveryZone } from "@/lib/deliveryZones"
 import { isBlockedCity, BLOCKED_CITY_MESSAGE } from "@/lib/blockedCities"
@@ -86,6 +86,20 @@ export default function AddressFields({
   const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "not_found">("idle")
   const [blockedMessage, setBlockedMessage] = useState<string | null>(null)
   const [manualGeocoding, setManualGeocoding] = useState(false)
+  // Endereço salvo (perfil reaberto, ou checkout de cliente logado
+  // reaproveitando o endereço) carrega de forma ASSÍNCRONA — chega num
+  // useEffect do componente pai, um instante depois do AddressFields já ter
+  // montado, não na primeira renderização. Por isso não dá pra usar só "é a
+  // primeira vez que o efeito roda" pra decidir se pula o autopreenchimento:
+  // quando o CEP salvo chega (segunda renderização, não a primeira), o
+  // efeito do CEP dispara de novo do mesmo jeito. A marca que realmente
+  // distingue os dois casos é esta: só o próprio campo de CEP, ao ser
+  // digitado pelo cliente, arma essa ref — um CEP que chega pronto (de
+  // fora, via hydratação do endereço salvo) nunca passa por ali. Sem essa
+  // guarda, o autopreenchimento rodava de novo pro MESMO CEP já salvo e
+  // sobrescrevia `street` só com o nome "cru" da rua devolvido pelo ViaCEP
+  // (sem número), apagando o número que o cliente tinha digitado e salvo.
+  const userTypedCepRef = useRef(false)
 
   // ── CEP → autopreenche rua e sugere bairro ──────────────────────────
   useEffect(() => {
@@ -103,6 +117,13 @@ export default function AddressFields({
         setBlockedMessage(null)
         onBlockedChange(false)
       }
+      return
+    }
+    if (!userTypedCepRef.current) {
+      // CEP completo chegou pronto (endereço salvo), não foi o cliente
+      // digitando agora — não busca de novo, o que sobrescreveria a rua já
+      // confirmada (possivelmente com número) pela versão crua do ViaCEP.
+      setCepStatus("idle")
       return
     }
     setCepStatus("loading")
@@ -213,7 +234,10 @@ export default function AddressFields({
           type="text"
           className="form-input"
           value={value.cep}
-          onChange={(e) => onChange({ ...value, cep: e.target.value })}
+          onChange={(e) => {
+            userTypedCepRef.current = true
+            onChange({ ...value, cep: e.target.value })
+          }}
           placeholder="00000-000"
           autoComplete="postal-code"
           inputMode="numeric"
