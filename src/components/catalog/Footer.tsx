@@ -1,6 +1,70 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
+import { toWhatsAppLink } from "@/lib/whatsapp"
+import { getWeeklyHoursDisplay, parseWeeklyHours, type StoreHoursConfig, type WeeklyHoursDisplayGroup } from "@/lib/business-hours"
+
+interface FooterInfo {
+  whatsappDisplay: string
+  whatsappLink: string
+  pickupAddress: string
+  hours: WeeklyHoursDisplayGroup[]
+}
+
+// Fallback exibido enquanto os dados reais carregam (ou se a query falhar) —
+// mesmos valores que já existiam fixos aqui antes da sincronização com o perfil da cozinha.
+const FALLBACK_INFO: FooterInfo = {
+  whatsappDisplay: "(41) 99915-4720",
+  whatsappLink: "https://wa.me/5541999154720",
+  pickupAddress: "Rua Charles Dickens, 337 – Abranches",
+  hours: [
+    { label: "Seg – Sex", text: "9h às 18h" },
+    { label: "Sáb", text: "9h às 13h" },
+  ],
+}
+
+function useStoreFooterInfo(): FooterInfo {
+  const [info, setInfo] = useState<FooterInfo>(FALLBACK_INFO)
+
+  useEffect(() => {
+    let active = true
+    async function load() {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const supabase = createClient() as any
+        const { data } = await supabase
+          .from("store_settings")
+          .select("whatsapp, pickup_address, open_hour, close_hour, weekly_hours")
+          .eq("id", "default")
+          .single()
+        if (!data || !active) return
+
+        const config: StoreHoursConfig = {
+          openHour: Number(data.open_hour),
+          closeHour: Number(data.close_hour),
+          weeklyHours: parseWeeklyHours(data.weekly_hours),
+        }
+
+        setInfo({
+          whatsappDisplay: data.whatsapp?.trim() || FALLBACK_INFO.whatsappDisplay,
+          whatsappLink: toWhatsAppLink(data.whatsapp || ""),
+          pickupAddress: data.pickup_address?.trim() || FALLBACK_INFO.pickupAddress,
+          hours: getWeeklyHoursDisplay(config),
+        })
+      } catch {
+        // mantém o fallback — não quebra o rodapé se a query falhar
+      }
+    }
+    load()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  return info
+}
 
 const NAV_LINKS = {
   cardapio: [
@@ -33,6 +97,8 @@ const PAYMENTS = [
 ]
 
 export function Footer() {
+  const info = useStoreFooterInfo()
+
   return (
     <footer style={{ background: "#1A1A1A", color: "white" }}>
 
@@ -55,7 +121,7 @@ export function Footer() {
 
             {/* WhatsApp CTA */}
             <a
-              href="https://wa.me/5541999154720"
+              href={info.whatsappLink}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -73,20 +139,21 @@ export function Footer() {
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
                 <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.116 1.523 5.845L.057 23.17a.75.75 0 00.923.923l5.333-1.466A11.943 11.943 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.87 0-3.63-.485-5.163-1.336l-.37-.215-3.836 1.055 1.055-3.836-.215-.37A9.945 9.945 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
               </svg>
-              (41) 99915-4720
+              {info.whatsappDisplay}
             </a>
 
             {/* Horário */}
             <div style={{ marginTop: 16, fontSize: 12, color: "#555", lineHeight: 1.8 }}>
               <div style={{ color: "#666", fontWeight: 600, marginBottom: 4 }}>Horário de atendimento</div>
-              <div>Seg – Sex: 9h às 18h</div>
-              <div>Sábado: 9h às 13h</div>
+              {info.hours.map((group) => (
+                <div key={group.label}>{group.label}: {group.text}</div>
+              ))}
             </div>
 
             {/* Endereço */}
             <div style={{ marginTop: 16, fontSize: 12, color: "#555", lineHeight: 1.8 }}>
               <div style={{ color: "#666", fontWeight: 600, marginBottom: 4 }}>Endereço</div>
-              <div>Rua Charles Dickens, 337 – Abranches</div>
+              <div>{info.pickupAddress}</div>
             </div>
           </div>
 
@@ -118,7 +185,7 @@ export function Footer() {
               {NAV_LINKS.atendimento.map(({ label, href, external }) => (
                 <li key={label}>
                   {external ? (
-                    <a href={href} target="_blank" rel="noopener noreferrer"
+                    <a href={label === "Fale conosco" ? info.whatsappLink : href} target="_blank" rel="noopener noreferrer"
                       style={{ color: "#888", fontSize: 13, textDecoration: "none", fontFamily: "var(--font-montserrat, Montserrat)", fontWeight: 500 }}
                       onMouseOver={(e) => (e.currentTarget.style.color = "#C89B3C")}
                       onMouseOut={(e) => (e.currentTarget.style.color = "#888")}
@@ -224,7 +291,7 @@ export function Footer() {
                 </svg>
               </a>
               {/* WhatsApp */}
-              <a href="https://wa.me/5541999154720" target="_blank" rel="noopener noreferrer"
+              <a href={info.whatsappLink} target="_blank" rel="noopener noreferrer"
                 style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#888", textDecoration: "none", transition: "all 0.15s" }}
                 onMouseOver={(e) => { e.currentTarget.style.background = "rgba(37,211,102,0.15)"; e.currentTarget.style.color = "#25D366" }}
                 onMouseOut={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#888" }}

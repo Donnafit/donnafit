@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireStaff } from "@/lib/auth"
+import { parseWeeklyHours } from "@/lib/business-hours"
 
 export async function PATCH(req: Request) {
   if (!(await requireStaff())) {
@@ -19,6 +20,8 @@ export async function PATCH(req: Request) {
   if (body.orderSound !== undefined) update.order_sound = body.orderSound
   if (body.pixDiscountRate !== undefined) update.pix_discount_rate = body.pixDiscountRate
   if (body.pickupAddress !== undefined) update.pickup_address = body.pickupAddress
+  // parseWeeklyHours revalida no servidor — não confia no shape que o client mandou.
+  if (body.weeklyHours !== undefined) update.weekly_hours = parseWeeklyHours(body.weeklyHours)
 
   const { error } = await supabase.from("store_settings").update(update).eq("id", "default")
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

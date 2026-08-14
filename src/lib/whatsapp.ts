@@ -88,3 +88,16 @@ export function buildWhatsAppURL(message: string): string {
     process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "5541999154720"
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
 }
+
+/**
+ * Constrói um link wa.me a partir do WhatsApp cadastrado em
+ * store_settings (texto livre, ex.: "(41) 99915-4720"). Mantém só os
+ * dígitos e garante o DDI 55 na frente, sem exigir que o admin digite
+ * o número já formatado pra link.
+ */
+export function toWhatsAppLink(rawPhone: string, fallbackNumber = "5541999154720"): string {
+  const digits = rawPhone.replace(/\D/g, "")
+  if (!digits) return `https://wa.me/${fallbackNumber}`
+  const withDDI = digits.startsWith("55") ? digits : `55${digits}`
+  return `https://wa.me/${withDDI}`
+}

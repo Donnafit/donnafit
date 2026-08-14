@@ -5,6 +5,7 @@ import { Clock, Flame, CheckCircle2, TrendingUp, Eye, EyeOff } from "lucide-reac
 import { useStaffName } from "@/hooks/useStaffName"
 import { useAuth } from "@/hooks/useAuth"
 import { createClient } from "@/lib/supabase/client"
+import { isOpenNow, parseWeeklyHours, type StoreHoursConfig } from "@/lib/business-hours"
 import { ProfileModal } from "./ProfileModal"
 import { RevenueDashboardModal } from "./RevenueDashboardModal"
 
@@ -32,15 +33,19 @@ function setHideRevenuePreference(hidden: boolean) {
   }
 }
 
-async function getStoreHours() {
+async function getStoreHoursConfig(): Promise<StoreHoursConfig> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = createClient() as any
-    const { data } = await supabase.from("store_settings").select("open_hour, close_hour").eq("id", "default").single()
-    if (!data) return { open: OPEN_HOUR, close: CLOSE_HOUR }
-    return { open: Number(data.open_hour), close: Number(data.close_hour) }
+    const { data } = await supabase.from("store_settings").select("open_hour, close_hour, weekly_hours").eq("id", "default").single()
+    if (!data) return { openHour: OPEN_HOUR, closeHour: CLOSE_HOUR, weeklyHours: {} }
+    return {
+      openHour: Number(data.open_hour),
+      closeHour: Number(data.close_hour),
+      weeklyHours: parseWeeklyHours(data.weekly_hours),
+    }
   } catch {
-    return { open: OPEN_HOUR, close: CLOSE_HOUR }
+    return { openHour: OPEN_HOUR, closeHour: CLOSE_HOUR, weeklyHours: {} }
   }
 }
 
@@ -140,9 +145,8 @@ export function AdminHero({
 
   useEffect(() => {
     async function check() {
-      const h = new Date().getHours()
-      const { open, close } = await getStoreHours()
-      setIsOpen(h >= open && h < close)
+      const config = await getStoreHoursConfig()
+      setIsOpen(isOpenNow(config))
     }
     check()
     const t = setInterval(check, 60_000)
