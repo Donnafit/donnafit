@@ -3,6 +3,15 @@ import { useEffect, useState } from "react"
 import { Clock, Store, Bell, Percent, MapPin } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { DeliveryZonesModal } from "@/components/admin/DeliveryZonesModal"
+import {
+  DAY_LABELS,
+  DISPLAY_DAY_ORDER,
+  parseWeeklyHours,
+  type DayKey,
+  type DayMode,
+  type DayOverride,
+  type WeeklyHours,
+} from "@/lib/business-hours"
 
 interface StoreSettings {
   storeName: string
@@ -12,6 +21,7 @@ interface StoreSettings {
   orderSound: boolean
   pixDiscountPercent: string
   pickupAddress: string
+  weeklyHours: WeeklyHours
 }
 
 const DEFAULT_SETTINGS: StoreSettings = {
@@ -22,6 +32,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   orderSound: true,
   pixDiscountPercent: "2",
   pickupAddress: "",
+  weeklyHours: {},
 }
 
 async function loadSettings(): Promise<StoreSettings> {
@@ -37,7 +48,14 @@ async function loadSettings(): Promise<StoreSettings> {
     orderSound: data.order_sound,
     pixDiscountPercent: String(Number(data.pix_discount_rate ?? 0.02) * 100),
     pickupAddress: data.pickup_address ?? "",
+    weeklyHours: parseWeeklyHours(data.weekly_hours),
   }
+}
+
+const MODE_LABELS: Record<DayMode, string> = {
+  default: "Padrão",
+  custom: "Personalizado",
+  closed: "Fechado",
 }
 
 function Section({ title, description, icon: Icon, children }: {
@@ -132,6 +150,15 @@ export default function ConfiguracoesPage() {
     setSettings((prev) => ({ ...prev, [key]: value }))
   }
 
+  function updateDay(day: DayKey, override: DayOverride | undefined) {
+    setSettings((prev) => {
+      const next = { ...prev.weeklyHours }
+      if (!override || override.mode === "default") delete next[day]
+      else next[day] = override
+      return { ...prev, weeklyHours: next }
+    })
+  }
+
   async function handleSave() {
     setSaving(true)
     setError(null)
@@ -147,6 +174,7 @@ export default function ConfiguracoesPage() {
           orderSound: settings.orderSound,
           pixDiscountRate: Number(settings.pixDiscountPercent) / 100,
           pickupAddress: settings.pickupAddress,
+          weeklyHours: settings.weeklyHours,
         }),
       })
       if (!res.ok) throw new Error((await res.json()).error)
@@ -258,6 +286,89 @@ export default function ConfiguracoesPage() {
           <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 4 }}>
             Atualmente: {settings.openHour}h às {settings.closeHour}h — o badge no painel reflete esse horário automaticamente
           </p>
+
+          <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid var(--surface-200)" }}>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700, color: "var(--text-950)" }}>
+              Dias personalizados
+            </p>
+            <p style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-300)", marginTop: 2, marginBottom: 14 }}>
+              Sobrescreve o horário padrão em dias específicos — ex.: sábado com horário reduzido, domingo fechado
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {DISPLAY_DAY_ORDER.map((day) => {
+                const override = settings.weeklyHours[day]
+                const mode: DayMode = override?.mode ?? "default"
+                const dayOpenHour = override?.openHour ?? Number(settings.openHour)
+                const dayCloseHour = override?.closeHour ?? Number(settings.closeHour)
+
+                return (
+                  <div key={day} data-testid={`weekly-hours-row-${day}`} style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <span style={{ width: 100, flexShrink: 0, fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--text-950)" }}>
+                      {DAY_LABELS[day]}
+                    </span>
+
+                    <div style={{ display: "flex", gap: 4, background: "var(--surface-50)", border: "1px solid var(--surface-200)", borderRadius: 9, padding: 3 }}>
+                      {(["default", "custom", "closed"] as DayMode[]).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() =>
+                            updateDay(
+                              day,
+                              m === "default"
+                                ? undefined
+                                : m === "closed"
+                                  ? { mode: "closed" }
+                                  : { mode: "custom", openHour: dayOpenHour, closeHour: dayCloseHour }
+                            )
+                          }
+                          style={{
+                            fontFamily: "var(--font-ui)",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: "6px 10px",
+                            borderRadius: 7,
+                            border: "none",
+                            cursor: "pointer",
+                            background: mode === m ? "var(--gold-500)" : "transparent",
+                            color: mode === m ? "#fff" : "var(--text-500)",
+                            transition: "all 150ms",
+                          }}
+                        >
+                          {MODE_LABELS[m]}
+                        </button>
+                      ))}
+                    </div>
+
+                    {mode === "custom" && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <select
+                          value={dayOpenHour}
+                          onChange={(e) => updateDay(day, { mode: "custom", openHour: Number(e.target.value), closeHour: dayCloseHour })}
+                          style={{ ...inputStyle, width: 96, cursor: "pointer", paddingRight: 28 }}
+                        >
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
+                          ))}
+                        </select>
+                        <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-300)" }}>às</span>
+                        <select
+                          value={dayCloseHour}
+                          onChange={(e) => updateDay(day, { mode: "custom", openHour: dayOpenHour, closeHour: Number(e.target.value) })}
+                          style={{ ...inputStyle, width: 96, cursor: "pointer", paddingRight: 28 }}
+                        >
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </Section>
 
         <Section title="Notificações" description="Alertas de novos pedidos" icon={Bell}>

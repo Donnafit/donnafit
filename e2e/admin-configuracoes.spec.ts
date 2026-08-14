@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test"
-import { loadFixtures } from "./fixtures"
+import { loadFixtures, serviceClient } from "./fixtures"
 
 const fx = loadFixtures()
 
@@ -71,5 +71,61 @@ test.describe("Admin — Configurações", () => {
     // Negativo: não deve mais existir em Rota de Entrega.
     await page.goto("/admin/rota-entrega")
     await expect(page.getByRole("button", { name: /taxas por bairro/i })).not.toBeVisible()
+  })
+
+  test("horário personalizado por dia (sábado reduzido, domingo fechado) persiste e reflete no rodapé público", async ({ page }) => {
+    await loginAdmin(page)
+
+    const sabRow = page.getByTestId("weekly-hours-row-sab")
+    await sabRow.getByRole("button", { name: "Personalizado" }).click()
+    await sabRow.locator("select").first().selectOption("10")
+    await sabRow.locator("select").nth(1).selectOption("14")
+
+    const domRow = page.getByTestId("weekly-hours-row-dom")
+    await domRow.getByRole("button", { name: "Fechado" }).click()
+
+    await page.getByRole("button", { name: "Salvar alterações" }).click()
+    await expect(page.getByText("Salvo!")).toBeVisible()
+
+    // Sobrevive ao reload (mesma garantia que os outros campos desta página já têm).
+    // Os selects só aparecem em modo "Personalizado" — se o reload tivesse voltado
+    // pro padrão, esta linha nem teria select nenhum.
+    await page.reload()
+    await expect(sabRow.locator("select").first()).toHaveValue("10")
+    await expect(sabRow.locator("select").nth(1)).toHaveValue("14")
+    // Domingo fechado não deve ter select nenhum (não é modo "custom")
+    await expect(domRow.locator("select")).toHaveCount(0)
+
+    // Reflete no rodapé do cardápio público, sem precisar de login
+    await page.goto("/")
+    const footer = page.locator("footer")
+    await expect(footer.getByText(/sáb.*10h às 14h/i)).toBeVisible()
+    await expect(footer.getByText(/dom.*fechado/i)).toBeVisible()
+
+    // Restaura pra não deixar o horário real do restaurante alterado pelo teste
+    await page.goto("/admin/configuracoes")
+    await sabRow.getByRole("button", { name: "Padrão" }).click()
+    await domRow.getByRole("button", { name: "Padrão" }).click()
+    await page.getByRole("button", { name: "Salvar alterações" }).click()
+    await expect(page.getByText("Salvo!")).toBeVisible()
+  })
+})
+
+test.describe("Rodapé público — sincronizado com o perfil da cozinha", () => {
+  test("telefone e endereço do rodapé batem com store_settings, não texto fixo", async ({ page }) => {
+    const { data } = await serviceClient()
+      .from("store_settings")
+      .select("whatsapp, pickup_address")
+      .eq("id", "default")
+      .single()
+
+    await page.goto("/")
+    const footer = page.locator("footer")
+    if (data?.pickup_address) {
+      await expect(footer.getByText(data.pickup_address)).toBeVisible()
+    }
+    if (data?.whatsapp) {
+      await expect(footer.getByText(data.whatsapp)).toBeVisible()
+    }
   })
 })

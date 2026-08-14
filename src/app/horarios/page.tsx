@@ -1,17 +1,30 @@
 import { InfoPageLayout } from "@/components/layout/InfoPageLayout"
+import { createClient } from "@/lib/supabase/server"
+import { getWeeklyHoursFull, parseWeeklyHours, type StoreHoursConfig } from "@/lib/business-hours"
 
 export const metadata = { title: "Horários de Atendimento — Donna FIT" }
 
-const HORARIOS = [
-  { dia: "Segunda-feira",   horario: "10h às 19h",  aberto: true },
-  { dia: "Terça-feira",     horario: "10h às 19h",  aberto: true },
-  { dia: "Quarta-feira",    horario: "10h às 19h",  aberto: true },
-  { dia: "Quinta-feira",    horario: "10h às 19h",  aberto: true },
-  { dia: "Sexta-feira",     horario: "10h às 19h",  aberto: true },
-  { dia: "Sábado",          horario: "10h às 15h",  aberto: true },
-  { dia: "Domingo",         horario: "Fechado",      aberto: false },
-  { dia: "Feriados",        horario: "Consulte",     aberto: null },
-]
+const FALLBACK_CONFIG: StoreHoursConfig = { openHour: 10, closeHour: 22, weeklyHours: {} }
+
+async function getStoreHoursConfig(): Promise<StoreHoursConfig> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = (await createClient()) as any
+    const { data } = await supabase
+      .from("store_settings")
+      .select("open_hour, close_hour, weekly_hours")
+      .eq("id", "default")
+      .single()
+    if (!data) return FALLBACK_CONFIG
+    return {
+      openHour: Number(data.open_hour),
+      closeHour: Number(data.close_hour),
+      weeklyHours: parseWeeklyHours(data.weekly_hours),
+    }
+  } catch {
+    return FALLBACK_CONFIG
+  }
+}
 
 const INFO_CARDS = [
   {
@@ -44,7 +57,13 @@ const INFO_CARDS = [
   },
 ]
 
-export default function HorariosPage() {
+export default async function HorariosPage() {
+  const config = await getStoreHoursConfig()
+  const HORARIOS: { dia: string; horario: string; aberto: boolean | null }[] = [
+    ...getWeeklyHoursFull(config).map(({ dayLabel, text, aberto }) => ({ dia: dayLabel, horario: text, aberto })),
+    { dia: "Feriados", horario: "Consulte", aberto: null },
+  ]
+
   return (
     <InfoPageLayout
       title="Horários de Atendimento"
