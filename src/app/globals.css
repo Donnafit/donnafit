@@ -489,7 +489,14 @@ body {
   gap: 12px;
 }
 @media (min-width: 768px) {
-  .checkout-address-grid { grid-template-columns: 63fr 33fr; }
+  /* Colunas iguais: a proporção 63/33 antiga foi pensada só pro checkout
+     (bem largo) — dentro do modal de perfil (bem mais estreito, mas ainda
+     dispara essa media query porque ela reage à largura da JANELA, não do
+     container), a coluna de 33% não cabia o rótulo "ENDEREÇO (RUA E
+     NÚMERO)" numa linha só, quebrava pra 2 linhas e desalinhava aquele
+     campo verticalmente em relação ao CEP na mesma linha do grid.
+     50/50 cabe nos dois contextos (testado no checkout e no modal). */
+  .checkout-address-grid { grid-template-columns: 1fr 1fr; }
 }
 
 /* =============================================
