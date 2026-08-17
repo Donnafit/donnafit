@@ -284,13 +284,21 @@ export function CheckoutForm() {
   useEffect(() => {
     if (deliveryLocked && delivery === "delivery") {
       setDelivery("pickup")
+      // Mesma limpeza do clique manual em "Retirada" — evita frete fantasma
+      // no total quando a reversão automática dispara.
+      setMatchedZone(null)
+      setZoneApproximate(false)
     }
   }, [deliveryLocked, delivery])
 
   const subtotal = mounted ? total() : 0
   // Number(): fee vem do Supabase (coluna numeric) e pode chegar como string —
   // sem isso, `subtotal + deliveryFee` vira concatenação em vez de soma.
-  const deliveryFee = matchedZone ? Number(matchedZone.fee) : 0
+  // Gate por `delivery === "delivery"`: matchedZone pode ficar "preso" no state
+  // de uma resolução de bairro anterior mesmo depois do cliente voltar pra
+  // retirada (clique manual ou auto-reversão abaixo do mínimo) — sem o gate,
+  // o frete fantasma entrava no total mesmo em pedido de retirada.
+  const deliveryFee = delivery === "delivery" && matchedZone ? Number(matchedZone.fee) : 0
   const pixDiscount = payment === "pix" ? subtotal * pixDiscountRate : 0
   const pixDiscountPercentLabel = `${(pixDiscountRate * 100).toFixed(pixDiscountRate * 100 % 1 === 0 ? 0 : 1)}%`
   const finalTotal = subtotal + deliveryFee - pixDiscount
@@ -567,7 +575,15 @@ export function CheckoutForm() {
           {/* Retirada */}
           <button
             type="button"
-            onClick={() => setDelivery("pickup")}
+            onClick={() => {
+              setDelivery("pickup")
+              // Limpa a zona resolvida: se não fizermos isso, matchedZone
+              // fica preso no state e, ao remontar AddressFields (voltar
+              // pra Entrega), ele re-resolve a zona pelo endereço já
+              // preenchido — sem impacto real pro usuário.
+              setMatchedZone(null)
+              setZoneApproximate(false)
+            }}
             className={`option-card ${delivery === "pickup" ? "selected" : ""}`}
           >
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
