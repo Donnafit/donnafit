@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useCart, MIN_DELIVERY_ITEMS } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
@@ -48,6 +48,23 @@ function validatePhone(value: string): boolean {
   return digits.length >= 10
 }
 
+// Guarda a escolha de Retirada/Entrega em sessionStorage (dura enquanto a aba
+// fica aberta, some ao fechar) só pra sobreviver a um reload da página — sem
+// isso, cada reload remonta o componente do zero e o useEffect de hidratação
+// de endereço salvo (linhas ~59-103) reforça "delivery" de novo mesmo que o
+// cliente tenha escolhido "Retirada" manualmente. Cliente relatou 17/08/2026.
+const CHECKOUT_DELIVERY_STORAGE_KEY = "donna-fit-checkout-delivery"
+
+function readStoredDelivery(): "pickup" | "delivery" | null {
+  if (typeof window === "undefined") return null
+  try {
+    const stored = sessionStorage.getItem(CHECKOUT_DELIVERY_STORAGE_KEY)
+    return stored === "pickup" || stored === "delivery" ? stored : null
+  } catch {
+    return null
+  }
+}
+
 export function CheckoutForm() {
   const router = useRouter()
   const { items, total, clearCart } = useCart()
@@ -78,7 +95,10 @@ export function CheckoutForm() {
               bairro: typeof guest.bairro === "string" ? guest.bairro : prev.bairro,
               complement: typeof guest.complement === "string" ? guest.complement : prev.complement,
             }))
-            setDelivery("delivery")
+            // Só pré-seleciona "Entrega" se o cliente ainda não escolheu nada
+            // nesta aba — senão um reload com "Retirada" já escolhida voltava
+            // sozinho pra "Entrega" toda vez que o componente remontava.
+            if (readStoredDelivery() === null) setDelivery("delivery")
           }
         }
       } catch {}
@@ -98,7 +118,9 @@ export function CheckoutForm() {
     const savedAddress = deliveryAddressFromUserMetadata(meta)
     if (savedAddress.street && !deliveryAddress.street) {
       setDeliveryAddress(savedAddress)
-      setDelivery("delivery")
+      // Mesmo motivo do bloco guest acima: não pisa numa escolha já feita
+      // nesta aba (ex.: "Retirada" selecionada antes de um reload).
+      if (readStoredDelivery() === null) setDelivery("delivery")
     }
   }, [user])
 
@@ -106,7 +128,18 @@ export function CheckoutForm() {
   const [phone, setPhone] = useState("")
   const [nameState, setNameState] = useState<"idle" | "valid" | "invalid">("idle")
   const [phoneState, setPhoneState] = useState<"idle" | "valid" | "invalid">("idle")
-  const [delivery, setDelivery] = useState<"pickup" | "delivery">("pickup")
+  const [delivery, setDeliveryValue] = useState<"pickup" | "delivery">(
+    () => readStoredDelivery() ?? "pickup"
+  )
+  // Envolve o setter pra sempre persistir junto — assim toda troca (clique
+  // manual, reversão automática por carrinho abaixo do mínimo) sobrevive a
+  // um reload da página.
+  const setDelivery = useCallback((value: "pickup" | "delivery") => {
+    setDeliveryValue(value)
+    try {
+      sessionStorage.setItem(CHECKOUT_DELIVERY_STORAGE_KEY, value)
+    } catch {}
+  }, [])
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddressData>(emptyDeliveryAddress())
   const [matchedZone, setMatchedZone] = useState<DeliveryZone | null>(null)
   const [zoneApproximate, setZoneApproximate] = useState(false)
@@ -284,13 +317,21 @@ export function CheckoutForm() {
   useEffect(() => {
     if (deliveryLocked && delivery === "delivery") {
       setDelivery("pickup")
+      // Mesma limpeza do clique manual em "Retirada" — evita frete fantasma
+      // no total quando a reversão automática dispara.
+      setMatchedZone(null)
+      setZoneApproximate(false)
     }
   }, [deliveryLocked, delivery])
 
   const subtotal = mounted ? total() : 0
   // Number(): fee vem do Supabase (coluna numeric) e pode chegar como string —
   // sem isso, `subtotal + deliveryFee` vira concatenação em vez de soma.
-  const deliveryFee = matchedZone ? Number(matchedZone.fee) : 0
+  // Gate por `delivery === "delivery"`: matchedZone pode ficar "preso" no state
+  // de uma resolução de bairro anterior mesmo depois do cliente voltar pra
+  // retirada (clique manual ou auto-reversão abaixo do mínimo) — sem o gate,
+  // o frete fantasma entrava no total mesmo em pedido de retirada.
+  const deliveryFee = delivery === "delivery" && matchedZone ? Number(matchedZone.fee) : 0
   const pixDiscount = payment === "pix" ? subtotal * pixDiscountRate : 0
   const pixDiscountPercentLabel = `${(pixDiscountRate * 100).toFixed(pixDiscountRate * 100 % 1 === 0 ? 0 : 1)}%`
   const finalTotal = subtotal + deliveryFee - pixDiscount
@@ -567,7 +608,15 @@ export function CheckoutForm() {
           {/* Retirada */}
           <button
             type="button"
-            onClick={() => setDelivery("pickup")}
+            onClick={() => {
+              setDelivery("pickup")
+              // Limpa a zona resolvida: se não fizermos isso, matchedZone
+              // fica preso no state e, ao remontar AddressFields (voltar
+              // pra Entrega), ele re-resolve a zona pelo endereço já
+              // preenchido — sem impacto real pro usuário.
+              setMatchedZone(null)
+              setZoneApproximate(false)
+            }}
             className={`option-card ${delivery === "pickup" ? "selected" : ""}`}
           >
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>

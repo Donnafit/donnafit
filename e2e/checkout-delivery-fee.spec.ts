@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import fs from "fs"
 import { loadFixtures, resetProductStock, clearCustomerDeliveryMetadata } from "./fixtures"
 import { login, addToCartAndGoToCheckout, selectBairro } from "./helpers"
+import { formatCurrency } from "../src/lib/utils"
 
 const fx = loadFixtures()
 
@@ -50,6 +51,30 @@ test.describe("Cardápio — frete reconhecido pelo bairro selecionado (select d
 
     await expect(page.getByText(/não conseguimos identificar o bairro/i)).toBeVisible({ timeout: 3000 })
     await expect(page.getByRole("button", { name: /confirmar e abrir whatsapp/i })).toBeDisabled()
+  })
+
+  test("voltar para Retirada depois de ter frete calculado não deixa a taxa 'presa' no Total (regressão)", async ({ page }) => {
+    // Bug relatado: cliente selecionava Entrega, o bairro resolvia um frete
+    // (ex: Batel, R$12), e ao voltar para Retirada o card "Frete" sumia do
+    // resumo (correto), mas o Total continuava embutindo os R$12 escondidos —
+    // matchedZone ficava preso no state e o cálculo do total não filtrava
+    // pelo modo de entrega atual.
+    await addToCartAndGoToCheckout(page)
+    await page.getByPlaceholder("Rua, número").fill("Rua Presidente Faria, 100")
+    await selectBairro(page, "Batel")
+    await expect(page.getByText(/bairro identificado: batel/i)).toBeVisible({ timeout: 3000 })
+    await expect(page.getByText(/frete r\$\s?12,00/i)).toBeVisible()
+
+    await page.getByRole("button", { name: /^Retirada/ }).click()
+    // Troca pra "Maquininha": elimina o desconto PIX da conta, deixando a
+    // asserção do Total abaixo presa só à variável que importa aqui (frete),
+    // sem acoplar o teste à taxa de desconto PIX (regra de negócio à parte).
+    await page.getByRole("button", { name: /^Maquininha/ }).click()
+
+    // Nem a linha "Frete" nem os R$12 escondidos devem sobrar no Total.
+    await expect(page.getByText("Frete", { exact: true })).not.toBeVisible()
+    const expectedTotal = formatCurrency(fx.product.price * 8)
+    await expect(page.getByText("Total", { exact: true }).locator("..")).toContainText(expectedTotal)
   })
 })
 
