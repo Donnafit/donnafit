@@ -5,6 +5,7 @@ import { useCart, MIN_DELIVERY_ITEMS } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import { createClient } from "@/lib/supabase/client"
 import { buildWhatsAppMessage, buildWhatsAppURL } from "@/lib/whatsapp"
+import { isRestrictedInAppBrowser } from "@/lib/inAppBrowser"
 import { formatCurrency } from "@/lib/utils"
 import { getMarmitasPerUnit } from "@/lib/stock"
 import { Store, Truck, QrCode, CreditCard, Check, Link2, Info } from "lucide-react"
@@ -379,6 +380,22 @@ export function CheckoutForm() {
     // clientes como o botão "travando".
     const timeoutController = new AbortController()
     const timeoutId = setTimeout(() => timeoutController.abort(), 20000)
+    // Pré-abre a aba do WhatsApp AGORA, ainda dentro do clique síncrono do
+    // usuário — chamar window.open() só depois do await fetch() abaixo
+    // perde a associação com o gesto do clique e o navegador bloqueia o
+    // popup silenciosamente. Fica em branco até o pedido confirmar, quando
+    // é redirecionada pro link final (ver mais abaixo). Pulado em
+    // navegadores embutidos restritos (Instagram/Facebook/WhatsApp/TikTok/
+    // WebView): neles window.open("", "_blank") não abre aba nova, ele
+    // sequestra a navegação da própria página — foi isso que quebrou o
+    // checkout em 03/08/2026 (commit 2bd569f). Nesses casos o WhatsApp
+    // continua abrindo só pelo botão manual na tela de confirmação.
+    const waWindow = isRestrictedInAppBrowser() ? null : window.open("", "_blank")
+    if (waWindow) {
+      waWindow.document.write(
+        '<title>Donna FIT</title><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;color:#888;background:#FFFDF8">Abrindo WhatsApp…</body>'
+      )
+    }
     try {
       const computedRiceChoices = finalRiceChoices()
       const activeRiceChoices = Object.keys(computedRiceChoices).length > 0 ? computedRiceChoices : undefined
@@ -480,15 +497,20 @@ export function CheckoutForm() {
       }
 
       clearCart()
-      // A abertura do WhatsApp fica a cargo do botão na página de confirmação
-      // (link <a> real, clicado pelo próprio cliente) — um window.open()
-      // pré-aberto aqui e navegado depois do fetch chegou a sequestrar a
-      // navegação inteira da página em navegadores restritos (in-app browser
-      // do WhatsApp/Instagram), impedindo o cliente de sequer chegar na
-      // etapa 3 de confirmação. Preferir sempre completar o pedido a
-      // garantir a abertura automática do WhatsApp.
+      // Redireciona a aba pré-aberta (ver início da função) pro link final
+      // do WhatsApp, já com o pedido formatado. Em navegadores restritos
+      // (in-app browser do Instagram/Facebook/WhatsApp/TikTok) waWindow é
+      // null — nesses casos a abertura fica a cargo do botão manual na
+      // tela de confirmação, como antes.
+      if (waWindow) {
+        waWindow.location.href = waUrl
+      }
       router.push(`/confirmacao?order=${data.orderNumber}&wa=${encodedWa}`)
     } catch (err) {
+      // Pedido falhou (ou deu timeout) — fecha a aba em branco que foi
+      // pré-aberta pro WhatsApp, senão o cliente fica com uma aba
+      // "Abrindo WhatsApp…" travada sem nenhum pedido de fato confirmado.
+      waWindow?.close()
       const timedOut = err instanceof Error && err.name === "AbortError"
       setSubmitError(
         timedOut
