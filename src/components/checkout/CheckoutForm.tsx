@@ -30,6 +30,18 @@ function riceModeOf(item: CartItem): "none" | "integral" | "branco" | "both" {
   return item.product.rice_integral_available === false ? "branco" : "both"
 }
 
+// Combos continuam com UMA escolha valendo pro combo inteiro (não sabemos,
+// pela composição, quantas marmitas com arroz "both" tem por caixa nem
+// multiplicar pela quantidade comprada — ficaria um projeto bem maior).
+// Pratos avulsos guardam um array com o tipo de cada unidade (índice = qual
+// marmita), permitindo pedir 2x do mesmo prato com uma integral e uma
+// branco. `finalRiceChoices()` resume esse array pra { integral, branco }
+// (contagem) antes de mandar pra API/WhatsApp — a ordem das unidades não
+// importa daí em diante, só a quantidade de cada tipo.
+type RiceCellValue = "integral" | "branco"
+type RiceChoiceValue = RiceCellValue | (RiceCellValue | undefined)[]
+const isComboItem = (item: CartItem): boolean => item.product.stock_type === "combo"
+
 const DEFAULT_PIX_DISCOUNT_RATE = 0.02
 
 function maskPhone(value: string): string {
@@ -186,7 +198,7 @@ export function CheckoutForm() {
   // pedidos concorrentes antes do primeiro re-render acontecer.
   const isSubmittingRef = useRef(false)
   const [submitError, setSubmitError] = useState("")
-  const [riceChoices, setRiceChoices] = useState<Record<string, "integral" | "branco">>({})
+  const [riceChoices, setRiceChoices] = useState<Record<string, RiceChoiceValue>>({})
   const [riceMode, setRiceMode] = useState<"same" | "individual">("same")
   const [sameRiceType, setSameRiceType] = useState<"integral" | "branco" | null>(null)
   const [showRiceModal, setShowRiceModal] = useState(false)
@@ -275,25 +287,68 @@ export function CheckoutForm() {
     document.body.style.overflow = "hidden"
     return () => { document.body.style.overflow = prev }
   }, [showRiceModal])
+  // Array com o tipo escolhido de cada unidade do prato (índice = unidade).
+  // Faz padding/corte pro tamanho atual de `item.quantity` — defensivo caso
+  // a quantidade mude no carrinho enquanto uma escolha antiga ainda esteja
+  // guardada no state (não deveria rolar com o modal aberto, mas evita
+  // acessar índice fora do array em vez de quebrar).
+  function unitChoicesOf(item: CartItem, source: Record<string, RiceChoiceValue> = riceChoices): (RiceCellValue | undefined)[] {
+    const v = source[item.product.id]
+    const arr = Array.isArray(v) ? v : []
+    return Array.from({ length: item.quantity }, (_, i) => arr[i])
+  }
+
+  function setUnitChoice(item: CartItem, index: number, type: RiceCellValue) {
+    setRiceChoices(prev => {
+      const next = [...unitChoicesOf(item, prev)]
+      next[index] = type
+      return { ...prev, [item.product.id]: next }
+    })
+  }
+
   const allRiceChosen = riceMode === "same"
     ? sameRiceType !== null
-    : riceItems.every(item => !!riceChoices[item.product.id])
+    : riceItems.every(item =>
+        isComboItem(item)
+          ? !!riceChoices[item.product.id]
+          : unitChoicesOf(item).every(u => !!u)
+      )
 
   function switchToIndividualRice() {
     if (sameRiceType) {
       setRiceChoices(prev => {
         const next = { ...prev }
-        riceItems.forEach(item => { if (!next[item.product.id]) next[item.product.id] = sameRiceType })
+        riceItems.forEach(item => {
+          if (next[item.product.id]) return
+          next[item.product.id] = isComboItem(item)
+            ? sameRiceType
+            : Array.from({ length: item.quantity }, () => sameRiceType)
+        })
         return next
       })
     }
     setRiceMode("individual")
   }
 
-  function finalRiceChoices(): Record<string, "integral" | "branco"> {
-    const chosen = riceMode === "same" && sameRiceType
-      ? Object.fromEntries(riceItems.map(item => [item.product.id, sameRiceType]))
-      : riceChoices
+  // Formato mandado pra API/WhatsApp: combo continua "integral"|"branco"
+  // simples (uma escolha pro combo inteiro); prato avulso vira contagem
+  // { integral, branco } resumindo o array de unidades escolhido no modal.
+  function finalRiceChoices(): Record<string, "integral" | "branco" | { integral: number; branco: number }> {
+    const chosen: Record<string, "integral" | "branco" | { integral: number; branco: number }> = {}
+    for (const item of riceItems) {
+      if (isComboItem(item)) {
+        const value = riceMode === "same" ? sameRiceType : riceChoices[item.product.id]
+        if (value && !Array.isArray(value)) chosen[item.product.id] = value
+        continue
+      }
+      const units = riceMode === "same" && sameRiceType
+        ? Array.from({ length: item.quantity }, () => sameRiceType)
+        : unitChoicesOf(item)
+      chosen[item.product.id] = {
+        integral: units.filter(u => u === "integral").length,
+        branco: units.filter(u => u === "branco").length,
+      }
+    }
     const autoBranco = Object.fromEntries(autoBrancoRiceItems.map(item => [item.product.id, "branco" as const]))
     const autoIntegral = Object.fromEntries(autoIntegralRiceItems.map(item => [item.product.id, "integral" as const]))
     return { ...chosen, ...autoBranco, ...autoIntegral }
@@ -1056,47 +1111,104 @@ export function CheckoutForm() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 16 }}>
-                  {riceItems.map(item => (
-                    <div
-                      key={item.product.id}
-                      style={{
-                        background: "#FAFAF8", borderRadius: 14,
-                        padding: "14px 16px",
-                        border: `1.5px solid ${riceChoices[item.product.id] ? "#5A6B2A" : "#E5E0D8"}`,
-                        transition: "border-color 0.15s ease",
-                      }}
-                    >
-                      <p style={{
-                        fontFamily: "var(--font-switzer), sans-serif",
-                        fontWeight: 700, fontSize: 14, color: "#1A1A1A",
-                        margin: "0 0 10px",
-                      }}>
-                        {item.quantity}x {item.product.name}
-                      </p>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                        {(["integral", "branco"] as const).map(type => (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => setRiceChoices(prev => ({ ...prev, [item.product.id]: type }))}
-                            style={{
-                              padding: "10px 8px",
-                              borderRadius: 10,
-                              border: `2px solid ${riceChoices[item.product.id] === type ? "#5A6B2A" : "transparent"}`,
-                              background: riceChoices[item.product.id] === type ? "#5A6B2A" : "#F0EDE8",
-                              color: riceChoices[item.product.id] === type ? "#fff" : "#666",
-                              fontFamily: "var(--font-switzer), sans-serif",
-                              fontWeight: 700, fontSize: 13,
-                              cursor: "pointer",
-                              transition: "all 0.15s ease",
-                            }}
-                          >
-                            {type === "integral" ? "Integral" : "Branco"}
-                          </button>
-                        ))}
+                  {riceItems.map(item => {
+                    const combo = isComboItem(item)
+                    // Combo e prato com 1 unidade só têm uma escolha possível — mantém
+                    // o par de botões único. Prato com 2+ unidades ganha um par de
+                    // botões POR unidade, pra poder misturar integral e branco no
+                    // mesmo prato (o pedido que motivou essa mudança).
+                    const perUnit = !combo && item.quantity > 1
+                    const units = unitChoicesOf(item)
+                    const rowComplete = combo
+                      ? !!riceChoices[item.product.id]
+                      : units.every(u => !!u)
+
+                    return (
+                      <div
+                        key={item.product.id}
+                        style={{
+                          background: "#FAFAF8", borderRadius: 14,
+                          padding: "14px 16px",
+                          border: `1.5px solid ${rowComplete ? "#5A6B2A" : "#E5E0D8"}`,
+                          transition: "border-color 0.15s ease",
+                        }}
+                      >
+                        <p style={{
+                          fontFamily: "var(--font-switzer), sans-serif",
+                          fontWeight: 700, fontSize: 14, color: "#1A1A1A",
+                          margin: "0 0 10px",
+                        }}>
+                          {item.quantity}x {item.product.name}
+                        </p>
+                        {perUnit ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            {units.map((selected, idx) => (
+                              <div key={idx}>
+                                <p style={{
+                                  fontFamily: "var(--font-switzer), sans-serif",
+                                  fontWeight: 600, fontSize: 12, color: "#999",
+                                  margin: "0 0 6px",
+                                }}>
+                                  Unidade {idx + 1}
+                                </p>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                                  {(["integral", "branco"] as const).map(type => (
+                                    <button
+                                      key={type}
+                                      type="button"
+                                      onClick={() => setUnitChoice(item, idx, type)}
+                                      style={{
+                                        padding: "10px 8px",
+                                        borderRadius: 10,
+                                        border: `2px solid ${selected === type ? "#5A6B2A" : "transparent"}`,
+                                        background: selected === type ? "#5A6B2A" : "#F0EDE8",
+                                        color: selected === type ? "#fff" : "#666",
+                                        fontFamily: "var(--font-switzer), sans-serif",
+                                        fontWeight: 700, fontSize: 13,
+                                        cursor: "pointer",
+                                        transition: "all 0.15s ease",
+                                      }}
+                                    >
+                                      {type === "integral" ? "Integral" : "Branco"}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            {(["integral", "branco"] as const).map(type => {
+                              const selected = combo ? riceChoices[item.product.id] === type : units[0] === type
+                              return (
+                                <button
+                                  key={type}
+                                  type="button"
+                                  onClick={() => combo
+                                    ? setRiceChoices(prev => ({ ...prev, [item.product.id]: type }))
+                                    : setUnitChoice(item, 0, type)
+                                  }
+                                  style={{
+                                    padding: "10px 8px",
+                                    borderRadius: 10,
+                                    border: `2px solid ${selected ? "#5A6B2A" : "transparent"}`,
+                                    background: selected ? "#5A6B2A" : "#F0EDE8",
+                                    color: selected ? "#fff" : "#666",
+                                    fontFamily: "var(--font-switzer), sans-serif",
+                                    fontWeight: 700, fontSize: 13,
+                                    cursor: "pointer",
+                                    transition: "all 0.15s ease",
+                                  }}
+                                >
+                                  {type === "integral" ? "Integral" : "Branco"}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                   <button
                     type="button"
                     onClick={() => setRiceMode("same")}

@@ -23,7 +23,10 @@ interface OrderBody {
   items: CartItem[]
   subtotal?: number
   total: number
-  riceChoices?: Record<string, "integral" | "branco">
+  // Combo: uma escolha vale pro combo inteiro ("integral"|"branco"). Prato
+  // avulso: contagem de unidades de cada tipo ({ integral, branco }),
+  // permitindo 2x do mesmo prato com uma integral e uma branco.
+  riceChoices?: Record<string, "integral" | "branco" | { integral: number; branco: number }>
 }
 
 export async function POST(req: Request) {
@@ -261,6 +264,28 @@ export async function POST(req: Request) {
   tomorrow.setDate(tomorrow.getDate() + 1)
   const deliveryDate = tomorrow.toISOString().split("T")[0]
 
+  // Resolve a escolha de arroz de um prato avulso numa contagem de unidades
+  // { integral, branco } que SEMPRE soma exatamente `quantity` — nunca confia
+  // que o client já mandou os dois números batendo com a quantidade real do
+  // item (normaliza clampando o pedido de integral entre 0 e quantity e
+  // completando o resto com branco, em vez de rejeitar o pedido: mesmo
+  // espírito de "sempre um default seguro" já usado nas outras validações
+  // deste arquivo). Produto sem opção integral força tudo "branco", mesmo
+  // que o client tenha mandado outra coisa.
+  function resolveRiceCounts(
+    requested: "integral" | "branco" | { integral: number; branco: number } | undefined,
+    quantity: number,
+    integralAvailable: boolean
+  ): { integral: number; branco: number } {
+    if (!integralAvailable) return { integral: 0, branco: quantity }
+    if (requested === "integral") return { integral: quantity, branco: 0 }
+    if (requested && typeof requested === "object") {
+      const integral = Math.max(0, Math.min(quantity, Math.floor(requested.integral || 0)))
+      return { integral, branco: quantity - integral }
+    }
+    return { integral: 0, branco: quantity }
+  }
+
   // Força "Branco" pra pratos sem opção integral, mesmo que o cliente
   // tenha mandado "integral" — mesmo princípio de nunca confiar em
   // escolha que devia ser travada no servidor.
@@ -268,8 +293,16 @@ export async function POST(req: Request) {
     .map(([productId, choice]) => {
       const item = body.items.find(i => i.product.id === productId)
       const fresh = freshById.get(productId)
-      const finalChoice = fresh && !fresh.rice_integral_available ? "branco" : choice
-      return `${item?.product.name ?? productId}: Arroz ${finalChoice === "integral" ? "Integral" : "Branco"}`
+      const label = item?.product.name ?? productId
+      if (typeof choice === "string") {
+        const finalChoice = fresh && !fresh.rice_integral_available ? "branco" : choice
+        return `${label}: Arroz ${finalChoice === "integral" ? "Integral" : "Branco"}`
+      }
+      const integralAvailable = fresh ? fresh.rice_integral_available !== false : true
+      const { integral, branco } = resolveRiceCounts(choice, item?.quantity ?? choice.integral + choice.branco, integralAvailable)
+      return integral > 0 && branco > 0
+        ? `${label}: Arroz ${integral}x Integral, ${branco}x Branco`
+        : `${label}: Arroz ${integral > 0 ? "Integral" : "Branco"}`
     })
     .join(" | ")
 
@@ -330,12 +363,20 @@ export async function POST(req: Request) {
     label: string
   }
 
-  function buildRiceOp(item: (typeof body.items)[number]): StockOp {
-    const requested = body.riceChoices?.[item.product.id]
+  // Um prato avulso dividido pode virar DUAS operações de estoque agora (uma
+  // pra cada tipo de arroz escolhido) em vez de sempre uma só — é o que
+  // permite reservar, por exemplo, 1 integral + 1 branco da mesma marmita
+  // em vez de forçar a quantidade inteira pra um tipo só.
+  function buildRiceOps(item: (typeof body.items)[number]): StockOp[] {
+    const fresh = freshById.get(item.product.id)
+    const integralAvailable = fresh ? fresh.rice_integral_available !== false : true
     // Mesmo princípio de nunca confiar em escolha que devia ser travada
     // no servidor — já usado acima pras notas do pedido (riceNotes).
-    const riceType: "integral" | "branco" = requested === "integral" ? "integral" : "branco"
-    return { kind: "rice", productId: item.product.id, quantity: item.quantity, riceType, label: item.product.name }
+    const { integral, branco } = resolveRiceCounts(body.riceChoices?.[item.product.id], item.quantity, integralAvailable)
+    const ops: StockOp[] = []
+    if (integral > 0) ops.push({ kind: "rice", productId: item.product.id, quantity: integral, riceType: "integral", label: item.product.name })
+    if (branco > 0) ops.push({ kind: "rice", productId: item.product.id, quantity: branco, riceType: "branco", label: item.product.name })
+    return ops
   }
 
   // Itens "combo" não têm stock_quantity própria — a baixa mira cada
@@ -381,7 +422,7 @@ export async function POST(req: Request) {
         return { kind: "simple" as const, productId: comp.component_product_id, quantity, label }
       })
     }
-    if (fresh.rice_stock_mode === "both") return [buildRiceOp(item)]
+    if (fresh.rice_stock_mode === "both") return buildRiceOps(item)
     return [{ kind: "simple" as const, productId: item.product.id, quantity: item.quantity, label: item.product.name }]
   })
 
