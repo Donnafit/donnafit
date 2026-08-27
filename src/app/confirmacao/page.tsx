@@ -3,7 +3,6 @@ import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
-import { isRestrictedInAppBrowser } from "@/lib/inAppBrowser"
 
 type OrderSummary = {
   items: { name: string; qty: number; price: number }[]
@@ -31,45 +30,55 @@ function ConfirmacaoContent() {
         if (stored) setOrderNumber(stored)
       } catch {}
     }
-    const waParam = searchParams.get("wa")
-    if (waParam) setWhatsappUrl(waParam)
+    // O link do WhatsApp vem do localStorage (ver CheckoutForm.tsx), não da
+    // query string — deixa a URL de navegação curta em vez de carregar a
+    // mensagem inteira (bem longa, já codificada) nela. "wa" na URL fica só
+    // como fallback pra link antigo que alguém tenha salvo/aberto antes
+    // desse ajuste (27/08/2026).
+    try {
+      const stored = localStorage.getItem("donna-fit-wa-url")
+      if (stored) setWhatsappUrl(stored)
+      else {
+        const waParam = searchParams.get("wa")
+        if (waParam) setWhatsappUrl(waParam)
+      }
+    } catch {}
     try {
       const raw = localStorage.getItem("donna-fit-order-summary")
       if (raw) setSummary(JSON.parse(raw))
     } catch {}
   }, [searchParams])
 
-  // Abre o WhatsApp sozinho ao chegar aqui vindo de um pedido recém
-  // confirmado. Faz isso NESTA tela (não no clique do botão do checkout) de
-  // propósito: abrir a aba nova mais cedo, ainda no checkout, chegou a
-  // "roubar" o foco em Safari mobile assim que a aba era criada — o cliente
-  // ficava olhando pra ela travada em "Abrindo WhatsApp…" sem nunca ver a
-  // aba original completar a navegação pra cá, mesmo o pedido tendo sido
-  // confirmado normalmente em segundo plano. Relatado 27/08/2026. Abrindo
-  // só depois que esta tela já renderizou, o cliente sempre vê a
-  // confirmação primeiro — a aba do WhatsApp é o extra, não o contrário.
+  // Fecha sozinha a aba do WhatsApp que o checkout pré-abriu (ver
+  // CheckoutForm.tsx) — tempo de sobra pro WhatsApp (app nativo ou versão
+  // web) assumir a navegação. Faz isso AQUI, na tela de confirmação já
+  // carregada, e não com um timer criado ainda no checkout: a navegação até
+  // aqui às vezes vira um reload completo da página (característica
+  // observada do Next.js nessa transição, não do tamanho da URL — investigado
+  // 27/08/2026), o que destruiria qualquer timer que tivesse sido agendado
+  // antes de sair do checkout. window.open com o MESMO nome usado lá
+  // ("donna-fit-whatsapp") devolve a referência daquela aba já aberta (sem
+  // criar uma nova, nem navegá-la) — window.close() nela funciona mesmo já
+  // tendo saído do nosso domínio, só precisa da referência.
   useEffect(() => {
-    const waParam = searchParams.get("wa")
-    const orderParam = searchParams.get("order") || searchParams.get("id")
-    // Só dispara vindo de um pedido fresco (querystring "wa" presente) —
-    // nunca ao só recarregar ou revisitar a tela depois.
-    if (!waParam || !orderParam) return
-    // Mesmos navegadores embutidos restritos (Instagram/Facebook/WhatsApp/
-    // TikTok) do fix de 03/08/2026: window.open() ali não abre aba nova,
-    // sequestra a navegação da própria página. Nesses casos a abertura
-    // continua só pelo botão manual abaixo.
-    if (isRestrictedInAppBrowser()) return
-    // Evita reabrir a cada re-render/StrictMode e a cada F5 na mesma tela
-    // (o "wa" continua na URL depois de um refresh).
-    const flagKey = `donna-fit-wa-auto-opened:${orderParam}`
+    // Só tenta fechar vindo de um pedido fresco (querystring "order"
+    // presente) — nunca ao só recarregar ou revisitar a tela depois.
+    const fromUrl = searchParams.get("order") || searchParams.get("id")
+    if (!fromUrl) return
+    // Evita reabrir/refechar a cada F5 na mesma tela — só tenta uma vez por
+    // pedido.
+    const flagKey = `donna-fit-wa-auto-closed:${fromUrl}`
     try {
       if (sessionStorage.getItem(flagKey)) return
       sessionStorage.setItem(flagKey, "1")
     } catch {}
-    // Se o navegador bloquear por não considerar isso um gesto direto do
-    // cliente, nada quebra — o botão "Acompanhar no WhatsApp" abaixo
-    // continua sendo o caminho garantido.
-    window.open(waParam, "_blank")
+    const timer = setTimeout(() => {
+      try {
+        const waWindow = window.open("", "donna-fit-whatsapp")
+        waWindow?.close()
+      } catch {}
+    }, 3000)
+    return () => clearTimeout(timer)
   }, [searchParams])
 
   useEffect(() => {

@@ -5,6 +5,7 @@ import { useCart, MIN_DELIVERY_ITEMS } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import { createClient } from "@/lib/supabase/client"
 import { buildWhatsAppMessage, buildWhatsAppURL } from "@/lib/whatsapp"
+import { isRestrictedInAppBrowser } from "@/lib/inAppBrowser"
 import { formatCurrency } from "@/lib/utils"
 import { getMarmitasPerUnit } from "@/lib/stock"
 import { Store, Truck, QrCode, CreditCard, Check, Link2, Info } from "lucide-react"
@@ -434,6 +435,29 @@ export function CheckoutForm() {
     // clientes como o botão "travando".
     const timeoutController = new AbortController()
     const timeoutId = setTimeout(() => timeoutController.abort(), 20000)
+    // Pré-abre a aba do WhatsApp AGORA, ainda dentro do clique síncrono do
+    // usuário — chamar window.open() só depois do await fetch() abaixo perde
+    // a associação com o gesto do clique e o navegador bloqueia o popup
+    // silenciosamente (foi exatamente isso que quebrou a abertura automática
+    // quando ela foi movida pra tela de confirmação, relatado 27/08/2026).
+    // Fica em branco até o pedido confirmar, quando é redirecionada pro link
+    // final (ver mais abaixo). Usa um NOME fixo ("donna-fit-whatsapp", igual
+    // ao usado em confirmacao/page.tsx) em vez de uma aba anônima: quem fecha
+    // essa aba depois é a própria tela de confirmação — que consegue pegar a
+    // referência de volta pelo nome mesmo se a navegação até ela tiver sido
+    // um reload completo (não dá pra confiar num timer criado aqui
+    // sobrevivendo até lá; investigado 27/08/2026).
+    // Pulado em navegadores embutidos restritos (Instagram/Facebook/WhatsApp/
+    // TikTok/WebView): neles window.open() não abre aba nova, ele sequestra
+    // a navegação da própria página — foi isso que quebrou o checkout em
+    // 03/08/2026 (commit 2bd569f). Nesses casos o WhatsApp continua abrindo
+    // só pelo botão manual na tela de confirmação.
+    const waWindow = isRestrictedInAppBrowser() ? null : window.open("", "donna-fit-whatsapp")
+    if (waWindow) {
+      waWindow.document.write(
+        '<title>Donna FIT</title><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;color:#888;background:#FFFDF8">Abrindo WhatsApp…</body>'
+      )
+    }
     try {
       const computedRiceChoices = finalRiceChoices()
       const activeRiceChoices = Object.keys(computedRiceChoices).length > 0 ? computedRiceChoices : undefined
@@ -499,9 +523,12 @@ export function CheckoutForm() {
       })
 
       const waUrl = buildWhatsAppURL(msg)
-      const encodedWa = encodeURIComponent(waUrl)
 
       try {
+        // Guardado à parte (não na URL de navegação) pra deixar a URL de
+        // navegação curta em vez de carregar a mensagem inteira (bem longa,
+        // já codificada) nela — consumido em confirmacao/page.tsx.
+        localStorage.setItem("donna-fit-wa-url", waUrl)
         localStorage.setItem("donna-fit-order-summary", JSON.stringify({
           items: cartItems.map(i => ({ name: i.product.name, qty: i.quantity, price: i.product.price * i.quantity })),
           deliveryType: delivery,
@@ -535,17 +562,20 @@ export function CheckoutForm() {
       }
 
       clearCart()
-      // A abertura do WhatsApp fica a cargo da tela de confirmação (ver
-      // confirmacao/page.tsx) — não daqui. Pré-abrir uma aba em branco aqui
-      // e navegá-la pro link só depois do fetch chegou a "roubar" o foco da
-      // aba principal em Safari mobile: a aba nova (ainda em branco) vira a
-      // aba visível na hora em que é criada, e o cliente fica olhando pra
-      // ela — travada em "Abrindo WhatsApp…" — sem nunca ver a aba original
-      // completar a navegação pra /confirmacao logo abaixo, mesmo ela tendo
-      // dado certo em segundo plano. Relatado 27/08/2026. Preferir sempre
-      // completar e MOSTRAR a confirmação a garantir a abertura automática.
-      router.push(`/confirmacao?order=${data.orderNumber}&wa=${encodedWa}`)
+      // Redireciona a aba pré-aberta (ver início da função) pro link final do
+      // WhatsApp, já com o pedido formatado. O fechamento automático dela
+      // fica por conta da tela de confirmação (ver confirmacao/page.tsx),
+      // que recupera essa mesma aba pelo nome — não daqui, ver comentário
+      // acima de onde ela foi aberta.
+      if (waWindow) {
+        waWindow.location.href = waUrl
+      }
+      router.push(`/confirmacao?order=${data.orderNumber}`)
     } catch (err) {
+      // Pedido falhou (ou deu timeout) — fecha a aba em branco que foi
+      // pré-aberta pro WhatsApp, senão o cliente fica com uma aba
+      // "Abrindo WhatsApp…" travada sem nenhum pedido de fato confirmado.
+      waWindow?.close()
       const timedOut = err instanceof Error && err.name === "AbortError"
       setSubmitError(
         timedOut
