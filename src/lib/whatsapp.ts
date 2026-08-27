@@ -11,7 +11,10 @@ interface OrderPayload {
   items: CartItem[]
   total: number
   deliveryFee?: number
-  riceChoices?: Record<string, "integral" | "branco">
+  // Combo: uma escolha vale pro combo inteiro ("integral"|"branco"). Prato
+  // avulso: contagem de quantas unidades daquele prato são de cada tipo —
+  // permite pedir 2x do mesmo prato com uma integral e uma branco.
+  riceChoices?: Record<string, "integral" | "branco" | { integral: number; branco: number }>
   pixDiscountPercentLabel?: string
 }
 
@@ -35,7 +38,16 @@ export function buildWhatsAppMessage(order: OrderPayload): string {
     .filter(({ product }) => order.riceChoices?.[product.id])
     .map(({ product }) => {
       const choice = order.riceChoices![product.id]
-      return `• ${product.name} → ${choice === "integral" ? "Integral" : "Branco"}`
+      if (typeof choice === "string") {
+        return `• ${product.name} → ${choice === "integral" ? "Integral" : "Branco"}`
+      }
+      // Todas as unidades do mesmo tipo: mantém o formato simples de antes.
+      // Só mostra a contagem quando o prato realmente veio dividido.
+      const total = choice.integral + choice.branco
+      if (choice.integral === total || choice.branco === total) {
+        return `• ${product.name} → ${choice.integral > 0 ? "Integral" : "Branco"}`
+      }
+      return `• ${product.name} → ${choice.integral}x Integral, ${choice.branco}x Branco`
     })
   const riceSection = riceLines.length > 0
     ? `\n🍚 *Tipo de Arroz:*\n${riceLines.join("\n")}`
