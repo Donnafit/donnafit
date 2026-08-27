@@ -3,6 +3,7 @@ import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
+import { isRestrictedInAppBrowser } from "@/lib/inAppBrowser"
 
 type OrderSummary = {
   items: { name: string; qty: number; price: number }[]
@@ -36,6 +37,39 @@ function ConfirmacaoContent() {
       const raw = localStorage.getItem("donna-fit-order-summary")
       if (raw) setSummary(JSON.parse(raw))
     } catch {}
+  }, [searchParams])
+
+  // Abre o WhatsApp sozinho ao chegar aqui vindo de um pedido recém
+  // confirmado. Faz isso NESTA tela (não no clique do botão do checkout) de
+  // propósito: abrir a aba nova mais cedo, ainda no checkout, chegou a
+  // "roubar" o foco em Safari mobile assim que a aba era criada — o cliente
+  // ficava olhando pra ela travada em "Abrindo WhatsApp…" sem nunca ver a
+  // aba original completar a navegação pra cá, mesmo o pedido tendo sido
+  // confirmado normalmente em segundo plano. Relatado 27/08/2026. Abrindo
+  // só depois que esta tela já renderizou, o cliente sempre vê a
+  // confirmação primeiro — a aba do WhatsApp é o extra, não o contrário.
+  useEffect(() => {
+    const waParam = searchParams.get("wa")
+    const orderParam = searchParams.get("order") || searchParams.get("id")
+    // Só dispara vindo de um pedido fresco (querystring "wa" presente) —
+    // nunca ao só recarregar ou revisitar a tela depois.
+    if (!waParam || !orderParam) return
+    // Mesmos navegadores embutidos restritos (Instagram/Facebook/WhatsApp/
+    // TikTok) do fix de 03/08/2026: window.open() ali não abre aba nova,
+    // sequestra a navegação da própria página. Nesses casos a abertura
+    // continua só pelo botão manual abaixo.
+    if (isRestrictedInAppBrowser()) return
+    // Evita reabrir a cada re-render/StrictMode e a cada F5 na mesma tela
+    // (o "wa" continua na URL depois de um refresh).
+    const flagKey = `donna-fit-wa-auto-opened:${orderParam}`
+    try {
+      if (sessionStorage.getItem(flagKey)) return
+      sessionStorage.setItem(flagKey, "1")
+    } catch {}
+    // Se o navegador bloquear por não considerar isso um gesto direto do
+    // cliente, nada quebra — o botão "Acompanhar no WhatsApp" abaixo
+    // continua sendo o caminho garantido.
+    window.open(waParam, "_blank")
   }, [searchParams])
 
   useEffect(() => {
