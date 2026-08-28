@@ -95,10 +95,31 @@ export function buildWhatsAppMessage(order: OrderPayload): string {
   )
 }
 
-export function buildWhatsAppURL(message: string): string {
+/**
+ * No Android, `https://wa.me/...` navegado programaticamente (não por um
+ * clique direto do usuário — ex.: `location.href` de uma aba pré-aberta no
+ * checkout, ver CheckoutForm.tsx) nem sempre é resolvido pelo Chrome como App
+ * Link pro WhatsApp instalado: em vez de abrir o app, ele cai no fallback web
+ * de wa.me, que mostra a página pra baixar o app na Play Store — relatado
+ * por cliente Android em 28/08/2026 (no iPhone/Safari funciona normalmente).
+ * O formato `intent://` é o jeito recomendado pelo Android pra forçar a
+ * resolução direta pro app instalado, com fallback pro wa.me quando o
+ * WhatsApp não está instalado.
+ */
+function isAndroidUA(userAgent?: string): boolean {
+  const ua = userAgent ?? (typeof navigator !== "undefined" ? navigator.userAgent : "")
+  return /Android/i.test(ua)
+}
+
+export function buildWhatsAppURL(message: string, userAgent?: string): string {
   const number =
     process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "5541999154720"
-  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
+  const encodedMessage = encodeURIComponent(message)
+  if (isAndroidUA(userAgent)) {
+    const fallbackUrl = encodeURIComponent(`https://wa.me/${number}?text=${encodedMessage}`)
+    return `intent://send?phone=${number}&text=${encodedMessage}#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url=${fallbackUrl};end`
+  }
+  return `https://wa.me/${number}?text=${encodedMessage}`
 }
 
 /**

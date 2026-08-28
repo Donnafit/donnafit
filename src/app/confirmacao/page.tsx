@@ -17,6 +17,10 @@ function ConfirmacaoContent() {
   const searchParams = useSearchParams()
   const [orderNumber, setOrderNumber] = useState<string>("")
   const [whatsappUrl, setWhatsappUrl] = useState<string>("https://wa.me/5541999154720")
+  // Links `intent://` (usados no Android — ver src/lib/whatsapp.ts) só são
+  // resolvidos pro app quando navegados na própria aba; abertos com
+  // target="_blank" o Chrome perde a resolução do intent e nada acontece.
+  const isAndroidIntentLink = whatsappUrl.startsWith("intent://")
   const [summary, setSummary] = useState<OrderSummary | null>(null)
 
   useEffect(() => {
@@ -241,8 +245,8 @@ function ConfirmacaoContent() {
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <a
             href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+            target={isAndroidIntentLink ? undefined : "_blank"}
+            rel={isAndroidIntentLink ? undefined : "noopener noreferrer"}
             className="whatsapp-btn"
             style={{
               textDecoration: "none",
