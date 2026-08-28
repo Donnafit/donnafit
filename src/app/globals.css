@@ -205,6 +205,16 @@ body {
 @media (min-width: 768px)  { .product-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1280px) { .product-grid { grid-template-columns: repeat(4, 1fr); } }
 
+/* Payment options grid (checkout) — empilhado em coluna única no mobile */
+.payment-options-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+@media (min-width: 640px) {
+  .payment-options-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+
 /* Option cards (checkout) */
 .option-card {
   border: 2px solid #E5E0D8;

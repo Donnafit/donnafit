@@ -825,7 +825,7 @@ export function CheckoutForm() {
           </span>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+        <div className="payment-options-grid">
           {/* PIX */}
           <button
             type="button"
