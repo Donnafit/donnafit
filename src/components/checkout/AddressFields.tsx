@@ -260,7 +260,7 @@ export default function AddressFields({
           className="form-input"
           value={value.street}
           onChange={(e) => onChange({ ...value, street: e.target.value })}
-          placeholder="Rua, número"
+          placeholder="Ex: Rua das Flores, 123"
           autoComplete="street-address"
         />
       </div>

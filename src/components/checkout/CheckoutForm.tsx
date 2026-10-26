@@ -11,6 +11,7 @@ import { getMarmitasPerUnit } from "@/lib/stock"
 import { Store, Truck, QrCode, CreditCard, Check, Link2, Info } from "lucide-react"
 import type { CartItem } from "@/types"
 import AddressFields from "./AddressFields"
+import { hasStreetNumber } from "@/lib/streetNumber"
 import type { DeliveryZone } from "@/lib/deliveryZones"
 import {
   emptyDeliveryAddress,
@@ -418,7 +419,7 @@ export function CheckoutForm() {
     const phoneOk = validatePhone(phone)
     const addressOk =
       delivery === "pickup" ||
-      (deliveryAddress.street.trim().length >= 10 && !!matchedZone && !addressBlocked)
+      (deliveryAddress.street.trim().length >= 10 && hasStreetNumber(deliveryAddress.street) && !!matchedZone && !addressBlocked)
     return nameOk && phoneOk && addressOk
   }
 
@@ -594,7 +595,7 @@ export function CheckoutForm() {
     const phoneOk = validatePhone(phone)
     const addressOk =
       delivery === "pickup" ||
-      (deliveryAddress.street.trim().length >= 10 && !!matchedZone && !addressBlocked)
+      (deliveryAddress.street.trim().length >= 10 && hasStreetNumber(deliveryAddress.street) && !!matchedZone && !addressBlocked)
 
     setNameState(nameOk ? "valid" : "invalid")
     setPhoneState(phoneOk ? "valid" : "invalid")
@@ -781,6 +782,16 @@ export function CheckoutForm() {
               <div style={{ gridColumn: "1 / -1", marginTop: 8 }}>
                 <p style={{ fontSize: 12, color: "#B45309", fontWeight: 600 }}>
                   Informe o endereço completo (rua e número).
+                </p>
+              </div>
+            )}
+            {/* Rua sem número (caso típico: autopreenchida pelo CEP, que só traz o
+                nome da rua) trava o botão — sem esta linha o cliente não saberia
+                por quê. "S/N" libera quem realmente não tem número. */}
+            {deliveryAddress.street.trim().length >= 10 && !addressBlocked && !hasStreetNumber(deliveryAddress.street) && (
+              <div style={{ gridColumn: "1 / -1", marginTop: 8 }}>
+                <p style={{ fontSize: 12, color: "#B45309", fontWeight: 600 }}>
+                  Falta o número no endereço. Ex: {deliveryAddress.street.trim().replace(/[\s,]+$/, "")}, 123. Se não tiver número, escreva S/N.
                 </p>
               </div>
             )}
