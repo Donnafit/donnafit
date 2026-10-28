@@ -17,6 +17,7 @@ web_modules/
 
 # Builds and temporary files
 dist/
+*.tsbuildinfo
 build/
 out/
 .next/
