@@ -127,7 +127,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
               alt={product.name}
               fill
               sizes="(max-width: 768px) 100vw, 600px"
-              quality={75}
+              quality={70}
               priority
               style={{ objectFit: "cover" }}
             />
