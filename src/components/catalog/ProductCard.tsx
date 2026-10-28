@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useCart } from "@/hooks/useCart"
 import { formatCurrency, resolveImageSrc } from "@/lib/utils"
 import { isProductSoldOut } from "@/lib/stock"
@@ -59,22 +60,24 @@ export function ProductCard({ product, index }: Props) {
     >
       {/* ── Área da imagem ── */}
       <Link href={"/produto/" + product.id} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-      <div style={{ position: "relative", overflow: "hidden", flexShrink: 0 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+      <div style={{ position: "relative", overflow: "hidden", flexShrink: 0, height: 190 }}>
+        <Image
           src={resolveImageSrc(product.image_url, 640)}
           alt={product.name}
+          fill
+          sizes="(max-width: 480px) 50vw, (max-width: 1024px) 33vw, 260px"
+          quality={70}
           style={{
-            width: "100%",
-            height: 190,
             objectFit: "cover",
-            display: "block",
             transition: "transform 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
             transform: hovered ? "scale(1.06)" : "scale(1)",
           }}
-          loading="lazy"
           onError={(e) => {
-            ;(e.currentTarget as HTMLImageElement).src = "/marmita.jpg"
+            // next/image preenche srcset, que tem prioridade sobre src: sem
+            // limpar, a foto padrão nunca aparece no lugar da quebrada.
+            const img = e.currentTarget as HTMLImageElement
+            img.srcset = ""
+            img.src = "/marmita.jpg"
           }}
         />
 

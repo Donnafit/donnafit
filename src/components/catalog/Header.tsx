@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { useCart } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import { SearchModal } from "@/components/ui/SearchModal"
@@ -263,8 +264,7 @@ export function Header({ activeCategory }: Props) {
                 }}
               >
                 {user && avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={avatarUrl} alt={userName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <Image src={avatarUrl} alt={userName} width={40} height={40} quality={70} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : user && userInitial ? (
                   <span style={{ fontFamily: "var(--font-switzer), sans-serif", fontWeight: 900, fontSize: 15, color: "#fff", lineHeight: 1 }}>
                     {userInitial}
@@ -376,8 +376,7 @@ export function Header({ activeCategory }: Props) {
                 onTouchEnd={(e) => { e.currentTarget.style.background = "transparent" }}
               >
                 {user && avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={avatarUrl} alt={userName} style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                  <Image src={avatarUrl} alt={userName} width={26} height={26} quality={70} style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
                 ) : user && userInitial ? (
                   <span style={{
                     width: 26, height: 26, borderRadius: "50%",

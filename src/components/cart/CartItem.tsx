@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { Minus, Plus, Trash2 } from "lucide-react"
 import { useCart } from "@/hooks/useCart"
 import { formatCurrency, resolveImageSrc } from "@/lib/utils"
@@ -10,11 +11,13 @@ function ProductThumb({ src, alt }: { src: string | null | undefined; alt: strin
   const [imgSrc, setImgSrc] = useState<string>(resolveImageSrc(src))
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       src={imgSrc}
       alt={alt}
-      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+      fill
+      sizes="68px"
+      quality={70}
+      style={{ objectFit: "cover" }}
       onError={() => {
         if (imgSrc !== "/marmita.jpg") setImgSrc("/marmita.jpg")
       }}
@@ -39,6 +42,7 @@ export function CartItem({ product, quantity }: CartItemType) {
       {/* ── Coluna 1: Foto ────── */}
       <div
         style={{
+          position: "relative",
           width: 68,
           height: 68,
           borderRadius: 12,

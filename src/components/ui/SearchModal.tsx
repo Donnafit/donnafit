@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { useCart } from "@/hooks/useCart"
 import { formatCurrency, resolveImageSrc } from "@/lib/utils"
@@ -216,13 +217,13 @@ export function SearchModal({ open, onClose }: Props) {
                 >
                   {/* Thumbnail */}
                   <div style={{
+                    position: "relative",
                     width: 52, height: 52, borderRadius: 12,
                     overflow: "hidden", flexShrink: 0, background: "#F5F0E8",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {p.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={resolveImageSrc(p.image_url)} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <Image src={resolveImageSrc(p.image_url)} alt={p.name} fill sizes="52px" quality={70} style={{ objectFit: "cover" }} />
                     ) : (
                       <span style={{ fontSize: 22 }}>🥗</span>
                     )}

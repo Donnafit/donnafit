@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { useCart, MIN_DELIVERY_ITEMS } from "@/hooks/useCart"
 import { useAuth } from "@/hooks/useAuth"
 import { formatCurrency, resolveImageSrc } from "@/lib/utils"
@@ -10,11 +11,13 @@ import { getMarmitasPerUnit } from "@/lib/stock"
 function CartItemImage({ src, alt }: { src: string | null | undefined; alt: string }) {
   const [imgSrc, setImgSrc] = useState(resolveImageSrc(src))
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       src={imgSrc}
       alt={alt}
-      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+      fill
+      sizes="68px"
+      quality={70}
+      style={{ objectFit: "cover" }}
       onError={() => { if (imgSrc !== "/marmita.jpg") setImgSrc("/marmita.jpg") }}
     />
   )
@@ -173,6 +176,7 @@ export function CartDrawer({ open, onClose }: Props) {
               >
                 {/* ── Coluna 1: Foto ── */}
                 <div style={{
+                  position: "relative",
                   width: 68, height: 68, borderRadius: 12,
                   overflow: "hidden", flexShrink: 0, background: "#F5F0E8",
                 }}>

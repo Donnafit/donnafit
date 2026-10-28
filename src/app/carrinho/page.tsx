@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/hooks/useCart'
 import { formatCurrency, resolveImageSrc } from '@/lib/utils'
@@ -88,11 +89,14 @@ export default function CarrinhoPage() {
                   boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
                   display: 'flex', alignItems: 'center', gap: 12,
                 }}>
-                  <img
+                  <Image
                     src={resolveImageSrc(item.product.image_url)}
                     alt={item.product.name}
+                    width={72}
+                    height={72}
+                    quality={70}
                     style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
-                    onError={(e) => { (e.target as HTMLImageElement).src = '/marmita.jpg' }}
+                    onError={(e) => { const img = e.target as HTMLImageElement; img.srcset = ''; img.src = '/marmita.jpg' }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>

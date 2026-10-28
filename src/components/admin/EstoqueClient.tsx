@@ -1,5 +1,6 @@
 "use client"
 import { useState, useTransition, useRef, useEffect, useCallback } from "react"
+import Image from "next/image"
 import { Package, Search, CheckCircle2, AlertTriangle, XCircle, Minus, Plus,
   ChevronDown, Check, X, ImageIcon, PlusCircle, UploadCloud, Loader2, Edit3
 } from "lucide-react"
@@ -58,9 +59,9 @@ function ProductThumb({ src, alt }: { src: string | null; alt: string }) {
     return <Package size={16} strokeWidth={1.5} style={{ color: "var(--text-300)" }} />
   }
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={resolveImageSrc(src, 120)} alt={alt} onError={() => setBroken(true)}
-      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+    <Image src={resolveImageSrc(src, 120)} alt={alt} fill sizes="44px" quality={70}
+      onError={() => setBroken(true)}
+      style={{ objectFit: "cover" }} />
   )
 }
 
@@ -1392,6 +1393,7 @@ export function EstoqueClient({ products: initial }: Props) {
 
               const thumbnail = (
                 <div style={{
+                  position: "relative",
                   width: 44, height: 44, borderRadius: 10, overflow: "hidden", flexShrink: 0,
                   background: "var(--surface-200)",
                   display: "flex", alignItems: "center", justifyContent: "center",

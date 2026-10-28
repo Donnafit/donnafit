@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
+import Image from "next/image"
 import { BookOpen, Search, ChefHat, Tag, ChevronDown, ArrowLeft, Pencil, X, Loader2 } from "lucide-react"
 import { resolveImageSrc } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -35,12 +36,14 @@ function ProductThumb({ src, alt }: { src: string | null; alt: string }) {
     return <ChefHat size={13} strokeWidth={1.5} style={{ color: "var(--text-300)" }} />
   }
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       src={resolveImageSrc(src, 120)}
       alt={alt}
+      fill
+      sizes="32px"
+      quality={70}
       onError={() => setBroken(true)}
-      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+      style={{ objectFit: "cover" }}
     />
   )
 }
@@ -49,12 +52,14 @@ function ProductImage({ src, alt }: { src: string | null; alt: string }) {
   const [broken, setBroken] = useState(false)
   if (!src || broken) return null
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       src={resolveImageSrc(src, 640)}
       alt={alt}
+      fill
+      sizes="(max-width: 768px) 100vw, 500px"
+      quality={70}
       onError={() => setBroken(true)}
-      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+      style={{ objectFit: "cover" }}
     />
   )
 }
@@ -367,6 +372,7 @@ export function ManualClient({ products: initialProducts }: Props) {
                         >
                           {/* Thumbnail */}
                           <div style={{
+                            position: "relative",
                             width: 32, height: 32, borderRadius: 8, flexShrink: 0,
                             overflow: "hidden",
                             background: isActive ? "rgba(200,155,60,0.12)" : "var(--surface-200)",
@@ -456,6 +462,7 @@ export function ManualClient({ products: initialProducts }: Props) {
                   </div>
                 ) : selected.image_url && (
                   <div style={{
+                    position: "relative",
                     width: "100%", borderRadius: 16, overflow: "hidden",
                     aspectRatio: "16/7", marginBottom: 20,
                     background: "var(--surface-200)",

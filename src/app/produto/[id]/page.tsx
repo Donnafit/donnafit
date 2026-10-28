@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
+import Image from "next/image"
 import { AnnouncementBar } from "@/components/catalog/AnnouncementBar"
 import { Header } from "@/components/catalog/Header"
 import { Footer } from "@/components/catalog/Footer"
@@ -121,11 +122,14 @@ export default async function ProductPage({ params }: { params: { id: string } }
         >
           {/* Imagem */}
           <div style={{ position: "relative", aspectRatio: "4/3", minHeight: 300, width: "100%", minWidth: 0 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={resolveImageSrc(product.image_url, 800)}
               alt={product.name}
-              style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+              fill
+              sizes="(max-width: 768px) 100vw, 600px"
+              quality={75}
+              priority
+              style={{ objectFit: "cover" }}
             />
             {category?.name && (
               <span
